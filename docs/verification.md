@@ -179,7 +179,8 @@ runs pass the stronger probe, including normal input and restoration.
 Three same-process activity recreations and final destruction pass with four
 responsive native hosts; all four recorded native surfaces are RGBA8. The test's
 instrumentable-packaging qualification still applies. The API 35 CI recreation
-job also checks native format diagnostics. This is scoped evidence against the
+job also checks native format diagnostics, restores the ordinary APK, and runs
+the complete interaction/exact-color probe with measured density and insets. This is scoped evidence against the
 specific RGB565 loss, not complete color-management, HDR, gradient or alpha tests.
 Physical-device, GPU/OS matrix and macOS runtime coverage remain outstanding.
 

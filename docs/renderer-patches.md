@@ -97,7 +97,9 @@ blue, green and orange controls. It no longer accepts quantized counterparts.
 Normal counter/aspect/observable input and restoration still pass. A separate
 instrumentation run exercised four native hosts in the same process, each with
 an RGBA8 surface, through three recreations and final activity destruction.
-See [verification](verification.md) for evidence and packaging qualification.
+The combined CI script restores the ordinary native APK after instrumentation
+and then runs the touch/text/restoration and exact-color probe using the measured
+density/insets. See [verification](verification.md) for evidence and packaging qualification.
 Physical-device coverage, wide-gamut/HDR, gradients, alpha/color-space accuracy
 and the complete painting/compositing API remain outstanding.
 

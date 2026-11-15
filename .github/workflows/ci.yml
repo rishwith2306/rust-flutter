@@ -89,7 +89,9 @@ jobs:
           cargo apk build -p rust-flutter-gallery --lib --target x86_64-linux-android
       - name: Enable KVM for the isolated emulator
         run: sudo chmod a+rw /dev/kvm
-      - name: Same-process activity recreation and final destruction
+      - name: Image tools for exact rendered-color and glyph checks
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      - name: Activity lifecycle and ordinary-package rendered interactions
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -98,7 +100,7 @@ jobs:
           profile: pixel_6
           avd-name: RustFlutterSmoke
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: python3 scripts/android-recreation.py --serial emulator-5554 --cycles 3 --stop-pixel-launcher
+          script: python3 scripts/android-runtime-smoke.py --serial emulator-5554
       - uses: actions/upload-artifact@v4
         if: always()
         with:
