@@ -101,3 +101,7 @@ Mobile IME composition, clipboard and URL output commands, native child viewport
 and accessibility semantics are not implemented by this host yet. Winit-specific
 window/event-loop hooks and unsupported depth/stencil/multisampling options return
 an explicit error. These limits remain part of the feature backlog.
+
+Linux X11 runtime requires `libxkbcommon-x11.so` as well as the development
+libraries. On Debian/Ubuntu install `libxkbcommon-x11-0`; CI also installs
+Xvfb, xdotool, ImageMagick and Mesa Vulkan drivers for rendered smoke checks.
