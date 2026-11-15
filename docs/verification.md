@@ -2,7 +2,8 @@
 
 Local environment: Linux x86_64, Rust 1.98.1 / Cargo 1.98.1. Dependencies are
 pinned in Cargo.lock. Results below describe this workspace, not Flutter parity.
-No remote CI run or macOS runtime result has been obtained.
+The public repository now runs GitHub Actions; see its Actions page for current
+remote results. macOS runtime behavior has not been verified.
 
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
@@ -12,7 +13,7 @@ No remote CI run or macOS runtime result has been obtained.
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
 | Rustdoc | Passed | `cargo doc --workspace --no-deps --locked` |
-| Generated desktop app | Passed | CLI scaffold compiled against local library |
+| Generated desktop app | Passed | GitHub-installed CLI creates an external app with pinned public Git dependencies; cargo check passes |
 | Desktop rendered interaction | Passed | Isolated Xvfb display: real counter click, keyboard text, fresh-process restoration; `scripts/desktop-smoke.py` |
 | Asset Cargo rebuild smoke | Passed | Temporary GPU-free executable loads generated bundle; changing text and adding/removing a density variant rebuilds the embedded data automatically |
 | Bundled image rendering | Passed within tested scope | Desktop screenshot confirms 1× PNG pixels when launched outside source directory; Android screenshot shows the 3× variant at 48 logical points, API 37 / x86_64 / 16 KB pages |
@@ -23,15 +24,15 @@ No remote CI run or macOS runtime result has been obtained.
 | Retained component desktop rendering | Passed | Foreground glyph-mask comparisons verify clicks, counter state after keyed reorder, removal, and fresh state on reinsertion; no direct component-state test hook |
 | Retained component Android rendering | Passed on test emulator | Injected touches and exact trimmed foreground glyph masks verify state through swaps, removal and reinsertion at 2.625 density; screenshot shows A=1, fresh B=0, init=3, dispose=1 |
 | Inherited values | Passed, 16 tests | Exact-type and nearest lookup, shadowing, read/listen, predicates, snapshots, coalesced dependency hooks, mounted-lifetime registrations, non-Send values with worker updates, cleanup, measurement/paint/event registrations and stable render identity |
-| Inherited Step desktop rendering | Earlier probe passed; final-source run pending | Step update preserves A/B counts, then a single B click matches the original two-click glyphs |
-| Inherited Step Android rendering | Pending current run | Same shared image-mask probe using real injected touch on isolated emulator |
+| Inherited Step desktop rendering | Passed on final source | Step update preserves A/B counts, then a single B click matches the original two-click glyphs |
+| Inherited Step Android rendering | Passed on test emulator | Shared image-mask probe using injected touch; changing Step preserves counts and a single click with Step 2 matches the original two-click result |
 | ARM64 Android APK | Built and debug-signed | NDK 28.2.13676358, min SDK 24 / target SDK 35; APK signature and alignment checked |
 | x86_64 Android APK | Built, installed and launched | Isolated Pixel 6 emulator, Android 37 system image with 16 KB pages |
 | Android basic interaction | Passed within smoke scope | GLES rendering, counter touch, injected text `Ada`, private JSON snapshot writes and route back |
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
-| macOS compilation / runtime | Not verified locally | Workflow is configured; it has not been run. No Metal/window/VoiceOver claim is established. |
+| macOS compilation / runtime | Not verified locally | Remote build is running; no Metal/window/VoiceOver runtime claim is established. |
 | Full Flutter feature parity | Not achieved | See feature audit and API inventory; most declarations remain unreviewed |
 
 ## Reproduce local checks
@@ -79,7 +80,7 @@ recreation backdoor or model mutation hook. This variant is limited to the curre
 resource-free pure-native gallery. It remains installed after the test; reinstall
 the ordinary cargo-apk package to restore production packaging.
 
-The latest local result records PID 4747, four native host generations, four
+The latest local result records PID 4455, four native host generations, four
 completed destruction handshakes, and a final rendered count of 9 with name `Ada`
 preserved.
 Each of the three recreations increased the counter through injected touch on its
