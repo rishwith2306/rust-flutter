@@ -73,6 +73,19 @@ def wait_keyboard_hidden():
     raise TimeoutError("keyboard did not hide")
 
 
+def wait_keyboard_shown():
+    # ADB text events can arrive before the native host processes the focus tap.
+    # Require the app's asynchronous IME request before injecting keyboard events.
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        dump = device("shell", "dumpsys", "input_method").stdout.decode()
+        if re.search(r"mInputShown=true", dump):
+            return
+        time.sleep(0.3)
+    screenshot("android-keyboard-focus-failed.png")
+    raise TimeoutError("text field did not request the keyboard")
+
+
 def start():
     result = device("shell", "am", "start", "-W", "-n", f"{package}/android.app.NativeActivity", timeout=30)
     if b"Status: ok" not in result.stdout:
@@ -107,6 +120,7 @@ time.sleep(2)
 tap(270, 187)
 wait_state(count=1)
 tap(80, 140)
+wait_keyboard_shown()
 device("shell", "input", "text", "Ada")
 wait_state(count=1, name="Ada")
 # Dismiss the asynchronous IME, then remove the text editor's focus.

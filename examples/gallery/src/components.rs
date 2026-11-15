@@ -3,16 +3,35 @@ use rust_flutter::{
     element::*,
     layout::{Axis, BoxConstraints, CrossAxisAlignment},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc};
 #[derive(Default)]
 struct Metrics {
     initialized: usize,
     updated: usize,
     disposed: usize,
     dependencies: usize,
+    builds_a: usize,
+    builds_b: usize,
 }
-#[derive(PartialEq)]
-struct CounterStep(i32);
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum CounterAspect {
+    A,
+    B,
+}
+struct CounterStep {
+    a: i32,
+    b: i32,
+}
+impl InheritedModel for CounterStep {
+    type Aspect = CounterAspect;
+    fn update_should_notify(&self, old: &Self) -> bool {
+        self.a != old.a || self.b != old.b
+    }
+    fn update_should_notify_dependent(&self, old: &Self, aspects: &HashSet<CounterAspect>) -> bool {
+        (self.a != old.a && aspects.contains(&CounterAspect::A))
+            || (self.b != old.b && aspects.contains(&CounterAspect::B))
+    }
+}
 struct Counter {
     name: &'static str,
     metrics: Rc<RefCell<Metrics>>,
@@ -41,10 +60,25 @@ impl State<Counter> for CounterState {
         self.metrics.borrow_mut().updated += 1;
     }
     fn build(&mut self, widget: &Counter, ctx: &StateContext<Self>) -> Widget {
+        let aspect = if widget.name == "A" {
+            CounterAspect::A
+        } else {
+            CounterAspect::B
+        };
         let step = ctx
-            .depend_on::<CounterStep>()
+            .depend_on_aspect::<CounterStep>(aspect)
             .expect("lookup while building")
-            .map_or(1, |step| step.0);
+            .map_or(1, |step| match aspect {
+                CounterAspect::A => step.a,
+                CounterAspect::B => step.b,
+            });
+        {
+            let mut metrics = self.metrics.borrow_mut();
+            match aspect {
+                CounterAspect::A => metrics.builds_a += 1,
+                CounterAspect::B => metrics.builds_b += 1,
+            }
+        }
         let value = self.value;
         let name = widget.name;
         let handle = ctx.handle();
@@ -118,12 +152,13 @@ pub(super) struct ComponentDemo {
     show_b: bool,
     metrics: Rc<RefCell<Metrics>>,
     step: i32,
+    a_step: i32,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
         let metrics = Rc::default();
-        let root = Widget::inherited(
-            CounterStep(1),
+        let root = Widget::inherited_model(
+            CounterStep { a: 1, b: 1 },
             Widget::stateless(List {
                 reversed: false,
                 show_b: true,
@@ -136,6 +171,7 @@ impl ComponentDemo {
             show_b: true,
             metrics,
             step: 1,
+            a_step: 1,
         }
     }
     pub fn show(&mut self, ui: &mut egui::Ui) {
@@ -155,18 +191,42 @@ impl ComponentDemo {
             }
             if ui.button(format!("Step: {}", self.step)).clicked() {
                 self.step = if self.step == 1 { 2 } else { 1 };
+                self.a_step = self.step;
                 if let Some(handle) = self
                     .tree
                     .root_id()
                     .and_then(|id| self.tree.inherited_handle::<CounterStep>(id))
                 {
-                    let _ = handle.set(CounterStep(self.step));
+                    let _ = handle.set(CounterStep {
+                        a: self.a_step,
+                        b: self.step,
+                    });
+                }
+            }
+            if ui
+                .add(
+                    egui::Button::new(format!("A step: {}", self.a_step))
+                        .fill(egui::Color32::from_rgb(110, 65, 135)),
+                )
+                .clicked()
+            {
+                self.a_step = if self.a_step == 1 { 2 } else { 1 };
+                let step = self.a_step;
+                if let Some(handle) = self
+                    .tree
+                    .root_id()
+                    .and_then(|id| self.tree.inherited_handle::<CounterStep>(id))
+                {
+                    let _ = handle.update(move |old| CounterStep { a: step, b: old.b });
                 }
             }
         });
         if changed
-            && let Err(error) = self.tree.update(Widget::inherited(
-                CounterStep(self.step),
+            && let Err(error) = self.tree.update(Widget::inherited_model(
+                CounterStep {
+                    a: self.a_step,
+                    b: self.step,
+                },
                 Widget::stateless(List {
                     reversed: self.reversed,
                     show_b: self.show_b,
@@ -191,7 +251,11 @@ impl ComponentDemo {
             "init: {} · props updated: {} · disposed: {} · dependencies: {}",
             metrics.initialized, metrics.updated, metrics.disposed, metrics.dependencies
         ));
-        ui.label("Step changes notify both counters through an inherited value, preserving their counts.");
+        ui.label(format!(
+            "Builds A: {} · B: {}",
+            metrics.builds_a, metrics.builds_b
+        ));
+        ui.label("Step changes notify both counters. A step changes only A's model aspect; B does not rebuild.");
         ui.label(
             "These counters belong to mounted components. App restart creates fresh components.",
         );

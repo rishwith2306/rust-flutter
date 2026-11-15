@@ -75,4 +75,14 @@ def probe_components(capture, tap, scale=1.0):
     stepped = settle("components-inherited-count.png")
     assert patch(stepped, bounds(stepped, "#197d55"), scale) == b2, "one click after inherited step=2 did not match the original two-click counter"
     assert patch(stepped, bounds(stepped, "#1769aa"), scale) == a1
-    return {"passed": True, "inherited_step": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    aspect_control = bounds(stepped, "#6e4187")
+    assert aspect_control, "aspect-specific control is missing"
+    tap(*center(aspect_control))
+    selective = settle("components-aspect-step.png")
+    assert patch(selective, bounds(selective, "#1769aa"), scale) == a1, "aspect update reset A"
+    assert patch(selective, bounds(selective, "#197d55"), scale) == b2, "aspect update changed B's count"
+    tap(*center(bounds(selective, "#1769aa")))
+    after_aspect = settle("components-aspect-count.png")
+    assert patch(after_aspect, bounds(after_aspect, "#1769aa"), scale) != a1
+    assert patch(after_aspect, bounds(after_aspect, "#197d55"), scale) == b2
+    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; exact trimmed foreground glyph masks at a 75% intensity threshold"}

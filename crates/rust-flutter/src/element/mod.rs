@@ -4,7 +4,7 @@ mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};
 use inherited::{Dependencies, Phase, Provider, Scope};
-pub use inherited::{DependencyError, InheritedHandle};
+pub use inherited::{DependencyError, InheritedHandle, InheritedModel};
 pub use state::{
     BuildContext, State, StateContext, StateHandle, StatefulWidget, StatelessWidget, Unmounted,
 };
@@ -380,6 +380,7 @@ impl Element {
         let mut scope = parent.clone();
         if let MountedKind::Inherited(provider) = &self.kind {
             let link = provider.link();
+            *link.parent.borrow_mut() = scope.get(&link.kind).map(Rc::downgrade);
             scope.insert(link.kind, link);
         }
         scope

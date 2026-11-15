@@ -37,8 +37,8 @@ testing, rendered through stable leaf UIs. `ElementTree` reconciles declarative
 stateful/stateless widgets by type and sibling key, owns component state and
 queues state updates for selective component builds. Typed inherited scopes
 register consumers and notify their dependency hooks without resetting state. See `layout.md` and
-`components.md` / `inherited.md`. The full RenderObject pipeline, aspect-based
-dependencies and
+`components.md` / `inherited.md`. Typed model aspects and supported-aspect
+ancestor traversal are described in `inherited-models.md`. The full RenderObject pipeline, notifier adapters and
 GlobalKey reparenting remain unfinished. Rust owns data and lifetimes; closure composition avoids a custom
 language and a separate runtime. Long-lived state belongs in the application or mounted component state,
 not temporary widget variables. Stable IDs preserve egui's internal input state.

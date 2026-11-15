@@ -8,7 +8,8 @@ with density-aware images and a bounded texture cache. An owned constraint-based
 box layout tree adds flex/expanded children, padding, alignment and positioned stacks.
 `ElementTree` adds declarative stateful/stateless components, sibling keys, queued
 state updates and lifecycle hooks. Typed inherited scopes notify dependent
-components while preserving their state.
+components while preserving their state. Inherited models add typed aspect
+subscriptions and nested supported-aspect lookup.
 Desktop windows use [eframe 0.33.3](https://docs.rs/eframe/0.33.3/eframe/);
 Android uses a framework-owned NativeActivity host. Both render egui through wgpu.
 
@@ -108,7 +109,7 @@ navigation invariants, cross-thread state notifications, worker failure, animati
 boundaries, service replacement and responsive thresholds. These tests do not
 prove device lifecycle, macOS integration or full accessibility behavior.
 
-See [inherited values](docs/inherited.md), [stateful components](docs/components.md), [constraint layout](docs/layout.md), [asset bundles](docs/assets.md), [application services](docs/application-services.md),
+See [inherited models](docs/inherited-models.md), [inherited values](docs/inherited.md), [stateful components](docs/components.md), [constraint layout](docs/layout.md), [asset bundles](docs/assets.md), [application services](docs/application-services.md),
 [verification results](docs/verification.md), [architecture](docs/architecture.md), [feature audit](docs/flutter-parity.md),
 and [contributing](CONTRIBUTING.md) before extending the framework.
 

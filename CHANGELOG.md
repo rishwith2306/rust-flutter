@@ -6,6 +6,7 @@
 - Navigation, signals, background tasks, themes, localization and JSON snapshots.
 - Embedded assets, density variants and a bounded decoded-image cache.
 - Constraint layout, retained keyed components and typed inherited values.
+- Inherited models with aspect subscriptions, selective notifications and nested fallback.
 - Native Android lifecycle handling and smoke-test tooling.
 - CLI starter apps with pinned GitHub dependencies and local contributor mode.
 

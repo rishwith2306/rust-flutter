@@ -1,4 +1,4 @@
-use super::inherited::{Provided, ProviderDescription};
+use super::inherited::{InheritedModel, Provided, ProviderDescription};
 use super::{Key, state::*};
 use crate::layout::*;
 use std::{cell::RefCell, rc::Rc};
@@ -161,6 +161,23 @@ impl Widget {
             Kind::Inherited(Box::new(Provided {
                 value,
                 notify: Rc::new(should_notify),
+                aspect_notify: None,
+            })),
+            vec![child],
+        )
+    }
+    /// Provide a model whose consumers can subscribe to selected aspects.
+    pub fn inherited_model<T: InheritedModel>(value: T, child: Self) -> Self {
+        Self::new(
+            Kind::Inherited(Box::new(Provided {
+                value,
+                notify: Rc::new(|old, new: &T| new.update_should_notify(old)),
+                aspect_notify: Some(Rc::new(|old, new: &T, aspects| {
+                    new.update_should_notify_dependent(
+                        old,
+                        aspects.downcast_ref().expect("model aspect type"),
+                    )
+                })),
             })),
             vec![child],
         )

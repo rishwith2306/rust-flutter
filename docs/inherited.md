@@ -81,7 +81,9 @@ processed once per build pass, wake egui, and return Unmounted after the provide
 closes. Pending commands can be discarded by unmount, as with StateHandle.
 
 Only contexts registered with the notifying provider are marked dirty. A nested
-provider prevents notifications from an outer provider reaching its consumers.
+ordinary provider shadows outer providers for nearest-value subscriptions.
+[Inherited models](inherited-models.md) additionally support aspect filtering and
+subscriptions through unsupported nested models.
 Several notifications before a consumer builds coalesce into one dependency hook
 and build, using the latest snapshots. Updating an inherited value preserves the
 consumer's ElementId, local state and render identity. The adapter still performs
@@ -128,7 +130,7 @@ probe changes Step from 1 to 2 without changing counts, then verifies one click
 matches the previous two-click counter glyphs. Platform results are recorded in
 [verification](verification.md).
 
-InheritedModel aspect subscriptions, InheritedNotifier/ChangeNotifier adapters,
+InheritedNotifier/ChangeNotifier adapters, the complete InheritedModel member surface,
 full ancestor traversal, GlobalKey reparenting
 and the rest of Flutter's lifecycle/member surface remain incomplete. This is an
 original Rust API; it does not parse or emulate Dart Widget objects.
@@ -136,3 +138,6 @@ original Rust API; it does not parse or emulate Dart Widget objects.
 Primary references: [inherited lookup](https://api.flutter.dev/flutter/widgets/BuildContext/dependOnInheritedWidgetOfExactType.html),
 [notification predicate](https://api.flutter.dev/flutter/widgets/InheritedWidget/updateShouldNotify.html),
 [dependency hook](https://api.flutter.dev/flutter/widgets/State/didChangeDependencies.html).
+
+For aspect-specific subscriptions and nested supported-aspect traversal, see
+[inherited models](inherited-models.md).

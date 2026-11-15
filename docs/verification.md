@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 84 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 92 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -29,6 +29,9 @@ Runtime claims below remain scoped to their stated environment.
 | Inherited values | Passed, 16 tests | Exact-type and nearest lookup, shadowing, read/listen, predicates, snapshots, coalesced dependency hooks, mounted-lifetime registrations, non-Send values with worker updates, cleanup, measurement/paint/event registrations and stable render identity |
 | Inherited Step desktop rendering | Passed on final source | Step update preserves A/B counts, then a single B click matches the original two-click glyphs |
 | Inherited Step Android rendering | Passed on test emulator | Shared image-mask probe using injected touch; changing Step preserves counts and a single click with Step 2 matches the original two-click result |
+| Inherited models | Passed, 8 tests | Independent aspect builds/hooks, set union, unconditional precedence, global notification gate, forced notify, nested supported-aspect traversal, missing models, worker-queued transitions and cleanup |
+| Inherited model desktop rendering | Passed | Shared glyph-mask probe preserves A/B counts across an A-only aspect change, then A responds while B count remains unchanged; headless tests separately prove B does not rebuild |
+| Inherited model Android rendering | Passed on test emulator | Shared injected-touch and glyph-mask probe on API 37 / x86_64 / 16 KB pages, including A-only aspect update and subsequent input |
 | ARM64 Android APK | Built and debug-signed | NDK 28.2.13676358, min SDK 24 / target SDK 35; APK signature and alignment checked |
 | x86_64 Android APK | Built, installed and launched | Isolated Pixel 6 emulator, Android 37 system image with 16 KB pages |
 | Android basic interaction | Passed within smoke scope | GLES rendering, counter touch, injected text `Ada`, private JSON snapshot writes and route back |
@@ -62,6 +65,8 @@ ANDROID_HOME=/path/to/Android/Sdk python3 scripts/android-smoke.py \
 ```
 
 The ordinary smoke test uses the unchanged pure-native cargo-apk package. Its
+text-entry gate waits for the native host's keyboard request before injecting key
+events, avoiding text arriving before the field processes its focus tap. Its
 startup gate waits for a successful presented frame with the expected density and
 safe top inset, using debug host diagnostics. A prior cold-start run injected the
 first touch before presentation; the snapshot file alone was insufficient

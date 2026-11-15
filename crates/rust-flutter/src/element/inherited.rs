@@ -7,7 +7,7 @@ use super::{
 use std::{
     any::{Any, TypeId},
     cell::{Cell, RefCell},
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     rc::{Rc, Weak},
     sync::{Arc, Weak as SyncWeak},
 };
@@ -37,7 +37,37 @@ pub(super) enum Phase {
     Build,
     Dependencies,
 }
-type Reads = HashMap<TypeId, Option<Rc<Link>>>;
+struct Read {
+    chain: Vec<ElementId>,
+    links: Vec<Rc<Link>>,
+}
+type Reads = HashMap<TypeId, Read>;
+
+/// A typed inherited model with selectively observed aspects. Predicates receive
+/// the preceding value, and the model's new value is `self`.
+pub trait InheritedModel: Sized + 'static {
+    /// Identifies a part of this model; each dependent accumulates a set.
+    type Aspect: Clone + Eq + std::hash::Hash + 'static;
+    /// Global notification gate. A false result also skips per-dependent checks.
+    fn update_should_notify(&self, old: &Self) -> bool;
+    /// Whether an eligible transition affects this dependent's aspect set.
+    /// Unconditional dependents bypass this predicate.
+    fn update_should_notify_dependent(&self, old: &Self, aspects: &HashSet<Self::Aspect>) -> bool;
+    /// False makes aspect lookup continue to the next same-type ancestor,
+    /// registering a dependency on this model along the way.
+    fn is_supported_aspect(&self, _aspect: &Self::Aspect) -> bool {
+        true
+    }
+}
+fn chain(link: Option<Rc<Link>>) -> Vec<Rc<Link>> {
+    let mut result = Vec::new();
+    let mut next = link;
+    while let Some(link) = next {
+        next = link.parent.borrow().as_ref().and_then(Weak::upgrade);
+        result.push(link);
+    }
+    result
+}
 pub(super) struct Dependencies {
     id: ElementId,
     queue: SyncWeak<Queue>,
@@ -74,11 +104,11 @@ impl Dependencies {
             (&self.hook_reads, &self.build_reads)
         };
         let old = std::mem::take(&mut *clear.borrow_mut());
-        for link in old.into_values().flatten() {
+        for link in old.into_values().flat_map(|read| read.links) {
             if !other
                 .borrow()
                 .values()
-                .flatten()
+                .flat_map(|read| &read.links)
                 .any(|other| other.id == link.id)
             {
                 link.subscribers.borrow_mut().remove(&self.id);
@@ -99,11 +129,11 @@ impl Dependencies {
             .iter()
             .chain(self.hook_reads.borrow().iter())
             .any(|(kind, old)| {
-                old.as_ref().map(|link| link.id)
-                    != scope
-                        .get(kind)
-                        .filter(|link| link.active.get())
+                old.chain
+                    != chain(scope.get(kind).cloned())
+                        .iter()
                         .map(|link| link.id)
+                        .collect::<Vec<_>>()
             });
         if differs {
             // Retain dependencies for the mounted lifetime. If an ancestor
@@ -123,31 +153,49 @@ impl Dependencies {
             .filter(|link| link.active.get())
             .cloned()
     }
-    fn subscribe(
+    fn subscribe<A: Clone + Eq + std::hash::Hash + 'static>(
         self: &Rc<Self>,
         kind: TypeId,
-        link: Option<Rc<Link>>,
+        links: Vec<Rc<Link>>,
+        aspect: Option<A>,
     ) -> Result<(), DependencyError> {
-        let (reads, other) = match self.phase.get() {
-            Phase::Build | Phase::Idle => (&self.build_reads, &self.hook_reads),
-            Phase::Dependencies => (&self.hook_reads, &self.build_reads),
+        let reads = match self.phase.get() {
+            Phase::Build | Phase::Idle => &self.build_reads,
+            Phase::Dependencies => &self.hook_reads,
             Phase::Init => return Err(DependencyError::InvalidPhase),
         };
-        let old = reads.borrow_mut().insert(kind, link.clone()).flatten();
-        if let Some(old) = old
-            && link.as_ref().is_none_or(|link| link.id != old.id)
-            && !other
-                .borrow()
-                .values()
-                .flatten()
-                .any(|link| link.id == old.id)
-        {
-            old.subscribers.borrow_mut().remove(&self.id);
-        }
-        if let Some(link) = link {
-            link.subscribers
-                .borrow_mut()
-                .insert(self.id, Rc::downgrade(self));
+        let signature = chain(self.lookup(kind))
+            .iter()
+            .map(|link| link.id)
+            .collect();
+        let mut reads = reads.borrow_mut();
+        let read = reads.entry(kind).or_insert_with(|| Read {
+            chain: signature,
+            links: vec![],
+        });
+        for link in links {
+            if !read.links.iter().any(|old| old.id == link.id) {
+                read.links.push(link.clone());
+            }
+            let mut subscribers = link.subscribers.borrow_mut();
+            let subscriber = subscribers.entry(self.id).or_insert_with(|| Subscription {
+                dependent: Rc::downgrade(self),
+                aspects: aspect
+                    .as_ref()
+                    .map(|_| Rc::new(HashSet::<A>::new()) as Rc<dyn Any>),
+            });
+            if let Some(aspect) = &aspect {
+                if let Some(aspects) = &subscriber.aspects {
+                    let mut aspects = aspects
+                        .downcast_ref::<HashSet<A>>()
+                        .expect("model aspect type")
+                        .clone();
+                    aspects.insert(aspect.clone());
+                    subscriber.aspects = Some(Rc::new(aspects));
+                }
+            } else {
+                subscriber.aspects = None;
+            }
         }
         Ok(())
     }
@@ -167,13 +215,19 @@ impl Drop for PhaseGuard {
         self.dependencies.phase.set(self.previous);
     }
 }
+struct Subscription {
+    dependent: Weak<Dependencies>,
+    // None is an unconditional dependency; a set accumulates aspects.
+    aspects: Option<Rc<dyn Any>>,
+}
 pub(super) struct Link {
     pub id: ElementId,
     pub kind: TypeId,
     queue: SyncWeak<Queue>,
+    pub parent: RefCell<Option<Weak<Link>>>,
     active: Cell<bool>,
     value: RefCell<Option<Rc<dyn Any>>>,
-    subscribers: RefCell<HashMap<ElementId, Weak<Dependencies>>>,
+    subscribers: RefCell<HashMap<ElementId, Subscription>>,
 }
 impl Link {
     fn new<T: 'static>(id: ElementId, queue: &Arc<Queue>, value: Rc<T>) -> Rc<Self> {
@@ -181,23 +235,36 @@ impl Link {
             id,
             kind: TypeId::of::<T>(),
             queue: Arc::downgrade(queue),
+            parent: RefCell::new(None),
             active: Cell::new(true),
             value: RefCell::new(Some(value)),
             subscribers: RefCell::new(HashMap::new()),
         })
     }
     fn notify(&self) {
+        self.notify_where(|_| true);
+    }
+    fn notify_where(&self, predicate: impl Fn(&dyn Any) -> bool) {
         let subscribers: Vec<_> = self
             .subscribers
             .borrow()
             .values()
-            .filter_map(Weak::upgrade)
+            .filter_map(|s| {
+                s.dependent
+                    .upgrade()
+                    .map(|dependent| (dependent, s.aspects.clone()))
+            })
             .collect();
         self.subscribers
             .borrow_mut()
-            .retain(|_, subscriber| subscriber.strong_count() > 0);
-        for subscriber in subscribers {
-            subscriber.mark_changed();
+            .retain(|_, s| s.dependent.strong_count() > 0);
+        for (subscriber, aspects) in subscribers {
+            if aspects
+                .as_ref()
+                .is_none_or(|aspects| predicate(aspects.as_ref()))
+            {
+                subscriber.mark_changed();
+            }
         }
     }
     fn value<T: 'static>(&self) -> Option<Rc<T>> {
@@ -225,9 +292,39 @@ impl BuildContext {
     /// Subscribe while mounted, except during init_state, and return a value snapshot.
     pub fn depend_on<T: 'static>(&self) -> Result<Option<Rc<T>>, DependencyError> {
         let link = self.dependency_link::<T>()?;
-        self.dependencies
-            .subscribe(TypeId::of::<T>(), link.clone())?;
+        self.dependencies.subscribe::<()>(
+            TypeId::of::<T>(),
+            link.clone().into_iter().collect(),
+            None,
+        )?;
         Ok(link.and_then(|link| link.value()))
+    }
+    /// Observe an aspect through every same-type model up to and including the
+    /// first supporting model. Returns the outermost visited value if none support it.
+    pub fn depend_on_aspect<T: InheritedModel>(
+        &self,
+        aspect: T::Aspect,
+    ) -> Result<Option<Rc<T>>, DependencyError> {
+        let nearest = self.dependency_link::<T>()?;
+        if self.dependencies.phase.get() == Phase::Init {
+            return Err(DependencyError::InvalidPhase);
+        }
+        let mut links = Vec::new();
+        let mut value = None;
+        for link in chain(nearest) {
+            let Some(model) = link.value::<T>() else {
+                continue;
+            };
+            let supported = model.is_supported_aspect(&aspect);
+            value = Some(model);
+            links.push(link);
+            if supported {
+                break;
+            }
+        }
+        self.dependencies
+            .subscribe(TypeId::of::<T>(), links, Some(aspect))?;
+        Ok(value)
     }
     pub fn inherited_handle<T: 'static>(
         &self,
@@ -240,16 +337,21 @@ impl BuildContext {
 }
 
 type Notify<T> = Rc<dyn Fn(&T, &T) -> bool>;
+type AspectNotify<T> = Rc<dyn Fn(&T, &T, &dyn Any) -> bool>;
 struct ValueState<T: 'static> {
     value: Rc<T>,
     notify: Notify<T>,
-    changed: bool,
+    aspect_notify: Option<AspectNotify<T>>,
+    pending: Vec<(Rc<T>, Rc<T>)>,
+    force_notify: bool,
     link: Rc<Link>,
 }
 impl<T: 'static> ValueState<T> {
     fn replace(&mut self, value: T) {
         let next = Rc::new(value);
-        self.changed |= (self.notify)(&self.value, &next);
+        if (self.notify)(&self.value, &next) {
+            self.pending.push((self.value.clone(), next.clone()));
+        }
         self.value = next.clone();
         let previous = self.link.value.replace(Some(next));
         drop(previous);
@@ -289,7 +391,7 @@ impl<T: 'static> InheritedHandle<T> {
         self.update(move |_| value)
     }
     pub fn notify(&self) -> Result<(), Unmounted> {
-        self.inner.update(|state| state.changed = true)
+        self.inner.update(|state| state.force_notify = true)
     }
 }
 
@@ -307,6 +409,7 @@ pub(super) trait Provider {
 pub(super) struct Provided<T: 'static> {
     pub value: T,
     pub notify: Notify<T>,
+    pub aspect_notify: Option<AspectNotify<T>>,
 }
 struct MountedProvider<T: 'static> {
     state: ValueState<T>,
@@ -329,7 +432,9 @@ impl<T: 'static> ProviderDescription for Provided<T> {
             state: ValueState {
                 value,
                 notify: self.notify,
-                changed: false,
+                aspect_notify: self.aspect_notify,
+                pending: vec![],
+                force_notify: false,
                 link,
             },
             queue,
@@ -346,6 +451,7 @@ impl<T: 'static> Provider for MountedProvider<T> {
             .downcast::<Provided<T>>()
             .expect("matching inherited type");
         self.state.notify = next.notify;
+        self.state.aspect_notify = next.aspect_notify;
         self.state.replace(next.value);
         self.deliver();
     }
@@ -356,8 +462,18 @@ impl<T: 'static> Provider for MountedProvider<T> {
 }
 impl<T: 'static> MountedProvider<T> {
     fn deliver(&mut self) {
-        if std::mem::take(&mut self.state.changed) {
+        let pending = std::mem::take(&mut self.state.pending);
+        if std::mem::take(&mut self.state.force_notify) {
             self.state.link.notify();
+        } else {
+            for (old, new) in pending {
+                self.state.link.notify_where(|aspects| {
+                    self.state
+                        .aspect_notify
+                        .as_ref()
+                        .is_none_or(|notify| notify(&old, &new, aspects))
+                });
+            }
         }
     }
 }
