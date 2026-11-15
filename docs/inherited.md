@@ -130,7 +130,7 @@ probe changes Step from 1 to 2 without changing counts, then verifies one click
 matches the previous two-click counter glyphs. Platform results are recorded in
 [verification](verification.md).
 
-InheritedNotifier/ChangeNotifier adapters, the complete InheritedModel member surface,
+The complete InheritedModel/InheritedNotifier member surface,
 full ancestor traversal, GlobalKey reparenting
 and the rest of Flutter's lifecycle/member surface remain incomplete. This is an
 original Rust API; it does not parse or emulate Dart Widget objects.
@@ -141,3 +141,5 @@ Primary references: [inherited lookup](https://api.flutter.dev/flutter/widgets/B
 
 For aspect-specific subscriptions and nested supported-aspect traversal, see
 [inherited models](inherited-models.md).
+
+For observable sources and notifier-driven builders, see [notifiers](notifiers.md).

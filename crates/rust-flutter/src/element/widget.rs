@@ -1,6 +1,6 @@
-use super::inherited::{InheritedModel, Provided, ProviderDescription};
+use super::inherited::{InheritedModel, InheritedNotifier, Provided, ProviderDescription, Watch};
 use super::{Key, state::*};
-use crate::layout::*;
+use crate::{layout::*, notifier::Listenable};
 use std::{cell::RefCell, rc::Rc};
 
 pub(super) type Paint = Rc<RefCell<dyn FnMut(&mut egui::Ui)>>;
@@ -162,6 +162,7 @@ impl Widget {
                 value,
                 notify: Rc::new(should_notify),
                 aspect_notify: None,
+                watch: None,
             })),
             vec![child],
         )
@@ -177,6 +178,52 @@ impl Widget {
                         old,
                         aspects.downcast_ref().expect("model aspect type"),
                     )
+                })),
+                watch: None,
+            })),
+            vec![child],
+        )
+    }
+    /// Observe a UI-local source and coalesce its events into dependency rebuilds.
+    pub fn inherited_notifier<N: Listenable>(notifier: Option<N>, child: Self) -> Self {
+        Self::inherited_notifier_with(
+            notifier,
+            |old, new| match (old, new) {
+                (Some(old), Some(new)) => !old.same_source(new),
+                (None, None) => false,
+                _ => true,
+            },
+            child,
+        )
+    }
+    /// Customize identity-change notifications; source events always notify.
+    pub fn inherited_notifier_with<N: Listenable>(
+        notifier: Option<N>,
+        should_notify: impl Fn(&Option<N>, &Option<N>) -> bool + 'static,
+        child: Self,
+    ) -> Self {
+        Self::new(
+            Kind::Inherited(Box::new(Provided {
+                value: InheritedNotifier { notifier },
+                notify: Rc::new(move |old: &InheritedNotifier<N>, new| {
+                    should_notify(&old.notifier, &new.notifier)
+                }),
+                aspect_notify: None,
+                watch: Some(Rc::new(Watch {
+                    same: Rc::new(|old: &InheritedNotifier<N>, new| {
+                        match (&old.notifier, &new.notifier) {
+                            (Some(old), Some(new)) => old.same_source(new),
+                            (None, None) => true,
+                            _ => false,
+                        }
+                    }),
+                    subscribe: Rc::new(|value: &InheritedNotifier<N>, listener| {
+                        value
+                            .notifier
+                            .as_ref()
+                            .map(|source| source.subscribe(listener))
+                            .transpose()
+                    }),
                 })),
             })),
             vec![child],

@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 92 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 114 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -32,6 +32,10 @@ Runtime claims below remain scoped to their stated environment.
 | Inherited models | Passed, 8 tests | Independent aspect builds/hooks, set union, unconditional precedence, global notification gate, forced notify, nested supported-aspect traversal, missing models, worker-queued transitions and cleanup |
 | Inherited model desktop rendering | Passed | Shared glyph-mask probe preserves A/B counts across an A-only aspect change, then A responds while B count remains unchanged; headless tests separately prove B does not rebuild |
 | Inherited model Android rendering | Passed on test emulator | Shared injected-touch and glyph-mask probe on API 37 / x86_64 / 16 KB pages, including A-only aspect update and subsequent input |
+| Notifier foundations | Passed, 11 tests | Ordered add/remove/recursive dispatch, exact duplicate registrations, panic isolation, disposal, capture-destructor reentrancy, scoped/weak ownership, value equality/interior mutation and merged-source rollback |
+| Inherited notifier and builder adapters | Passed, 11 tests | Coalesced hooks, UI repaint wake, local-state preservation, source swaps/removal, custom gate, latest pending event, nested scopes, failed subscription cleanup, builder adapters and type-erased sources |
+| Notifier desktop rendering | Passed | Three individual clicks and a three-update burst produce identical counter glyph masks; reset restores the original text |
+| Notifier Android rendering | Passed on API 37 / x86_64 / 16 KB pages | Same shared touch/image probe; RGB888/RGB565-aware control location and exact foreground masks verify reset and three-update burst against three individual touches |
 | ARM64 Android APK | Built and debug-signed | NDK 28.2.13676358, min SDK 24 / target SDK 35; APK signature and alignment checked |
 | x86_64 Android APK | Built, installed and launched | Isolated Pixel 6 emulator, Android 37 system image with 16 KB pages |
 | Android basic interaction | Passed within smoke scope | GLES rendering, counter touch, injected text `Ada`, private JSON snapshot writes and route back |
@@ -151,3 +155,22 @@ and finish test verifies the old loop returns and a new host initializes in the
 same process, without a process-wide loop-creation guard. Desktop still uses
 winit through eframe. The captured ANR diagnostics are retained as historical
 failure evidence, not a current passing result.
+
+## GLES color precision finding
+
+The notifier demo exposed GLES emulator colors quantized to RGB565: for example,
+the requested RGB (161, 75, 50) appeared as (165, 77, 49). The pinned wgpu-hal
+27.0.4 EGL configuration selection does not constrain RGB component sizes when
+sRGB surface support is unavailable, and sets the native window format from the
+chosen EGL visual. Debug renderer diagnostics confirm `native_format=R5G6B5_UNORM` with
+`target_format=Rgba8Unorm` on this API 37 / x86_64 emulator.
+An 8-bit wgpu target format alone is insufficient evidence of 8-bit presentation.
+
+Control location accepts the requested RGB888 fill or its explicitly computed
+RGB565 counterpart, keeping the same 1% matching tolerance. Foreground-mask
+comparisons remain exact at the existing threshold. This makes the interaction
+probe aware of the actual surface representation; it does not resolve the
+underlying color-precision limitation. Requiring 8-bit native presentation across
+GLES devices/backends and expanding color/gradient fidelity checks remain work.
+Android's [native buffer format contract](https://developer.android.com/ndk/reference/group/a-native-window#anativewindow_setbuffersgeometry)
+describes the native geometry/format selection API.

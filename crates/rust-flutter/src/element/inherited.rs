@@ -1,9 +1,10 @@
 //! Inherited values and dependency bookkeeping. Values and contexts are UI-local;
 //! update handles send commands through the existing UI-thread queue.
 use super::{
-    ElementId,
+    ElementError, ElementId,
     state::{BuildContext, Queue, StateHandle, Unmounted},
 };
+use crate::notifier::{Listenable, Listener, Subscription};
 use std::{
     any::{Any, TypeId},
     cell::{Cell, RefCell},
@@ -178,12 +179,14 @@ impl Dependencies {
                 read.links.push(link.clone());
             }
             let mut subscribers = link.subscribers.borrow_mut();
-            let subscriber = subscribers.entry(self.id).or_insert_with(|| Subscription {
-                dependent: Rc::downgrade(self),
-                aspects: aspect
-                    .as_ref()
-                    .map(|_| Rc::new(HashSet::<A>::new()) as Rc<dyn Any>),
-            });
+            let subscriber = subscribers
+                .entry(self.id)
+                .or_insert_with(|| DependentSubscription {
+                    dependent: Rc::downgrade(self),
+                    aspects: aspect
+                        .as_ref()
+                        .map(|_| Rc::new(HashSet::<A>::new()) as Rc<dyn Any>),
+                });
             if let Some(aspect) = &aspect {
                 if let Some(aspects) = &subscriber.aspects {
                     let mut aspects = aspects
@@ -215,7 +218,7 @@ impl Drop for PhaseGuard {
         self.dependencies.phase.set(self.previous);
     }
 }
-struct Subscription {
+struct DependentSubscription {
     dependent: Weak<Dependencies>,
     // None is an unconditional dependency; a set accumulates aspects.
     aspects: Option<Rc<dyn Any>>,
@@ -227,7 +230,7 @@ pub(super) struct Link {
     pub parent: RefCell<Option<Weak<Link>>>,
     active: Cell<bool>,
     value: RefCell<Option<Rc<dyn Any>>>,
-    subscribers: RefCell<HashMap<ElementId, Subscription>>,
+    subscribers: RefCell<HashMap<ElementId, DependentSubscription>>,
 }
 impl Link {
     fn new<T: 'static>(id: ElementId, queue: &Arc<Queue>, value: Rc<T>) -> Rc<Self> {
@@ -338,23 +341,73 @@ impl BuildContext {
 
 type Notify<T> = Rc<dyn Fn(&T, &T) -> bool>;
 type AspectNotify<T> = Rc<dyn Fn(&T, &T, &dyn Any) -> bool>;
+/// The optional observable source exposed by an inherited notifier widget.
+/// Reading this wrapper does not subscribe to its source; depend_on does.
+#[derive(Clone)]
+pub struct InheritedNotifier<N: Listenable> {
+    pub notifier: Option<N>,
+}
+type Subscribe<T> =
+    Rc<dyn Fn(&T, Listener) -> Result<Option<Subscription>, crate::notifier::Disposed>>;
+pub(super) struct Watch<T> {
+    pub same: Notify<T>,
+    pub subscribe: Subscribe<T>,
+}
 struct ValueState<T: 'static> {
     value: Rc<T>,
     notify: Notify<T>,
     aspect_notify: Option<AspectNotify<T>>,
     pending: Vec<(Rc<T>, Rc<T>)>,
     force_notify: bool,
+    watch: Option<Rc<Watch<T>>>,
+    subscription: Option<Subscription>,
+    notified: Rc<Cell<bool>>,
+    binding_error: bool,
+    watch_changed: bool,
     link: Rc<Link>,
 }
 impl<T: 'static> ValueState<T> {
     fn replace(&mut self, value: T) {
         let next = Rc::new(value);
+        let watch_changed = std::mem::take(&mut self.watch_changed);
+        let rebind = watch_changed
+            || self
+                .watch
+                .as_ref()
+                .is_some_and(|watch| !(watch.same)(&self.value, &next));
         if (self.notify)(&self.value, &next) {
             self.pending.push((self.value.clone(), next.clone()));
         }
         self.value = next.clone();
         let previous = self.link.value.replace(Some(next));
         drop(previous);
+        if rebind {
+            self.bind();
+        }
+    }
+    fn set_watch(&mut self, watch: Option<Rc<Watch<T>>>) {
+        let changed = self.watch.is_some() != watch.is_some();
+        self.watch = watch;
+        self.watch_changed |= changed;
+    }
+    fn bind(&mut self) {
+        self.subscription.take();
+        if let Some(watch) = &self.watch {
+            let queue = self.link.queue.clone();
+            let notified = self.notified.clone();
+            let listener: Listener = Rc::new(move || {
+                if let Some(queue) = queue.upgrade()
+                    && queue.mounted()
+                {
+                    notified.set(true);
+                    let _ = queue.request_rebuild();
+                }
+            });
+            match (watch.subscribe)(&self.value, listener) {
+                Ok(subscription) => self.subscription = subscription,
+                Err(_) => self.binding_error = true,
+            }
+        }
     }
 }
 /// Commands replace immutable snapshots on the UI thread. Like StateHandle, the
@@ -404,12 +457,13 @@ pub(super) trait ProviderDescription {
 pub(super) trait Provider {
     fn link(&self) -> Rc<Link>;
     fn update(&mut self, description: Box<dyn Any>);
-    fn apply_pending(&mut self);
+    fn apply_pending(&mut self) -> Result<(), ElementError>;
 }
 pub(super) struct Provided<T: 'static> {
     pub value: T,
     pub notify: Notify<T>,
     pub aspect_notify: Option<AspectNotify<T>>,
+    pub watch: Option<Rc<Watch<T>>>,
 }
 struct MountedProvider<T: 'static> {
     state: ValueState<T>,
@@ -428,17 +482,21 @@ impl<T: 'static> ProviderDescription for Provided<T> {
     fn mount(self: Box<Self>, id: ElementId, queue: Arc<Queue>) -> Box<dyn Provider> {
         let value = Rc::new(self.value);
         let link = Link::new(id, &queue, value.clone());
-        Box::new(MountedProvider {
-            state: ValueState {
-                value,
-                notify: self.notify,
-                aspect_notify: self.aspect_notify,
-                pending: vec![],
-                force_notify: false,
-                link,
-            },
-            queue,
-        })
+        let mut state = ValueState {
+            value,
+            notify: self.notify,
+            aspect_notify: self.aspect_notify,
+            pending: vec![],
+            force_notify: false,
+            watch: self.watch,
+            subscription: None,
+            notified: Rc::new(Cell::new(false)),
+            binding_error: false,
+            watch_changed: false,
+            link,
+        };
+        state.bind();
+        Box::new(MountedProvider { state, queue })
     }
 }
 impl<T: 'static> Provider for MountedProvider<T> {
@@ -452,18 +510,25 @@ impl<T: 'static> Provider for MountedProvider<T> {
             .expect("matching inherited type");
         self.state.notify = next.notify;
         self.state.aspect_notify = next.aspect_notify;
+        self.state.set_watch(next.watch);
         self.state.replace(next.value);
-        self.deliver();
+        // The immediately following apply_pending/rebuild delivers notifications.
     }
-    fn apply_pending(&mut self) {
+    fn apply_pending(&mut self) -> Result<(), ElementError> {
         self.queue.drain(&mut self.state);
+        if self.state.binding_error {
+            return Err(ElementError::DisposedNotifier);
+        }
         self.deliver();
+        Ok(())
     }
 }
 impl<T: 'static> MountedProvider<T> {
     fn deliver(&mut self) {
         let pending = std::mem::take(&mut self.state.pending);
-        if std::mem::take(&mut self.state.force_notify) {
+        let forced = std::mem::take(&mut self.state.force_notify);
+        let notified = self.state.notified.replace(false);
+        if forced || notified {
             self.state.link.notify();
         } else {
             for (old, new) in pending {
@@ -480,6 +545,7 @@ impl<T: 'static> MountedProvider<T> {
 impl<T: 'static> Drop for MountedProvider<T> {
     fn drop(&mut self) {
         self.queue.close();
+        self.state.subscription.take();
         self.state.link.close();
     }
 }

@@ -2,6 +2,7 @@ use rust_flutter::{
     egui,
     element::*,
     layout::{Axis, BoxConstraints, CrossAxisAlignment},
+    notifier::ValueNotifier,
 };
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 #[derive(Default)]
@@ -153,6 +154,8 @@ pub(super) struct ComponentDemo {
     metrics: Rc<RefCell<Metrics>>,
     step: i32,
     a_step: i32,
+    observable: ValueNotifier<i32>,
+    observable_tree: ElementTree,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -165,7 +168,34 @@ impl ComponentDemo {
                 metrics: Rc::clone(&metrics),
             }),
         );
+        let observable = ValueNotifier::new(0_i32);
+        let counter = observable.clone();
+        let observable_tree = ElementTree::new(
+            ctx,
+            Widget::value_listenable_builder(observable.clone(), move |_, value| {
+                let counter = counter.clone();
+                Widget::leaf(egui::vec2(280.0, 44.0), move |ui| {
+                    if ui
+                        .put(
+                            ui.max_rect(),
+                            egui::Button::new(
+                                egui::RichText::new(format!("Observable: {value}"))
+                                    .size(22.0)
+                                    .color(egui::Color32::WHITE),
+                            )
+                            .fill(egui::Color32::from_rgb(161, 75, 50)),
+                        )
+                        .clicked()
+                    {
+                        let _ = counter.update(|value| value.saturating_add(1));
+                    }
+                })
+            }),
+        )
+        .expect("valid observable demo");
         Self {
+            observable,
+            observable_tree,
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
             reversed: false,
             show_b: true,
@@ -259,5 +289,36 @@ impl ComponentDemo {
         ui.label(
             "These counters belong to mounted components. App restart creates fresh components.",
         );
+        ui.separator();
+        ui.label(
+            "Observable state: click the counter, or emit three changes before the next frame.",
+        );
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .add(
+                    egui::Button::new("Emit three changes")
+                        .fill(egui::Color32::from_rgb(143, 95, 34)),
+                )
+                .clicked()
+            {
+                for _ in 0..3 {
+                    let _ = self.observable.update(|value| value.saturating_add(1));
+                }
+            }
+            if ui
+                .add(
+                    egui::Button::new("Reset observable")
+                        .fill(egui::Color32::from_rgb(75, 98, 125)),
+                )
+                .clicked()
+            {
+                let _ = self.observable.set(0);
+            }
+        });
+        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0))
+            && let Err(error) = self.observable_tree.show(ui, constraints)
+        {
+            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+        }
     }
 }

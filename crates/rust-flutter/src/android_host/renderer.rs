@@ -30,7 +30,7 @@ impl Renderer {
         let instance = pollster::block_on(options.wgpu_options.wgpu_setup.new_instance());
         let size = [window.width() as u32, window.height() as u32];
         let surface = instance
-            .create_surface(Arc::new(SurfaceWindow(window)))
+            .create_surface(Arc::new(SurfaceWindow(window.clone())))
             .map_err(failure)?;
         let state = pollster::block_on(RenderState::create(
             &options.wgpu_options,
@@ -51,6 +51,12 @@ impl Renderer {
             .desired_maximum_frame_latency
             .unwrap_or(2);
         surface.configure(&state.device, &config);
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "rust-flutter android surface native_format={:?} target_format={:?}",
+            window.format(),
+            config.format
+        );
         Ok(Self {
             instance,
             state,
@@ -63,7 +69,7 @@ impl Renderer {
         let size = [window.width() as u32, window.height() as u32];
         let surface = self
             .instance
-            .create_surface(Arc::new(SurfaceWindow(window)))
+            .create_surface(Arc::new(SurfaceWindow(window.clone())))
             .map_err(failure)?;
         if !surface
             .get_capabilities(&self.state.adapter)
@@ -77,6 +83,12 @@ impl Renderer {
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
         surface.configure(&self.state.device, &self.config);
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "rust-flutter android surface native_format={:?} target_format={:?}",
+            window.format(),
+            self.config.format
+        );
         self.surface = Some(surface);
         Ok(())
     }

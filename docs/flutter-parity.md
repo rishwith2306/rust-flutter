@@ -17,8 +17,8 @@ remains. Verification is recorded separately in `verification.md`.
 | Capability | Current implementation | Status / required work |
 | --- | --- | --- |
 | Rust app entrypoint and shared source | `Application`, desktop and Android hosts, gallery | Implemented; platform runtime gates remain |
-| Declarative composition and persistent state | Closure composition, `ElementTree` components, typed state handles, application struct and `Signal<T>` | Partial; typed inherited dependencies and model aspects work; full Flutter lifecycle remains |
-| Widget/Element/RenderObject lifecycle | Type/key-based element reconciliation, stateful/stateless components, init/property-update/dispose hooks, queued updates, selective dirty component builds and stable render IDs | Partial; inherited lookup/predicates and dependency hooks now work; GlobalKey reparenting, notifier adapters, deactivate/reactivate, reassembly and dirty RenderObject pipeline remain |
+| Declarative composition and persistent state | Closure composition, `ElementTree` components, typed state handles, application struct and `Signal<T>` | Partial; typed inherited dependencies, model aspects and observable notifier adapters work; full Flutter lifecycle remains |
+| Widget/Element/RenderObject lifecycle | Type/key-based element reconciliation, stateful/stateless components, init/property-update/dispose hooks, queued updates, selective dirty component builds and stable render IDs | Partial; inherited lookup/predicates and dependency hooks now work; GlobalKey reparenting, deactivate/reactivate, reassembly and dirty RenderObject pipeline remain |
 | Layout basics | Owned BoxNode geometry: validated constraints, fixed/loose/tight flex, alignment, padding, sized constraints, stack/positioned, direction, overflow, clip bounds and leaf UI adapter | Partial; intrinsic size protocols, baseline layout, full render-object pipeline and further widget inventory remain |
 | Responsive/adaptive UI | Logical-point breakpoints and physical-to-logical safe-area conversion | Partial; notch/system-bar insets verified on one emulator; wider device validation and adaptive controls remain |
 | Text and typography | Backend font atlas and text widgets | Backend; complex shaping, bidi, RTL and font fallback audit needed |
@@ -31,11 +31,11 @@ remains. Verification is recorded separately in `verification.md`.
 | Material controls | No local Material implementation | Missing Material design system and component catalog |
 | Cupertino controls | No local Cupertino implementation | Missing Cupertino design system and component catalog |
 | Animation | Scalar tweens with curves | Partial; controllers, implicit animation, springs, transitions, Hero |
-| Painting and effects | egui painter API | Backend; canvas/path compatibility, clipping and compositing audit |
+| Painting and effects | egui painter API | Backend; canvas/path compatibility, clipping and compositing audit; GLES RGB565 precision on the tested emulator remains a known limitation |
 | Images, icons and assets | Build-time embedded bundles, platform filtering, density variants; PNG/JPEG/static WebP decoding and bounded texture cache | Partial; SVG, animated images, streams, automatic package assets, native asset lookup and font tooling remain |
 | Accessibility | Desktop AccessKit feature enabled; Android NativeActivity lacks integration | Partial; semantics facade and TalkBack/VoiceOver device validation |
 | Localization | Fluent FTL, CLDR locale negotiation, plurals/selects, message/attribute fallback; English/Spanish gallery | Partial; device locale discovery, framework translations, RTL layout/shaping, date/currency tooling |
-| Asynchronous work | Background task signals with result/panic states | Partial; streams, cancellation, executor integration |
+| Asynchronous work | Background task signals with result/panic states; UI-local ChangeNotifier/ValueNotifier and merged Listenable sources | Partial; streams, cancellation, executor integration |
 | Platform plugins | Typed service registry | Partial; no working native plugin catalog or JNI/Swift bridge |
 | OS services | Startup/shutdown, Android lifecycle and surface events, focus/back/close hooks, private app data path | Partial; native saved-instance bytes, permissions and clipboard implementation |
 | Camera, location, sensors, notifications | No implementation | Missing platform plugins and permission flows |

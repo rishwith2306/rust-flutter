@@ -1,10 +1,11 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
 mod inherited;
+mod notifier_builder;
 mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};
 use inherited::{Dependencies, Phase, Provider, Scope};
-pub use inherited::{DependencyError, InheritedHandle, InheritedModel};
+pub use inherited::{DependencyError, InheritedHandle, InheritedModel, InheritedNotifier};
 pub use state::{
     BuildContext, State, StateContext, StateHandle, StatefulWidget, StatelessWidget, Unmounted,
 };
@@ -54,6 +55,7 @@ pub enum ElementError {
     TreeTooDeep,
     EmptyTree,
     ContextChanged,
+    DisposedNotifier,
     Layout(LayoutError),
 }
 impl std::fmt::Display for ElementError {
@@ -62,6 +64,9 @@ impl std::fmt::Display for ElementError {
             Self::DuplicateKey(key) => write!(f, "duplicate sibling key {key:?}"),
             Self::TreeTooDeep => f.write_str("element tree exceeds 256 levels"),
             Self::EmptyTree => f.write_str("element tree is unmounted; update it with a new root"),
+            Self::DisposedNotifier => {
+                f.write_str("cannot subscribe to a disposed inherited notifier")
+            }
             Self::ContextChanged => f.write_str("element tree belongs to a different egui context"),
             Self::Layout(e) => e.fmt(f),
         }
@@ -213,7 +218,7 @@ impl Element {
             vec![component.build()]
         } else {
             if let MountedKind::Inherited(provider) = &mut self.kind {
-                provider.apply_pending();
+                provider.apply_pending()?;
             }
             described
         };
@@ -278,7 +283,7 @@ impl Element {
                 self.queue.dirty.store(false, Ordering::Release);
                 if let MountedKind::Inherited(provider) = &mut self.kind {
                     self.last_build = epoch;
-                    provider.apply_pending();
+                    provider.apply_pending()?;
                 }
             }
         }

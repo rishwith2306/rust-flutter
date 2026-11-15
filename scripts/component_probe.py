@@ -8,12 +8,21 @@ import time
 
 
 def bounds(path, color):
-    result = subprocess.run(["convert", str(path), "-alpha", "off", "-fuzz", "1%", "-fill", "white", "+opaque", color, "-fill", "black", "-opaque", color, "-format", "%@", "info:"], capture_output=True, text=True, timeout=15, check=True)
-    match = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", result.stdout.strip())
-    if not match:
-        raise AssertionError(f"could not measure rendered component: {result.stdout} {result.stderr}")
-    w, h, x, y = map(int, match.groups())
-    return (x, y, w, h) if w > 0 and h > 0 else None
+    # wgpu's EGL config on some emulator images uses RGB565. Match either the
+    # requested RGB888 fill or its explicitly quantized RGB565 representation;
+    # keep the same 1% locator tolerance and exact foreground-mask comparisons.
+    rgb = [int(color[index:index+2], 16) for index in (1, 3, 5)]
+    quantized = "#" + "".join(f"{round(round(value * levels / 255) * 255 / levels):02x}"
+        for value, levels in zip(rgb, (31, 63, 31)))
+    for candidate in dict.fromkeys((color, quantized)):
+        result = subprocess.run(["convert", str(path), "-alpha", "off", "-fuzz", "1%", "-fill", "white", "+opaque", candidate, "-fill", "black", "-opaque", candidate, "-format", "%@", "info:"], capture_output=True, text=True, timeout=15, check=True)
+        match = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", result.stdout.strip())
+        if not match:
+            raise AssertionError(f"could not measure rendered component: {result.stdout} {result.stderr}")
+        w, h, x, y = map(int, match.groups())
+        if w > 0 and h > 0:
+            return x, y, w, h
+    return None
 
 
 def center(rect):
@@ -21,9 +30,9 @@ def center(rect):
     return x + w / 2, y + h / 2
 
 
-def patch(path, rect, scale):
+def patch(path, rect, scale, width=96):
     x, y = center(rect)
-    w, h = round(96 * scale), round(40 * scale)
+    w, h = round(width * scale), round(40 * scale)
     # The demo uses white text on dark fills. Compare exact foreground glyph
     # masks, trimmed to their ink bounds: fractional density can alter edge RGB
     # values or translate rasterization by a pixel when equal-width boxes swap.
@@ -85,4 +94,19 @@ def probe_components(capture, tap, scale=1.0):
     after_aspect = settle("components-aspect-count.png")
     assert patch(after_aspect, bounds(after_aspect, "#1769aa"), scale) != a1
     assert patch(after_aspect, bounds(after_aspect, "#197d55"), scale) == b2
-    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    observable = bounds(after_aspect, "#a14b32")
+    assert observable, "observable counter is missing"
+    observable_zero = patch(after_aspect, observable, scale, 220)
+    for _ in range(3):
+        tap(*center(observable))
+        time.sleep(0.3)
+    individually = settle("components-observable-individual.png")
+    observable_three = patch(individually, bounds(individually, "#a14b32"), scale, 220)
+    assert observable_three != observable_zero, "observable clicks did not change the rendered value"
+    tap(*center(bounds(individually, "#4b627d")))
+    reset = settle("components-observable-reset.png")
+    assert patch(reset, bounds(reset, "#a14b32"), scale, 220) == observable_zero
+    tap(*center(bounds(reset, "#8f5f22")))
+    burst = settle("components-observable-burst.png")
+    assert patch(burst, bounds(burst, "#a14b32"), scale, 220) == observable_three, "three synchronous notifier changes did not match three individual clicks"
+    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; exact trimmed foreground glyph masks at a 75% intensity threshold"}

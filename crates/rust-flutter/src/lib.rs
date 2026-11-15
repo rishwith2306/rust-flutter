@@ -44,6 +44,7 @@ mod frame_schedule;
 pub mod layout;
 pub mod localization;
 pub mod navigation;
+pub mod notifier;
 pub mod runtime;
 pub mod storage;
 pub use runtime::{AppContext, AppEvent, EventResponse, LifecycleEvent, Runtime};
