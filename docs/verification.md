@@ -76,7 +76,13 @@ ANDROID_HOME=/path/to/Android/Sdk python3 scripts/android-recreation.py \
 It compiles a separate Android instrumentation package with Java and SDK build
 tools (default 36.0.0, override `ANDROID_BUILD_TOOLS_VERSION`). The raw gallery
 manifest must sit alongside the original debug APK. Density and top insets are
-read from the activity unless explicitly supplied. Android refuses instrumentation
+read from the activity unless explicitly supplied. CI passes `--stop-pixel-launcher`
+to stop the Google API image launcher immediately before instrumentation: cold boot
+occasionally leaves a Pixel Launcher ANR dialog blocking gallery input. This
+option is restricted to the validated isolated AVD; it does not dismiss gallery
+ANRs or relax the required window focus/touch assertions. Failure artifacts
+include a screenshot, window focus state and logcat.
+Android refuses instrumentation
 of `hasCode=false` packages, so the script installs a **test-only gallery variant**
 with `hasCode=true` and an unused marker DEX. Every native library is byte-for-byte
 identical to the original APK, checked by SHA-256. There is no Activity subclass,

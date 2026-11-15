@@ -23,6 +23,7 @@ parser.add_argument("--serial", required=True)
 parser.add_argument("--scale", type=float, default=0.0, help="logical-pixel scale; default reads Android display metrics")
 parser.add_argument("--top-inset-px", type=int, default=-1, help="top safe inset; default reads WindowInsets")
 parser.add_argument("--cycles", type=int, default=3)
+parser.add_argument("--stop-pixel-launcher", action="store_true", help="stop the cold-boot Pixel Launcher immediately before instrumentation on the isolated CI AVD")
 parser.add_argument("--apk", type=Path, help="cargo-apk gallery APK (default: target/debug/apk/rust-flutter-gallery.apk)")
 args = parser.parse_args()
 if not args.serial.startswith("emulator-") or args.scale < 0 or args.top_inset_px < -1 or args.cycles < 1:
@@ -107,6 +108,10 @@ with zipfile.ZipFile(app_apk) as variant:
 # Reinstalling does not clear the gallery's persisted model.
 device("install", "--no-incremental", "-r", app_apk)
 device("install", "--no-incremental", "-r", apk)
+if args.stop_pixel_launcher:
+    # Google API images can leave a cold-boot launcher ANR dialog over the app.
+    # This option is explicit and the isolated AVD name was validated above.
+    device("shell", "am", "force-stop", "com.google.android.apps.nexuslauncher")
 command = [adb, "-s", args.serial, "shell", "am", "instrument", "-w", "-r", "-e", "scale", str(args.scale), "-e", "top", str(args.top_inset_px), "-e", "cycles", str(args.cycles), "dev.rustflutter.tests/dev.rustflutter.tests.RecreateInstrumentation"]
 # Run asynchronously at the tool level; the instrumentation itself has per-stage deadlines.
 instrument = subprocess.run([str(c) for c in command], capture_output=True, timeout=180)
