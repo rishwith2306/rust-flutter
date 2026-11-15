@@ -35,7 +35,10 @@ Runtime claims below remain scoped to their stated environment.
 | Notifier foundations | Passed, 11 tests | Ordered add/remove/recursive dispatch, exact duplicate registrations, panic isolation, disposal, capture-destructor reentrancy, scoped/weak ownership, value equality/interior mutation and merged-source rollback |
 | Inherited notifier and builder adapters | Passed, 11 tests | Coalesced hooks, UI repaint wake, local-state preservation, source swaps/removal, custom gate, latest pending event, nested scopes, failed subscription cleanup, builder adapters and type-erased sources |
 | Notifier desktop rendering | Passed | Three individual clicks and a three-update burst produce identical counter glyph masks; reset restores the original text |
-| Notifier Android rendering | Passed on API 37 / x86_64 / 16 KB pages | Same shared touch/image probe; RGB888/RGB565-aware control location and exact foreground masks verify reset and three-update burst against three individual touches |
+| Notifier Android rendering | Passed on API 37 / x86_64 / 16 KB pages | Same shared touch/image probe; exact RGB888 fills and foreground masks verify reset and three-update burst against three individual touches |
+| Pinned renderer source | Passed | Original 27.0.4 archive checksum verified; reverse-patch/file-hash verifier checks all 80 upstream files and licenses |
+| Generated local consumer renderer | Passed | Fresh scaffold compiles outside the checkout and selection verifier confirms the patched HAL source |
+| RGB888 presentation | Passed on Linux and API 37 Android | Exact solid blue, green and orange samples; Android native surface R8G8B8A8_UNORM after initial creation and all four activity hosts |
 | ARM64 Android APK | Built and debug-signed | NDK 28.2.13676358, min SDK 24 / target SDK 35; APK signature and alignment checked |
 | x86_64 Android APK | Built, installed and launched | Isolated Pixel 6 emulator, Android 37 system image with 16 KB pages |
 | Android basic interaction | Passed within smoke scope | GLES rendering, counter touch, injected text `Ada`, private JSON snapshot writes and route back |
@@ -99,7 +102,7 @@ recreation backdoor or model mutation hook. This variant is limited to the curre
 resource-free pure-native gallery. It remains installed after the test; reinstall
 the ordinary cargo-apk package to restore production packaging.
 
-The latest local result records PID 4455, four native host generations, four
+The latest local result records PID 4159, four native host generations, four
 completed destruction handshakes, and a final rendered count of 9 with name `Ada`
 preserved.
 Each of the three recreations increased the counter through injected touch on its
@@ -156,21 +159,31 @@ same process, without a process-wide loop-creation guard. Desktop still uses
 winit through eframe. The captured ANR diagnostics are retained as historical
 failure evidence, not a current passing result.
 
-## GLES color precision finding
+## Android native color precision
 
-The notifier demo exposed GLES emulator colors quantized to RGB565: for example,
-the requested RGB (161, 75, 50) appeared as (165, 77, 49). The pinned wgpu-hal
-27.0.4 EGL configuration selection does not constrain RGB component sizes when
-sRGB surface support is unavailable, and sets the native window format from the
-chosen EGL visual. Debug renderer diagnostics confirm `native_format=R5G6B5_UNORM` with
-`target_format=Rgba8Unorm` on this API 37 / x86_64 emulator.
-An 8-bit wgpu target format alone is insufficient evidence of 8-bit presentation.
+The unpatched pinned wgpu-hal 27.0.4 backend selected R5G6B5_UNORM on the
+API 37 / x86_64 emulator even with an Rgba8Unorm render target. The requested
+RGB (161, 75, 50) appeared as (165, 77, 49). The framework now carries a reviewed
+Android EGL configuration patch requesting at least eight bits per RGBA channel.
+Its source archive, original file hashes, exact diff and licenses are recorded;
+see [renderer patch maintenance and consumer setup](renderer-patches.md).
 
-Control location accepts the requested RGB888 fill or its explicitly computed
-RGB565 counterpart, keeping the same 1% matching tolerance. Foreground-mask
-comparisons remain exact at the existing threshold. This makes the interaction
-probe aware of the actual surface representation; it does not resolve the
-underlying color-precision limitation. Requiring 8-bit native presentation across
-GLES devices/backends and expanding color/gradient fidelity checks remain work.
-Android's [native buffer format contract](https://developer.android.com/ndk/reference/group/a-native-window#anativewindow_setbuffersgeometry)
-describes the native geometry/format selection API.
+Current debug diagnostics report `native_format=R8G8B8A8_UNORM` and
+`target_format=Rgba8Unorm`. The shared interaction probe now requires exact solid
+blue, green and orange interior samples. The former RGB565 locator alternative
+has been removed; this test fails if quantization returns. Existing text-glyph
+comparisons remain exact at the documented threshold. Desktop and API 37 Android
+runs pass the stronger probe, including normal input and restoration.
+
+Three same-process activity recreations and final destruction pass with four
+responsive native hosts; all four recorded native surfaces are RGBA8. The test's
+instrumentable-packaging qualification still applies. The API 35 CI recreation
+job also checks native format diagnostics. This is scoped evidence against the
+specific RGB565 loss, not complete color-management, HDR, gradient or alpha tests.
+Physical-device, GPU/OS matrix and macOS runtime coverage remain outstanding.
+
+Cargo only applies patches from a consuming workspace root. Generated apps now
+include the renderer override at the same source revision as the framework;
+manual/existing apps must add it explicitly. The selection verifier checks the
+resolved HAL source, and Android rejects an RGB565 native surface with an
+explanation of the required patch. The renderer continues using wgpu.

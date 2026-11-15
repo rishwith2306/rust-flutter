@@ -1,4 +1,6 @@
-use android_activity::ndk::native_window::NativeWindow;
+use android_activity::ndk::{
+    hardware_buffer_format::HardwareBufferFormat, native_window::NativeWindow,
+};
 use eframe::egui_wgpu::{RenderState, RendererOptions, ScreenDescriptor};
 use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
@@ -51,6 +53,7 @@ impl Renderer {
             .desired_maximum_frame_latency
             .unwrap_or(2);
         surface.configure(&state.device, &config);
+        require_color_precision(&window)?;
         #[cfg(debug_assertions)]
         eprintln!(
             "rust-flutter android surface native_format={:?} target_format={:?}",
@@ -83,6 +86,7 @@ impl Renderer {
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
         surface.configure(&self.state.device, &self.config);
+        require_color_precision(&window)?;
         #[cfg(debug_assertions)]
         eprintln!(
             "rust-flutter android surface native_format={:?} target_format={:?}",
@@ -195,6 +199,15 @@ impl Renderer {
         }
         Ok(true)
     }
+}
+// The render target format does not guarantee native presentation precision.
+fn require_color_precision(window: &NativeWindow) -> Result<(), crate::Error> {
+    if window.format() == HardwareBufferFormat::R5G6B5_UNORM {
+        return Err(failure(
+            "Android selected an RGB565 native surface. Preserve the generated app's [patch.crates-io] wgpu-hal entry; manual consumers must select the framework's pinned renderer patch (docs/renderer-patches.md).",
+        ));
+    }
+    Ok(())
 }
 pub(super) fn failure(error: impl std::fmt::Display) -> crate::Error {
     crate::Error::AppCreation(Box::new(std::io::Error::other(error.to_string())))

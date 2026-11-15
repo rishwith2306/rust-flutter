@@ -13,7 +13,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-from component_probe import probe_components
+from component_probe import probe_components, native_formats
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--serial", required=True)
@@ -33,6 +33,7 @@ root = Path(__file__).resolve().parents[1]
 output = root / "target/smoke"
 output.mkdir(parents=True, exist_ok=True)
 package = "dev.rustflutter.gallery"
+surface_formats = []
 
 
 def device(*command, check=True, timeout=15):
@@ -99,6 +100,7 @@ def start():
             trace = device("logcat", "-d", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
             geometry = re.findall(r"presented \d+x\d+ scale=([\d.]+) safe_top_px=([\d.]+)", trace)
             if geometry and abs(float(geometry[-1][0]) - args.scale) < 0.01 and abs(float(geometry[-1][1]) - args.top_inset_px) < 1:
+                surface_formats.extend(native_formats(trace))
                 return
         time.sleep(0.2)
     raise TimeoutError("debug gallery did not present the expected density/insets")
@@ -177,6 +179,7 @@ result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
           "sdk": device("shell", "getprop", "ro.build.version.sdk").stdout.decode().strip(),
           "abi": device("shell", "getprop", "ro.product.cpu.abi").stdout.decode().strip(),
+          "native_surface_formats": surface_formats,
           "page_size": device("shell", "getconf", "PAGE_SIZE").stdout.decode().strip(),
           "scale": args.scale, "top_inset_px": args.top_inset_px,
           "state_after_restart": value,

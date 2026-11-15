@@ -19,9 +19,13 @@ The framework is in crates/rust-flutter; asset compilation is in
 crates/rust-flutter-assets; the CLI and starter templates are in
 crates/rust-flutter-cli. examples/gallery demonstrates public APIs.
 
-Before submitting:
+The pinned renderer patch and update procedure are documented in
+[renderer patches](docs/renderer-patches.md). Keep the vendor source and its
+recorded patch synchronized. Before submitting:
 
 ```sh
+python3 scripts/check-renderer-patch.py
+python3 scripts/check-renderer-selection.py
 cargo fmt --all -- --check
 cargo test --workspace --all-features --locked
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings

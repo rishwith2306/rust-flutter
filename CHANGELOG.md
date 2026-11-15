@@ -9,6 +9,7 @@
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.
 - ChangeNotifier/ValueNotifier, merged sources, scoped listeners, inherited notifier and builder adapters.
 - Native Android lifecycle handling and smoke-test tooling.
+- Android EGL requests RGBA8 native surfaces; generated apps pin the reviewed renderer patch.
 - CLI starter apps with pinned GitHub dependencies and local contributor mode.
 
 Experimental APIs; full Flutter parity and macOS runtime verification remain open.

@@ -105,3 +105,7 @@ an explicit error. These limits remain part of the feature backlog.
 Linux X11 runtime requires `libxkbcommon-x11.so` as well as the development
 libraries. On Debian/Ubuntu install `libxkbcommon-x11-0`; CI also installs
 Xvfb, xdotool, ImageMagick and Mesa Vulkan drivers for rendered smoke checks.
+
+Android GLES uses the framework's pinned wgpu-hal renderer patch to request RGBA8
+native presentation. Generated apps select it automatically; manual and existing
+consumers must add the root Cargo patch described in [renderer setup](renderer-patches.md).

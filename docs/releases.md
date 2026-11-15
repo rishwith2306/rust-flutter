@@ -4,7 +4,8 @@ The GitHub repository is the source distribution. Packages are not currently
 published to crates.io. Install the CLI using the README command. Its generated
 apps pin dependencies to the CLI's source commit; existing apps do not silently
 advance when main changes. Update the rev fields deliberately and regenerate
-Cargo.lock when upgrading an app.
+Cargo.lock when upgrading an app. Advance its root renderer patch to the same
+revision; see renderer-patches.md.
 
 For a reproducible CLI installation, add `--rev <full-commit>` to `cargo install`.
 Local contributor builds can generate path dependencies with --framework-path.
@@ -19,7 +20,8 @@ must exist before distributing such a binary.
 2. Update workspace.package.version in Cargo.toml, Cargo.lock and CHANGELOG.md.
    Describe breaking API changes, including during 0.x development.
 3. Run the CONTRIBUTING.md checks and generate an app outside the checkout.
-   Verify desktop and Android as applicable. Inspect successful GitHub Actions
+   Verify desktop and Android as applicable, including exact RGB fills and native
+   surface formats after recreation. Run both renderer-patch verification scripts. Inspect successful GitHub Actions
    runs on Linux, macOS and Android; document runtime gaps separately.
 4. Merge the reviewed change and tag its commit as v<version>. Push the tag and
    create a GitHub release describing changes and verification. Do not attach

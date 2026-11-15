@@ -31,7 +31,7 @@ remains. Verification is recorded separately in `verification.md`.
 | Material controls | No local Material implementation | Missing Material design system and component catalog |
 | Cupertino controls | No local Cupertino implementation | Missing Cupertino design system and component catalog |
 | Animation | Scalar tweens with curves | Partial; controllers, implicit animation, springs, transitions, Hero |
-| Painting and effects | egui painter API | Backend; canvas/path compatibility, clipping and compositing audit; GLES RGB565 precision on the tested emulator remains a known limitation |
+| Painting and effects | egui painter API | Backend; canvas/path compatibility, clipping and compositing audit; Android GLES now requests RGBA8 through a pinned renderer patch; full color-space/HDR/gradient/alpha validation remains |
 | Images, icons and assets | Build-time embedded bundles, platform filtering, density variants; PNG/JPEG/static WebP decoding and bounded texture cache | Partial; SVG, animated images, streams, automatic package assets, native asset lookup and font tooling remain |
 | Accessibility | Desktop AccessKit feature enabled; Android NativeActivity lacks integration | Partial; semantics facade and TalkBack/VoiceOver device validation |
 | Localization | Fluent FTL, CLDR locale negotiation, plurals/selects, message/attribute fallback; English/Spanish gallery | Partial; device locale discovery, framework translations, RTL layout/shaping, date/currency tooling |

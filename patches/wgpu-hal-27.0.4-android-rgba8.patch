@@ -1,0 +1,48 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -431,3 +431,6 @@
+ level = "warn"
+ priority = 0
+ check-cfg = ["cfg(web_sys_unstable_apis)"]
++
++# Kept separate from the framework workspace; selected through a root patch.
++[workspace]
+--- a/src/gles/egl.rs
++++ b/src/gles/egl.rs
+@@ -248,13 +248,20 @@
+         for &(_, tier_attr) in tiers[..=tier_max].iter() {
+             attributes.extend_from_slice(tier_attr);
+         }
+-        // make sure the Alpha is enough to support sRGB
+-        match srgb_kind {
+-            SrgbFrameBufferKind::None => {}
+-            _ => {
+-                attributes.push(khronos_egl::ALPHA_SIZE);
+-                attributes.push(8);
+-            }
++        // Android native presentation must preserve 8-bit UI color precision,
++        // including EGL implementations without sRGB window surfaces.
++        #[cfg(target_os = "android")]
++        attributes.extend_from_slice(&[
++            khronos_egl::RED_SIZE,
++            8,
++            khronos_egl::GREEN_SIZE,
++            8,
++            khronos_egl::BLUE_SIZE,
++            8,
++        ]);
++        if cfg!(target_os = "android") || !matches!(srgb_kind, SrgbFrameBufferKind::None) {
++            attributes.push(khronos_egl::ALPHA_SIZE);
++            attributes.push(8);
+         }
+         attributes.push(khronos_egl::NONE);
+ 
+@@ -422,7 +429,7 @@
+     ///
+     /// > **Note:** Calling this function **will** still lock the [`glow::Context`] which adds an
+     /// > extra safe-guard against accidental concurrent access to the context.
+-    pub unsafe fn get_without_egl_lock(&self) -> MappedMutexGuard<glow::Context> {
++    pub unsafe fn get_without_egl_lock(&self) -> MappedMutexGuard<'_, glow::Context> {
+         let guard = self
+             .glow
+             .try_lock_for(Duration::from_secs(CONTEXT_LOCK_TIMEOUT_SECS))

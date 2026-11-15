@@ -60,6 +60,9 @@ The CLI configures Git dependencies automatically. For local framework developme
 ```toml
 [dependencies]
 rust-flutter = { path = "/path/to/rust-flutter/crates/rust-flutter" }
+
+[patch.crates-io]
+wgpu-hal = { path = "/path/to/rust-flutter/vendor/wgpu-hal" }
 ```
 
 ```rust
@@ -81,6 +84,10 @@ fn main() -> Result<(), rust_flutter::Error> {
     rust_flutter::run("Counter", Counter::default())
 }
 ```
+
+Generated apps include the required renderer override. Existing/manual consumers
+should follow [renderer patch setup](docs/renderer-patches.md); Cargo only honors
+patches at the application workspace root.
 
 `egui` is re-exported for sliders, checkboxes, grids, images, custom painting,
 keyboard shortcuts and advanced layout. Functions in `widgets` return responses
@@ -118,5 +125,5 @@ and [contributing](CONTRIBUTING.md) before extending the framework.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and review,
 [release instructions](docs/releases.md) for maintaining versions, and
-[CHANGELOG.md](CHANGELOG.md) for changes. Source is MIT licensed.
+[CHANGELOG.md](CHANGELOG.md) for changes. Original framework source is MIT licensed; the vendored renderer retains its upstream licenses.
 The project is independent of Google and the Flutter project.

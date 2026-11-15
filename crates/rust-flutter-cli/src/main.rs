@@ -68,6 +68,11 @@ fn execute(args: Vec<String>) -> Result<(), String> {
                         {
                             return Err("framework path must contain the framework and sibling assets crate".into());
                         }
+                        if !library.join("../../vendor/wgpu-hal/Cargo.toml").is_file() {
+                            return Err(
+                                "framework checkout is missing the pinned renderer patch".into()
+                            );
+                        }
                         framework = Some(library);
                     }
                     _ => return Err(format!("unknown or repeated create option: {}", pair[0])),
@@ -199,7 +204,7 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
     if !valid_name(name) {
         return Err("package name must start with a lowercase letter, contain only a-z, 0-9, _ or -, and not be reserved".into());
     }
-    let (framework, asset_framework) = match framework {
+    let (framework, asset_framework, patched_hal) = match framework {
         Some(path) => (
             format!(
                 "path = {}",
@@ -213,6 +218,14 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
                         .ok_or("asset path is not UTF-8")?
                 )
             ),
+            format!(
+                "path = {}",
+                toml_string(
+                    path.join("../../vendor/wgpu-hal")
+                        .to_str()
+                        .ok_or("patched renderer path is not UTF-8")?
+                )
+            ),
         ),
         None => {
             let source = format!(
@@ -220,7 +233,7 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
                 toml_string(env!("CARGO_PKG_REPOSITORY")),
                 toml_string(env!("RUST_FLUTTER_SOURCE_REV"))
             );
-            (source.clone(), source)
+            (source.clone(), source.clone(), source)
         }
     };
     // Creating the directory exclusively prevents overwriting an existing project.
@@ -236,6 +249,7 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
                 .replace("{{android_name}}", &name.replace(['-', '_'], ""))
                 .replace("{{framework}}", &framework)
                 .replace("{{asset_framework}}", &asset_framework)
+                .replace("{{patched_hal}}", &patched_hal)
         };
         for (path, source) in [
             (
@@ -263,7 +277,7 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
         fs::write(
             destination.join("README.md"),
             format!(
-                "# {name}\n\nRun `rust-flutter run` for desktop or `rust-flutter run --android` for Android.\nRun `rust-flutter doctor` to inspect build prerequisites.\nThe framework source is specified in Cargo.toml; commit Cargo.lock for reproducible builds.\n\nFiles in `assets/` are embedded by `build.rs`; edit `assets.json` to declare additional directories. Numeric density folders such as `2x/` are discovered automatically.\n"
+                "# {name}\n\nRun `rust-flutter run` for desktop or `rust-flutter run --android` for Android.\nRun `rust-flutter doctor` to inspect build prerequisites.\nThe framework and renderer patch sources are specified in Cargo.toml; commit Cargo.lock for reproducible builds. Preserve the root [patch.crates-io] section for Android color precision.\n\nFiles in `assets/` are embedded by `build.rs`; edit `assets.json` to declare additional directories. Numeric density folders such as `2x/` are discovered automatically.\n"
             ),
         )?;
         Ok(())
@@ -493,6 +507,8 @@ mod tests {
         );
         assert!(!manifest.contains("{{"));
         assert!(manifest.contains("rust-flutter-assets"));
+        assert!(manifest.contains("[patch.crates-io]"));
+        assert!(manifest.contains("../../vendor/wgpu-hal"));
         assert!(directory.join("build.rs").is_file());
         assert!(directory.join("assets/welcome.txt").is_file());
         assert!(create(&directory, "other-app", Some(Path::new("/other"))).is_err());

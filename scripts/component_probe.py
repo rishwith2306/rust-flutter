@@ -1,28 +1,36 @@
 """Rendered component test shared by desktop and isolated Android smoke tests.
 Uses injected pointer events and image patches, without component state backdoors.
-Requires ImageMagick's convert. Coordinates are physical pixels.
+Image operations require ImageMagick's convert. Coordinates are physical pixels.
 """
 import re
 import subprocess
 import time
 
 
+def native_formats(trace, minimum=1):
+    formats = re.findall(r"surface native_format=(\w+) target_format=(\w+)", trace)
+    assert len(formats) >= minimum, f"missing native surface diagnostics: {formats}"
+    assert all(native in {"R8G8B8A8_UNORM", "R8G8B8X8_UNORM"} for native, _ in formats), f"native presentation is not RGB888: {formats}"
+    return [{"native": native, "target": target} for native, target in formats]
+
+
 def bounds(path, color):
-    # wgpu's EGL config on some emulator images uses RGB565. Match either the
-    # requested RGB888 fill or its explicitly quantized RGB565 representation;
-    # keep the same 1% locator tolerance and exact foreground-mask comparisons.
-    rgb = [int(color[index:index+2], 16) for index in (1, 3, 5)]
-    quantized = "#" + "".join(f"{round(round(value * levels / 255) * 255 / levels):02x}"
-        for value, levels in zip(rgb, (31, 63, 31)))
-    for candidate in dict.fromkeys((color, quantized)):
-        result = subprocess.run(["convert", str(path), "-alpha", "off", "-fuzz", "1%", "-fill", "white", "+opaque", candidate, "-fill", "black", "-opaque", candidate, "-format", "%@", "info:"], capture_output=True, text=True, timeout=15, check=True)
-        match = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", result.stdout.strip())
-        if not match:
-            raise AssertionError(f"could not measure rendered component: {result.stdout} {result.stderr}")
-        w, h, x, y = map(int, match.groups())
-        if w > 0 and h > 0:
-            return x, y, w, h
-    return None
+    result = subprocess.run(["convert", str(path), "-alpha", "off", "-fuzz", "1%", "-fill", "white", "+opaque", color, "-fill", "black", "-opaque", color, "-format", "%@", "info:"], capture_output=True, text=True, timeout=15, check=True)
+    match = re.fullmatch(r"(\d+)x(\d+)\+(-?\d+)\+(-?\d+)", result.stdout.strip())
+    if not match:
+        raise AssertionError(f"could not measure rendered component: {result.stdout} {result.stderr}")
+    w, h, x, y = map(int, match.groups())
+    return (x, y, w, h) if w > 0 and h > 0 else None
+
+
+def exact_fill(path, rect, color, scale):
+    """Sample a solid interior patch away from rounded borders and centered text."""
+    assert rect, f"missing {color} swatch"
+    x, y, _, _ = rect
+    offset, side = round(8 * scale), max(1, round(2 * scale))
+    rgb = subprocess.check_output(["convert", str(path), "-alpha", "off", "-crop", f"{side}x{side}+{x+offset}+{y+offset}", "-depth", "8", "rgb:-"], timeout=15)
+    expected = bytes.fromhex(color[1:]) * (side * side)
+    assert rgb == expected, f"native presentation altered {color}: {rgb[:12].hex()}"
 
 
 def center(rect):
@@ -45,6 +53,8 @@ def probe_components(capture, tap, scale=1.0):
     blue = bounds(initial, "#1769aa")
     green = bounds(initial, "#197d55")
     assert blue and green and center(blue)[0] < center(green)[0]
+    exact_fill(initial, blue, "#1769aa", scale)
+    exact_fill(initial, green, "#197d55", scale)
     a0, b0 = patch(initial, blue, scale), patch(initial, green, scale)
     left = min(blue[0], green[0])
     controls_y = blue[1] - 12 * scale
@@ -96,6 +106,7 @@ def probe_components(capture, tap, scale=1.0):
     assert patch(after_aspect, bounds(after_aspect, "#197d55"), scale) == b2
     observable = bounds(after_aspect, "#a14b32")
     assert observable, "observable counter is missing"
+    exact_fill(after_aspect, observable, "#a14b32", scale)
     observable_zero = patch(after_aspect, observable, scale, 220)
     for _ in range(3):
         tap(*center(observable))
@@ -109,4 +120,4 @@ def probe_components(capture, tap, scale=1.0):
     tap(*center(bounds(reset, "#8f5f22")))
     burst = settle("components-observable-burst.png")
     assert patch(burst, bounds(burst, "#a14b32"), scale, 220) == observable_three, "three synchronous notifier changes did not match three individual clicks"
-    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; exact trimmed foreground glyph masks at a 75% intensity threshold"}

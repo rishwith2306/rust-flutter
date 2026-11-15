@@ -74,3 +74,8 @@ and exercised on each OS before being advertised as supported plugins.
 The initial backend is deliberately a separate layer: Flutter compatibility needs
 additional retained layout, semantics, design systems and developer tools. Reusing
 egui does not supply Flutter APIs or Material/Cupertino fidelity automatically.
+
+The pinned wgpu-hal Android EGL patch requests RGBA8 native presentation even
+without sRGB window-surface support. Generated app manifests select the reviewed
+source explicitly; see `renderer-patches.md` for origin, verification and manual
+consumer setup. This does not replace wgpu or establish full color management.

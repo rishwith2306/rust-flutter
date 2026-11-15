@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import subprocess
 import zipfile
+from component_probe import native_formats
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--serial", required=True)
@@ -142,6 +143,7 @@ for host in created:
     assert (host, pid, "destroyed") in events and (host, pid, "returned") in events, f"host {host} did not release the native destruction handshake"
 result["rust_host_generations"] = created
 result["native_library_sha256"] = native_hashes
+result["native_surface_formats"] = native_formats(trace, args.cycles + 1)
 result["test_variant"] = "Original native code; hasCode=true and an unused marker DEX added solely because Android rejects instrumentation of pure-native packages"
 result["scope"] = "Activity.recreate and Activity.finish, OS destroy callbacks, native loop returns, fresh GPU surfaces, one process, restored model and injected touch after every recreation"
 (output / "android-recreation-result.json").write_text(json.dumps(result, indent=2) + "\n")

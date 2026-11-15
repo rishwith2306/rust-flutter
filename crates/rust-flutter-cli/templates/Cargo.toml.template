@@ -14,6 +14,9 @@ rust-flutter = { {{framework}} }
 [build-dependencies]
 rust-flutter-assets = { {{asset_framework}}, features = ["build"] }
 
+[patch.crates-io]
+wgpu-hal = { {{patched_hal}} }
+
 [package.metadata.android]
 package = "dev.rustflutter.{{android_name}}"
 apk_name = "{{name}}"

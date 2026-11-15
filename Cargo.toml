@@ -1,6 +1,7 @@
 [workspace]
 members = ["crates/rust-flutter", "crates/rust-flutter-assets", "examples/gallery", "crates/rust-flutter-cli"]
 resolver = "2"
+exclude = ["vendor/wgpu-hal"]
 
 [workspace.package]
 version = "0.1.0"
@@ -20,3 +21,6 @@ incremental = false
 [profile.test]
 debug = 0
 incremental = false
+
+[patch.crates-io]
+wgpu-hal = { path = "vendor/wgpu-hal" }

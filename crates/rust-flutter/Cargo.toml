@@ -11,7 +11,9 @@ readme = "../../README.md"
 [dependencies]
 eframe.workspace = true
 egui.workspace = true
-wgpu = { version = "27.0.1", default-features = false, features = ["vulkan", "metal", "gles"] }
+wgpu = { version = "=27.0.1", default-features = false, features = ["vulkan", "metal", "gles"] }
+# Keep the root renderer patch eligible during a fresh app resolution.
+wgpu-hal = { version = "=27.0.4", default-features = false }
 fluent-bundle = "0.16.0"
 fluent-langneg = { version = "0.13.1", features = ["cldr"] }
 unic-langid = "0.9.6"
