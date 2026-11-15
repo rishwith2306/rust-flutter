@@ -5,6 +5,8 @@ fn main() {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("../..");
     let git_revision = || {
         if !root.join(".git").exists() {
+            // A checkout can be initialized after an archive's first cached build.
+            println!("cargo:rerun-if-changed={}", root.join(".git").display());
             return None;
         }
         for path in [".git/HEAD", ".git/refs/heads", ".git/packed-refs"] {

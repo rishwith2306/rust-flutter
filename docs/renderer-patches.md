@@ -77,6 +77,8 @@ The first command reverses the patch in a temporary copy and checks every file
 against the recorded original hashes. It also rejects extra/missing files. It
 never rewrites the working tree. The second checks the resolved dependency graph.
 CI runs both and checks a generated standalone app's selected source.
+`python3 scripts/cli-revision-smoke.py` also tests cached CLI builds across Git
+initialization and HEAD changes, preventing stale framework/renderer revisions.
 
 To update the renderer, download and verify the intended published archive before
 extracting it. Review the upstream diff and determine whether the local fix is

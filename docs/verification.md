@@ -37,7 +37,8 @@ Runtime claims below remain scoped to their stated environment.
 | Notifier desktop rendering | Passed | Three individual clicks and a three-update burst produce identical counter glyph masks; reset restores the original text |
 | Notifier Android rendering | Passed on API 37 / x86_64 / 16 KB pages | Same shared touch/image probe; exact RGB888 fills and foreground masks verify reset and three-update burst against three individual touches |
 | Pinned renderer source | Passed | Original 27.0.4 archive checksum verified; reverse-patch/file-hash verifier checks all 80 upstream files and licenses |
-| Generated local consumer renderer | Passed | Fresh scaffold compiles outside the checkout and selection verifier confirms the patched HAL source |
+| Generated local consumer renderer | Passed | Fresh scaffold compiles outside the checkout and selects the patched HAL; verifier rejects a separate consumer with the root patch omitted |
+| CLI cached revision pinning | Passed | Fresh temporary checkout built before Git initialization then rebuilt after initialization and a new commit; framework, assets and renderer all pin the actual current SHA |
 | RGB888 presentation | Passed on Linux and API 37 Android | Exact solid blue, green and orange samples; Android native surface R8G8B8A8_UNORM after initial creation and all four activity hosts |
 | ARM64 Android APK | Built and debug-signed | NDK 28.2.13676358, min SDK 24 / target SDK 35; APK signature and alignment checked |
 | x86_64 Android APK | Built, installed and launched | Isolated Pixel 6 emulator, Android 37 system image with 16 KB pages |

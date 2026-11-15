@@ -22,6 +22,8 @@ jobs:
       - run: cargo test --workspace --all-features --locked
       - run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - run: cargo doc --workspace --all-features --no-deps --locked
+      - name: CLI cached revision pinning check
+        run: python3 scripts/cli-revision-smoke.py
       - name: Asset bundle Cargo rebuild check
         run: python3 scripts/asset-build-smoke.py
       - name: Generated project check
