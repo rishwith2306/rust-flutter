@@ -114,6 +114,16 @@ text = instrument.stdout.decode(errors="replace") + instrument.stderr.decode(err
 (output / "android-instrumentation.txt").write_text(text)
 match = re.search(r"^INSTRUMENTATION_RESULT: summary=(.+)$", text, re.MULTILINE)
 if instrument.returncode or not match or "INSTRUMENTATION_CODE: -1" not in text:
+    # Preserve system overlays, focus and native diagnostics before CI stops the AVD.
+    for name, command in [
+        ("android-recreation-window.txt", ["shell", "dumpsys", "window"]),
+        ("android-recreation-logcat.txt", ["logcat", "-d", "-t", "1500"]),
+        ("android-recreation-failed.png", ["exec-out", "screencap", "-p"]),
+    ]:
+        try:
+            (output / name).write_bytes(device(*command))
+        except Exception as error:
+            (output / (name + ".error")).write_text(str(error))
     raise AssertionError(f"instrumentation did not pass; see {output / 'android-instrumentation.txt'}\n{text}")
 result = json.loads(match[1])
 assert result["passed"] and len(result["cycles"]) == args.cycles

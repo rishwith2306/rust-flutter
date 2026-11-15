@@ -121,7 +121,18 @@ public final class RecreateInstrumentation extends Instrumentation {
             return new JSONObject(new String(bytes.toByteArray(), "UTF-8")).getJSONObject("data");
         }
     }
+    private void awaitWindowFocus() {
+        long deadline = SystemClock.elapsedRealtime() + 30000;
+        java.util.concurrent.atomic.AtomicBoolean focused = new java.util.concurrent.atomic.AtomicBoolean();
+        do {
+            runOnMainSync(() -> focused.set(resumed != null && resumed.hasWindowFocus()));
+            if (focused.get()) return;
+            SystemClock.sleep(100);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        throw new AssertionError("gallery window did not gain input focus");
+    }
     private JSONObject increment(JSONObject before) throws Exception {
+        awaitWindowFocus();
         float x = 270 * scale;
         float y = (before.getString("name").isEmpty() ? 187 : 205) * scale + top;
         long down = SystemClock.uptimeMillis();
