@@ -2,8 +2,11 @@
 
 Local environment: Linux x86_64, Rust 1.98.1 / Cargo 1.98.1. Dependencies are
 pinned in Cargo.lock. Results below describe this workspace, not Flutter parity.
-The public repository now runs GitHub Actions; see its Actions page for current
-remote results. macOS runtime behavior has not been verified.
+The public repository runs [GitHub Actions](https://github.com/rishwith2306/rust-flutter/actions).
+macOS build checks passed in [run 43745194590](https://github.com/rishwith2306/rust-flutter/actions/runs/43745194590),
+including tests, Clippy, documentation, asset rebuilding and generated-app
+compilation. The ARM64 Android link/Clippy job also passed in that run.
+Runtime claims below remain scoped to their stated environment.
 
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
@@ -32,7 +35,8 @@ remote results. macOS runtime behavior has not been verified.
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
-| macOS compilation / runtime | Not verified locally | Remote build is running; no Metal/window/VoiceOver runtime claim is established. |
+| macOS compilation | Passed on GitHub macos-latest / Apple Silicon | Stable Rust 1.100.0: workspace tests, Clippy, docs, asset rebuild and generated-app compilation |
+| macOS runtime | Not verified | No window/input/Metal/VoiceOver runtime claim is established. |
 | Full Flutter feature parity | Not achieved | See feature audit and API inventory; most declarations remain unreviewed |
 
 ## Reproduce local checks
