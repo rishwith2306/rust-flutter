@@ -129,11 +129,20 @@ impl ChangeNotifier {
         if inner.disposed {
             return Err(Disposed);
         }
-        let id = ListenerId(
-            NEXT_LISTENER
-                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |id| id.checked_add(1))
-                .expect("listener ID space exhausted"),
-        );
+        // Keep the declared MSRV while avoiding fetch_update, deprecated in 1.100.
+        let mut current = NEXT_LISTENER.load(Ordering::Relaxed);
+        let id = loop {
+            let next = current.checked_add(1).expect("listener ID space exhausted");
+            match NEXT_LISTENER.compare_exchange_weak(
+                current,
+                next,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break ListenerId(current),
+                Err(actual) => current = actual,
+            }
+        };
         inner.listeners.push(Some(Entry { id, listener }));
         Ok(id)
     }
