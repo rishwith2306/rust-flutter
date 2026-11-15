@@ -1,0 +1,83 @@
+# Flutter feature audit and implementation backlog
+
+This is an original engineering inventory based on the official documentation,
+not a copy of the Flutter documentation or a claim to exhaustively enumerate its
+APIs. The [machine-generated API inventory](flutter-api-inventory.md) records
+3,649 top-level declarations across 20 SDK/companion libraries. No declaration
+has a completed member-by-member semantic audit yet; an [initial component review](flutter-components-audit.md)
+records partial implementations and explicit differences. The objective remains a Rust framework with Flutter's capabilities, with
+macOS and Android as the first deployment targets. Nothing in the current tests
+proves full parity. Individual APIs within each category require further inventory.
+
+Status terms: **implemented** means there is local framework code; **backend**
+means directly available through the re-exported egui API but not necessarily
+validated on both platforms; **partial** means a subset; **missing** means work
+remains. Verification is recorded separately in `verification.md`.
+
+| Capability | Current implementation | Status / required work |
+| --- | --- | --- |
+| Rust app entrypoint and shared source | `Application`, desktop and Android hosts, gallery | Implemented; platform runtime gates remain |
+| Declarative composition and persistent state | Closure composition, `ElementTree` components, typed state handles, application struct and `Signal<T>` | Partial; typed inherited dependencies work; aspect subscriptions and full Flutter lifecycle remain |
+| Widget/Element/RenderObject lifecycle | Type/key-based element reconciliation, stateful/stateless components, init/property-update/dispose hooks, queued updates, selective dirty component builds and stable render IDs | Partial; inherited lookup/predicates and dependency hooks now work; GlobalKey reparenting, aspect subscriptions, deactivate/reactivate, reassembly and dirty RenderObject pipeline remain |
+| Layout basics | Owned BoxNode geometry: validated constraints, fixed/loose/tight flex, alignment, padding, sized constraints, stack/positioned, direction, overflow, clip bounds and leaf UI adapter | Partial; intrinsic size protocols, baseline layout, full render-object pipeline and further widget inventory remain |
+| Responsive/adaptive UI | Logical-point breakpoints and physical-to-logical safe-area conversion | Partial; notch/system-bar insets verified on one emulator; wider device validation and adaptive controls remain |
+| Text and typography | Backend font atlas and text widgets | Backend; complex shaping, bidi, RTL and font fallback audit needed |
+| Forms and input | Text fields, checkbox/slider via egui | Partial; form validation model, autofill, mobile IME audit |
+| Focus, shortcuts and keyboard | egui focus and input | Backend; cross-platform traversal and shortcut audit |
+| Pointer and gestures | Backend click/drag/touch; pointer test | Partial; gesture arena, multi-touch recognizers and physics |
+| Scrolling | Vertical helper; egui scroll areas | Partial; virtual lists, slivers, nested scrolling, overscroll physics |
+| Navigation | Generic route stack and back-request hook | Partial; native back validation, deep links, route restoration, transitions, declarative routing |
+| Theme | Light/dark and accent | Partial; semantic theme tokens, text scale, adaptive theme |
+| Material controls | No local Material implementation | Missing Material design system and component catalog |
+| Cupertino controls | No local Cupertino implementation | Missing Cupertino design system and component catalog |
+| Animation | Scalar tweens with curves | Partial; controllers, implicit animation, springs, transitions, Hero |
+| Painting and effects | egui painter API | Backend; canvas/path compatibility, clipping and compositing audit |
+| Images, icons and assets | Build-time embedded bundles, platform filtering, density variants; PNG/JPEG/static WebP decoding and bounded texture cache | Partial; SVG, animated images, streams, automatic package assets, native asset lookup and font tooling remain |
+| Accessibility | Desktop AccessKit feature enabled; Android NativeActivity lacks integration | Partial; semantics facade and TalkBack/VoiceOver device validation |
+| Localization | Fluent FTL, CLDR locale negotiation, plurals/selects, message/attribute fallback; English/Spanish gallery | Partial; device locale discovery, framework translations, RTL layout/shaping, date/currency tooling |
+| Asynchronous work | Background task signals with result/panic states | Partial; streams, cancellation, executor integration |
+| Platform plugins | Typed service registry | Partial; no working native plugin catalog or JNI/Swift bridge |
+| OS services | Startup/shutdown, Android lifecycle and surface events, focus/back/close hooks, private app data path | Partial; native saved-instance bytes, permissions and clipboard implementation |
+| Camera, location, sensors, notifications | No implementation | Missing platform plugins and permission flows |
+| Storage, networking, serialization | Versioned atomic JSON snapshots, schema/size validation, gallery restoration | Partial; network client, database and secure-storage plugins |
+| Webviews, native views, add-to-app | No implementation | Missing platform embedding/compositing |
+| macOS deployment | eframe window host | Partial; interactive verification, bundles, signing, notarization |
+| Android deployment | NativeActivity cdylib and package metadata | Partial; emulator touch/text/back/resume/restart and three same-process activity recreations pass; OS/device matrix and release packaging remain |
+| iOS, Windows, Linux, web | Linux host works toward testing; backend has other targets | Outside first targets; Flutter-wide deployment parity still pending |
+| Hot reload | Ordinary Cargo rebuild | Missing state-preserving Rust code reload; rebuild is not hot reload |
+| CLI/project generation | `create`, `doctor`, `run`, `build`; shared-source template | Partial; device selection, richer diagnostics, hot reload |
+| Inspector and profiling | Standard Rust tooling and backend inspection APIs | Missing widget inspector, frame timeline, memory tooling integration |
+| Testing | Core integration and headless pointer tests | Partial; golden tests, device automation, full widget harness |
+| Documentation and examples | Getting started, architecture, gallery, platform guide | Partial; complete API cookbook and migration guide |
+| Package ecosystem | Cargo package | Partial; versioning, publication, plugin discovery, compatibility policy |
+| Performance | Backend GPU rendering | Missing benchmark budgets, release size/startup/frame measurements |
+
+## Implementation sequence
+
+1. Establish real desktop and Android builds and device smoke tests; preserve
+   verifiable evidence for every advertised target.
+2. Add a CLI and generated projects that share application source and make native
+   build failures actionable.
+3. Extend application lifecycle, OS back handling, asset loading, localization,
+   restoration and state persistence with tests.
+4. Complete layout/gesture/text/semantics foundations with platform validation.
+5. Implement audited Material and Cupertino component inventories and visual tests.
+6. Add native plugins, platform views, packaging/release automation and examples.
+7. Build hot reload, inspector/profiler and performance regression infrastructure.
+8. Review every Flutter SDK library and widget against the implementation and keep
+   remaining APIs explicitly tracked before announcing parity.
+
+## Official sources reviewed
+
+- [Architecture](https://docs.flutter.dev/resources/architectural-overview): layered
+  engine/framework/embedding structure, reactive composition, rendering and interop.
+- [Widget catalog](https://docs.flutter.dev/ui/widgets): layout, controls, animation,
+  painting, accessibility, assets, asynchronous UI and design-system categories.
+- [Deployment platforms](https://docs.flutter.dev/reference/supported-platforms):
+  OS and CPU targets; this framework does not inherit Flutter's support guarantees.
+- [Flutter documentation](https://docs.flutter.dev/): further API-by-API audit
+  remains required; no claim is made that all linked pages were read.
+
+The dependencies' official references are linked from the platform guide. Version
+0.33.3 is pinned so the implementation is reproducible while API changes in newer
+egui/eframe versions are reviewed separately.

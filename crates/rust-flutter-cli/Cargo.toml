@@ -1,0 +1,13 @@
+[package]
+name = "rust-flutter-cli"
+description = "Development tools for the experimental Rust Flutter framework"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "rust-flutter"
+path = "src/main.rs"
+doc = false

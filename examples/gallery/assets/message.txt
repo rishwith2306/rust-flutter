@@ -1,0 +1,1 @@
+This text and image are bundled into the application. No source directory or network connection is needed.

@@ -1,0 +1,24 @@
+title = Rust Flutter • Galería
+intro = Una app Rust, escritorio y Android
+subtitle = Estado persistente y widgets componibles
+name-hint = Tu nombre
+hello = ¡Hola, { $name }!
+count = { $n ->
+    [one] Un elemento
+   *[other] { $n } elementos
+}
+settings = Ajustes
+back = Volver
+dark-theme = Tema oscuro
+retained = Tu contador, nombre, tema e idioma se conservan al reiniciar.
+background = Trabajo en segundo plano
+run-task = Ejecutar tarea
+worker-result = Tarea completada sin bloquear la interfaz
+worker-panic = La tarea falló
+language = Idioma
+
+assets = Recursos incluidos
+
+layout = Diseño con restricciones
+
+components = Componentes con estado

@@ -1,0 +1,10 @@
+/target/
+*.apk
+*.keystore
+
+__pycache__/
+
+.env
+.env.*
+!.env.example
+*.pem

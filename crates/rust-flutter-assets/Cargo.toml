@@ -1,0 +1,18 @@
+[package]
+name = "rust-flutter-assets"
+description = "Embedded asset bundles and build-time packing for Rust Flutter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+build = ["dep:serde", "dep:serde_json"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[dev-dependencies]
+tempfile = "3"

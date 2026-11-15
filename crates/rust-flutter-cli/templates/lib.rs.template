@@ -1,0 +1,23 @@
+use rust_flutter::prelude::*;
+use rust_flutter::assets::{AssetBundle, EmbeddedBundle};
+
+static ASSETS: EmbeddedBundle = EmbeddedBundle::new(include!(concat!(env!("OUT_DIR"), "/assets.rs")));
+
+#[derive(Default)]
+pub struct App { count: usize }
+impl Application for App {
+    fn build(&mut self, ui: &mut Ui) {
+        column(ui, |ui| {
+            heading(ui, "{{name}}");
+            text(ui, ASSETS.load_string("assets/welcome.txt").expect("bundled welcome text"));
+            text(ui, format!("Count: {}", self.count));
+            if button(ui, "Increment").clicked() { self.count += 1; }
+        });
+    }
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(activity: rust_flutter::AndroidApp) {
+    rust_flutter::run_android(activity, "{{name}}", App::default()).expect("Android runner failed");
+}
