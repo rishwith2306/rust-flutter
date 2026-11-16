@@ -1,6 +1,8 @@
 //! Constraint-based box layout independent of egui's immediate layout algorithm.
 //! Own a `BoxNode` tree, compute geometry, then paint leaves through `show_layout`.
+mod custom;
 mod flex;
+pub use custom::{BoxChildren, BoxGeometry, CustomBox, CustomBoxLayout};
 mod stack;
 mod ui;
 use egui::{Id, Pos2, Rect, Vec2};
@@ -384,6 +386,10 @@ impl Stack {
 
 type Measure = dyn FnMut(BoxConstraints) -> Result<Vec2, LayoutError>;
 pub enum BoxKind {
+    Custom {
+        layout: CustomBox,
+        children: Vec<BoxNode>,
+    },
     Leaf {
         preferred: Vec2,
     },
@@ -474,6 +480,11 @@ impl BoxNode {
             return Err(LayoutError::DuplicateKey(self.id));
         }
         match &self.kind {
+            BoxKind::Custom { children, .. } => {
+                for child in children {
+                    child.validate(keys, depth + 1)?;
+                }
+            }
             BoxKind::Padding { child, .. }
             | BoxKind::Constrained { child, .. }
             | BoxKind::Align { child, .. } => child.validate(keys, depth + 1)?,
@@ -496,6 +507,9 @@ impl BoxNode {
         let mut children = Vec::new();
         let mut clip = Clip::None;
         let size = match &mut self.kind {
+            BoxKind::Custom { layout, children } => {
+                return layout.perform_layout(self.id, constraints, children);
+            }
             BoxKind::Leaf { preferred } => constraints.constrain(*preferred)?,
             BoxKind::Measured(measure) => measure(constraints)?,
             BoxKind::Padding { insets, child } => {
@@ -584,6 +598,8 @@ pub struct PlacedBox {
 #[derive(Clone, Debug)]
 pub struct LayoutBox {
     leaf: bool,
+    paint_self: bool,
+    hit_self: bool,
     pub id: Id,
     pub size: Vec2,
     pub children: Vec<PlacedBox>,
@@ -619,6 +635,8 @@ impl LayoutBox {
         }
         Ok(Self {
             leaf,
+            paint_self: leaf,
+            hit_self: leaf,
             id,
             size,
             children,
@@ -627,19 +645,17 @@ impl LayoutBox {
             paint_bounds: if clip == Clip::HardEdge { own } else { bounds },
         })
     }
-    /// Topmost leaf at a local point. As with box hit testing, ancestors' bounds
+    /// Topmost participating box at a local point. As with box hit testing, ancestors' bounds
     /// gate hits even when Clip::None permits painting outside them.
     pub fn hit_test(&self, point: Pos2) -> Option<Id> {
         if !(point.x >= 0.0 && point.y >= 0.0 && point.x < self.size.x && point.y < self.size.y) {
             return None;
         }
-        if self.leaf {
-            return Some(self.id);
-        }
         self.children
             .iter()
             .rev()
             .find_map(|child| child.layout.hit_test(point - child.offset))
+            .or_else(|| self.hit_self.then_some(self.id))
     }
     pub fn find(&self, id: Id) -> Option<&Self> {
         if self.id == id {

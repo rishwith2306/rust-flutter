@@ -12,14 +12,16 @@ use std::{
 
 type Command = Box<dyn FnOnce(&mut dyn Any) + Send>;
 pub(super) struct Queue {
+    pub pipeline: Arc<super::render_object::Pipeline>,
     pub dirty: AtomicBool,
     mounted: AtomicBool,
     commands: Mutex<Vec<Command>>,
     context: Mutex<Option<egui::Context>>,
 }
 impl Queue {
-    pub fn new(ctx: &egui::Context) -> Arc<Self> {
+    pub fn new(ctx: &egui::Context, pipeline: &Arc<super::render_object::Pipeline>) -> Arc<Self> {
         Arc::new(Self {
+            pipeline: pipeline.clone(),
             dirty: AtomicBool::new(true),
             mounted: AtomicBool::new(true),
             commands: Mutex::new(Vec::new()),
@@ -53,6 +55,17 @@ impl Queue {
         for command in commands {
             command(state);
         }
+    }
+    pub fn request_visual_update(&self, layout: bool) -> Result<(), Unmounted> {
+        let context = self.context.lock().unwrap();
+        let ctx = context.as_ref().ok_or(Unmounted)?;
+        if layout {
+            self.pipeline.invalidate();
+        }
+        let ctx = ctx.clone();
+        drop(context);
+        ctx.request_repaint();
+        Ok(())
     }
     pub fn close(&self) {
         let mut guard = self.commands.lock().unwrap();

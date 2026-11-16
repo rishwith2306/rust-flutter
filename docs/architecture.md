@@ -42,7 +42,9 @@ ancestor traversal are described in `inherited-models.md`. Observable sources an
 `notifiers.md`. Every retained tree also supplies a host-owned view-metrics model,
 refreshed from the active viewport before each build/flush. Selective geometry
 subscriptions and explicit subtree overrides are described in `display.md`.
-The full RenderObject pipeline and
+Custom persistent box objects, ordered render-child slots and coarse layout/paint
+invalidation are described in `render-objects.md`. Built-in box adapters still
+regenerate descriptions. The full RenderObject pipeline and
 GlobalKey reparenting remain unfinished. Rust owns data and lifetimes; closure composition avoids a custom
 language and a separate runtime. Long-lived state belongs in the application or mounted component state,
 not temporary widget variables. Stable IDs preserve egui's internal input state.

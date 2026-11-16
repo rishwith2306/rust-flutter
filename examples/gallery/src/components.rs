@@ -2,7 +2,7 @@ use rust_flutter::{
     display::{ViewAspect, ViewMetrics},
     egui,
     element::*,
-    layout::{Axis, BoxConstraints, CrossAxisAlignment},
+    layout::{Axis, BoxChildren, BoxConstraints, BoxGeometry, CrossAxisAlignment, LayoutError},
     notifier::ValueNotifier,
 };
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
@@ -148,6 +148,44 @@ impl StatelessWidget for List {
         )
     }
 }
+struct ViewReportRender;
+struct ViewReportBox {
+    layouts: usize,
+}
+impl RenderObjectWidget for ViewReportRender {
+    type Object = ViewReportBox;
+    fn create_render_object(&self, _: &RenderContext) -> Self::Object {
+        #[cfg(debug_assertions)]
+        eprintln!("rust-flutter gallery render-view create");
+        ViewReportBox { layouts: 0 }
+    }
+    fn update_render_object(&self, _: &mut Self::Object, _: &RenderContext) {
+        #[cfg(debug_assertions)]
+        eprintln!("rust-flutter gallery render-view update");
+    }
+}
+impl RenderBox for ViewReportBox {
+    fn layout(
+        &mut self,
+        constraints: BoxConstraints,
+        children: &mut BoxChildren<'_>,
+        _: &RenderContext,
+    ) -> Result<BoxGeometry, LayoutError> {
+        let size = children.layout(0, constraints)?;
+        children.place(0, egui::Vec2::ZERO)?;
+        self.layouts += 1;
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "rust-flutter gallery render-view layout={} size={}x{}",
+            self.layouts, size.x, size.y
+        );
+        Ok(BoxGeometry::new(size))
+    }
+    fn dispose(&mut self) {
+        #[cfg(debug_assertions)]
+        eprintln!("rust-flutter gallery render-view dispose");
+    }
+}
 struct ViewReport;
 #[derive(Default)]
 struct ViewReportState {
@@ -183,9 +221,12 @@ impl State<ViewReport> for ViewReportState {
             "View: {:.0} × {:.0} · keyboard: {:?} · view builds: {}",
             size.x, size.y, view.keyboard, self.builds
         );
-        Widget::leaf(egui::vec2(0.0, 28.0), move |ui| {
-            ui.label(&text);
-        })
+        Widget::render_object(
+            ViewReportRender,
+            vec![Widget::leaf(egui::vec2(0.0, 28.0), move |ui| {
+                ui.label(&text);
+            })],
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 use super::*;
-/// Reserve the computed root size and render each leaf inside a stable child UI.
+/// Reserve root geometry and paint participating boxes inside stable child UIs.
+/// Custom boxes paint before their children; ordinary leaves paint as before.
 /// The callback should fit widgets/paint to `ui.max_rect()`; clip inheritance follows
 /// the geometry tree. Leaf UIs have independent layout cursors and stable IDs.
 pub fn show_layout(
@@ -26,7 +27,7 @@ fn visit(
     } else {
         inherited_clip
     };
-    if layout.is_leaf() {
+    if layout.paint_self {
         let mut child = ui.new_child(
             egui::UiBuilder::new()
                 .id(scope.with(layout.id))
@@ -35,16 +36,15 @@ fn visit(
         );
         child.set_clip_rect(clip);
         render(layout.id, &mut child);
-    } else {
-        for child in &layout.children {
-            visit(
-                ui,
-                scope,
-                &child.layout,
-                origin + child.offset,
-                clip,
-                render,
-            );
-        }
+    }
+    for child in &layout.children {
+        visit(
+            ui,
+            scope,
+            &child.layout,
+            origin + child.offset,
+            clip,
+            render,
+        );
     }
 }

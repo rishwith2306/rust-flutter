@@ -1,6 +1,9 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
 mod inherited;
 mod notifier_builder;
+mod render_object;
+use render_object::{MountedRender, Pipeline};
+pub use render_object::{RenderBox, RenderContext, RenderHandle, RenderObjectWidget};
 mod safe_area;
 use safe_area::SafeAreaNode;
 pub use safe_area::SafeAreaOptions;
@@ -116,6 +119,7 @@ enum MountedKind {
     Component(Box<dyn Component>),
     Inherited(Box<dyn Provider>),
     SafeArea(SafeAreaNode),
+    RenderObject(Box<dyn MountedRender>),
 }
 struct Element {
     id: ElementId,
@@ -146,13 +150,14 @@ impl Element {
         depth: usize,
         epoch: u64,
         scope: &Scope,
+        pipeline: &Arc<Pipeline>,
     ) -> Result<Self, ElementError> {
         validate(&widget, depth)?;
         let mut element = if let Some(old) = old.filter(|old| old.matches(&widget)) {
             old
         } else {
             let id = ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed));
-            let queue = Queue::new(ctx);
+            let queue = Queue::new(ctx, pipeline);
             let dependencies = Dependencies::new(id, &queue, scope.clone());
             let context = BuildContext {
                 dependencies: dependencies.clone(),
@@ -174,6 +179,9 @@ impl Element {
                 }
                 Kind::SafeArea(options) => {
                     MountedKind::SafeArea(SafeAreaNode::new(id, options, scope))
+                }
+                Kind::RenderObject(description) => {
+                    MountedKind::RenderObject(description.mount(context))
                 }
                 other => MountedKind::Render(other),
             };
@@ -201,6 +209,9 @@ impl Element {
                 provider.update(description.into_any())
             }
             (MountedKind::SafeArea(node), Kind::SafeArea(options)) => node.options = options,
+            (MountedKind::RenderObject(object), Kind::RenderObject(description)) => {
+                object.update(description.into_any())
+            }
             (slot, render) => *slot = MountedKind::Render(render),
         }
         element.rebuild(children, ctx, depth, epoch, scope)?;
@@ -272,9 +283,11 @@ impl Element {
                 depth + 1,
                 epoch,
                 &child_scope,
+                &self.queue.pipeline,
             )?);
         }
         self.children = next;
+        self.synchronize_render_children();
         Ok(())
     }
     fn flush(
@@ -300,13 +313,37 @@ impl Element {
                     self.last_build = epoch;
                     provider.apply_pending()?;
                 }
+                if let MountedKind::RenderObject(object) = &mut self.kind {
+                    object.mark_needs_update();
+                    changed = true;
+                }
             }
         }
         let child_scope = self.child_scope(scope);
         for child in &mut self.children {
             changed |= child.flush(ctx, depth + 1, epoch, &child_scope)?;
         }
+        self.synchronize_render_children();
         Ok(changed)
+    }
+    fn render_id(&self) -> egui::Id {
+        if matches!(
+            self.kind,
+            MountedKind::Component(_) | MountedKind::Inherited(_)
+        ) {
+            self.children[0].render_id()
+        } else {
+            egui::Id::new(self.id)
+        }
+    }
+    fn synchronize_render_children(&mut self) {
+        if !matches!(self.kind, MountedKind::RenderObject(_)) {
+            return;
+        }
+        let ids = self.children.iter().map(Self::render_id).collect();
+        if let MountedKind::RenderObject(object) = &mut self.kind {
+            object.synchronize(ids);
+        }
     }
     fn render_node(&self, paint: &mut HashMap<egui::Id, Paint>) -> BoxNode {
         if matches!(
@@ -314,6 +351,16 @@ impl Element {
             MountedKind::Component(_) | MountedKind::Inherited(_)
         ) {
             return self.children[0].render_node(paint);
+        }
+        if let MountedKind::RenderObject(object) = &self.kind {
+            paint.insert(egui::Id::new(self.id), object.paint());
+            return BoxNode::new(
+                self.id,
+                BoxKind::Custom {
+                    layout: object.layout(),
+                    children: self.children.iter().map(|c| c.render_node(paint)).collect(),
+                },
+            );
         }
         if let MountedKind::SafeArea(node) = &self.kind {
             return BoxNode::new(
@@ -401,7 +448,9 @@ impl Element {
                     })
                     .collect(),
             }),
-            Kind::Component(_) | Kind::Inherited(_) | Kind::SafeArea(_) => unreachable!(),
+            Kind::Component(_) | Kind::Inherited(_) | Kind::SafeArea(_) | Kind::RenderObject(_) => {
+                unreachable!()
+            }
         };
         BoxNode::new(key, kind)
     }
@@ -449,6 +498,7 @@ pub struct ElementTree {
     render: Option<BoxNode>,
     paint: HashMap<egui::Id, Paint>,
     view: AmbientModel<crate::display::ViewMetrics>,
+    pipeline: Arc<Pipeline>,
 }
 impl ElementTree {
     pub fn new(ctx: &egui::Context, root: Widget) -> Result<Self, ElementError> {
@@ -458,6 +508,7 @@ impl ElementTree {
             epoch: 0,
             render: None,
             paint: HashMap::new(),
+            pipeline: Pipeline::new(),
             view: AmbientModel::new(
                 ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
                 crate::display::view_metrics(ctx),
@@ -469,6 +520,7 @@ impl ElementTree {
     pub fn update(&mut self, widget: Widget) -> Result<(), ElementError> {
         // Static descriptor failures leave the previous mounted tree intact.
         validate(&widget, 0)?;
+        self.pipeline.invalidate();
         self.render = None;
         self.paint.clear();
         self.epoch = self.epoch.wrapping_add(1);
@@ -480,6 +532,7 @@ impl ElementTree {
             0,
             self.epoch,
             &self.view.scope(),
+            &self.pipeline,
         )?);
         Ok(())
     }
@@ -492,6 +545,7 @@ impl ElementTree {
             Ok(changed) => {
                 self.root = Some(root);
                 if changed {
+                    self.pipeline.invalidate();
                     self.render = None;
                     self.paint.clear();
                 }

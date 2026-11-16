@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 126 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 138 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -236,3 +236,24 @@ viewport area. These tests use injected geometry; they are not new native-device
 notch or rotation evidence. The default egui CentralPanel already consumes safe
 areas, so adding a raw-view SafeArea there requires an explicitly consumed model.
 The display guide records this current integration boundary.
+
+
+## Persistent custom render boxes
+
+Typed render-object tests cover one-time creation/attachment/disposal, identity
+across keyed updates, type replacement with the same object type, ordered actual
+render-child slots through components, inherited reconfiguration, paint-only
+cache reuse, worker/layout-phase invalidations, initial/dynamic build failure
+cleanup and layout-error recovery. The child protocol rejects malformed geometry,
+invalid indices, missing/duplicate placement and nested reuse of an active layout
+object. egui pointer tests check background-before-child painting and child input.
+
+The native Linux gallery now uses a persistent custom container for its view
+report. The rendered probe records one creation and one layout across unrelated
+counter/notifier interactions, then one update and one additional layout after
+resizing: widths 984 to 884 logical points, with a stable 28-point height. Existing
+exact-color and glyph probes pass. The local API 37 / x86_64 Android probe passes with one creation,
+configuration and layout for that container during ordinary component interaction
+(395.4375 × 28 logical points).
+These are scoped render-object checks, not complete RenderBox/PipelineOwner parity.
+Full limitations and API usage are in [render objects](render-objects.md).

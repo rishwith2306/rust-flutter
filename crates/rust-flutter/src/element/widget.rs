@@ -1,4 +1,5 @@
 use super::inherited::{InheritedModel, InheritedNotifier, Provided, ProviderDescription, Watch};
+use super::render_object::{RenderDescription, RenderObjectWidget, RenderWidget};
 use super::{Key, SafeAreaOptions, state::*};
 use crate::{layout::*, notifier::Listenable};
 use std::{cell::RefCell, rc::Rc};
@@ -111,6 +112,7 @@ pub(super) enum Kind {
     Stack(StackStyle, Vec<Positioned>),
     Component(Box<dyn Description>),
     Inherited(Box<dyn ProviderDescription>),
+    RenderObject(Box<dyn RenderDescription>),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Token {
@@ -123,6 +125,7 @@ pub(super) enum Token {
     Stack,
     Component(std::any::TypeId),
     Inherited(std::any::TypeId),
+    RenderObject(std::any::TypeId),
 }
 impl Kind {
     pub fn token(&self) -> Token {
@@ -136,6 +139,7 @@ impl Kind {
             Self::Stack(..) => Token::Stack,
             Self::Component(d) => Token::Component(d.token()),
             Self::Inherited(d) => Token::Inherited(d.kind()),
+            Self::RenderObject(d) => Token::RenderObject(d.token()),
         }
     }
     pub fn name(&self) -> &'static str {
@@ -149,6 +153,7 @@ impl Kind {
             Self::Stack(..) => "Stack",
             Self::Component(d) => d.name(),
             Self::Inherited(d) => d.name(),
+            Self::RenderObject(d) => d.name(),
         }
     }
 }
@@ -315,6 +320,11 @@ impl Widget {
             .map(|item| (item.widget, item.position))
             .unzip();
         Self::new(Kind::Stack(style, positions), children)
+    }
+    /// Mount a persistent render box with ordered, keyed children. Empty and
+    /// single-child lists support leaf and proxy render objects respectively.
+    pub fn render_object<W: RenderObjectWidget>(widget: W, children: Vec<Self>) -> Self {
+        Self::new(Kind::RenderObject(Box::new(RenderWidget(widget))), children)
     }
     pub fn stateful<W: StatefulWidget>(widget: W) -> Self {
         Self::new(Kind::Component(Box::new(Stateful(widget))), vec![])

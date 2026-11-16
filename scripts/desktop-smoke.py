@@ -142,7 +142,13 @@ try:
             assert int(after[0]) == 2, after
             component_capture("desktop-inherited-view-resized.png")
             view_metrics = {"before": before, "after": after}
-            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
+            trace=(output / "gallery.log").read_text()
+            render_layouts=re.findall(r"render-view layout=(\d+) size=([\d.]+)x([\d.]+)",trace)
+            assert trace.count("render-view create") == 1, trace
+            assert trace.count("render-view update") == 2, trace
+            assert len(render_layouts) == 2 and [v[0] for v in render_layouts] == ["1", "2"], render_layouts
+            render_objects={"created":1,"updated":2,"layouts":render_layouts}
+            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
             print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:
     if app is not None and app.poll() is None:

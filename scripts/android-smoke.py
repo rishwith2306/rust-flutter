@@ -222,6 +222,14 @@ components = probe_components(lambda name: screenshot("android-" + name),
     lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))), args.scale)
 device("shell", "input", "keyevent", "4")
 wait_state(route="home")
+pid = device("shell", "pidof", package).stdout.decode().strip()
+render_trace = device("logcat", "-d", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
+render_layouts = re.findall(r"render-view layout=(\d+) size=([\d.]+)x([\d.]+)", render_trace)
+assert render_trace.count("render-view create") == 1, render_trace
+assert render_trace.count("render-view update") == 1, render_trace
+assert len(render_layouts) == 1 and render_layouts[0][0] == "1", render_layouts
+(output / "android-render-object.txt").write_text(render_trace)
+render_objects = {"created": 1, "updated": 1, "layouts": render_layouts}
 result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
           "sdk": device("shell", "getprop", "ro.build.version.sdk").stdout.decode().strip(),
@@ -235,6 +243,7 @@ result = {"passed": True, "serial": args.serial,
           "asset_page_opened": True,
           "layout_state_after_touch": layout_value,
           "components": components,
+          "render_objects": render_objects,
           "scope": "rendered touch controls, injected keyboard text, route back, background/resume, process-restart restoration, bundled assets and constraint layout interaction"}
 (output / "android-result.json").write_text(json.dumps(result, indent=2) + "\n")
 print("PASS: Android touch/text, keyboard metrics, routes, resume/restoration, layout and retained component state")
