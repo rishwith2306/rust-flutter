@@ -131,6 +131,73 @@ impl ViewMetrics {
     }
 }
 
+/// Selective inherited dependencies for [`ViewMetrics`]. An observation returns
+/// a full immutable snapshot but only changes to the selected aspects rebuild it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ViewAspect {
+    Viewport,
+    Size,
+    Orientation,
+    PixelsPerPoint,
+    NativePixelsPerPoint,
+    SafeArea,
+    Keyboard,
+    ViewPadding,
+    ViewInsets,
+    Padding,
+    Occlusion,
+    UnobscuredRect,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Orientation {
+    Portrait,
+    Landscape,
+}
+impl ViewMetrics {
+    /// Square viewports are portrait, matching Flutter's orientation convention.
+    pub fn orientation(&self) -> Orientation {
+        if self.viewport.width() > self.viewport.height() {
+            Orientation::Landscape
+        } else {
+            Orientation::Portrait
+        }
+    }
+}
+impl crate::element::InheritedModel for ViewMetrics {
+    type Aspect = ViewAspect;
+    fn update_should_notify(&self, old: &Self) -> bool {
+        self != old
+    }
+    fn update_should_notify_dependent(
+        &self,
+        old: &Self,
+        aspects: &std::collections::HashSet<ViewAspect>,
+    ) -> bool {
+        aspects.iter().any(|aspect| match aspect {
+            ViewAspect::Viewport => self.viewport != old.viewport,
+            ViewAspect::Size => self.viewport.size() != old.viewport.size(),
+            ViewAspect::Orientation => self.orientation() != old.orientation(),
+            ViewAspect::PixelsPerPoint => self.pixels_per_point != old.pixels_per_point,
+            ViewAspect::NativePixelsPerPoint => {
+                self.native_pixels_per_point != old.native_pixels_per_point
+            }
+            ViewAspect::SafeArea => self.safe_area != old.safe_area,
+            ViewAspect::Keyboard => self.keyboard != old.keyboard,
+            ViewAspect::ViewPadding => {
+                self.occlusion.map(|o| o.view_padding) != old.occlusion.map(|o| o.view_padding)
+            }
+            ViewAspect::ViewInsets => {
+                self.occlusion.map(|o| o.view_insets) != old.occlusion.map(|o| o.view_insets)
+            }
+            ViewAspect::Padding => {
+                self.occlusion.map(|o| o.padding) != old.occlusion.map(|o| o.padding)
+            }
+            ViewAspect::Occlusion => self.occlusion != old.occlusion,
+            ViewAspect::UnobscuredRect => self.unobscured_rect() != old.unobscured_rect(),
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct PlatformInsets {
     pub keyboard: KeyboardVisibility,
@@ -156,7 +223,9 @@ pub(crate) fn set_platform_insets(ctx: &egui::Context, value: Option<PlatformIns
 
 /// Read metrics for the active egui viewport. Use during a frame; before the first
 /// frame, egui's default viewport geometry is not a platform measurement.
-/// Reading does not subscribe a retained element to inherited dependencies.
+/// Reading this function does not subscribe a retained element. To subscribe,
+/// use `BuildContext::depend_on::<ViewMetrics>()` or
+/// `BuildContext::depend_on_aspect::<ViewMetrics>(ViewAspect::Size)` instead.
 pub fn view_metrics(ctx: &egui::Context) -> ViewMetrics {
     let (viewport, safe_area, native_pixels_per_point, id) = ctx.input(|i| {
         (
@@ -190,6 +259,116 @@ pub fn view_metrics(ctx: &egui::Context) -> ViewMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn platform_keyboard_samples_notify_only_interested_retained_components() {
+        use crate::element::*;
+        use std::{cell::Cell, rc::Rc};
+        struct Observer(ViewAspect, Rc<Cell<usize>>);
+        impl StatelessWidget for Observer {
+            fn build(&self, ctx: &BuildContext) -> Widget {
+                ctx.depend_on_aspect::<ViewMetrics>(self.0)
+                    .unwrap()
+                    .unwrap();
+                self.1.set(self.1.get() + 1);
+                Widget::empty()
+            }
+        }
+        let ctx = egui::Context::default();
+        let counts: Vec<_> = (0..6).map(|_| Rc::new(Cell::new(0))).collect();
+        let aspects = [
+            ViewAspect::Size,
+            ViewAspect::Keyboard,
+            ViewAspect::ViewInsets,
+            ViewAspect::ViewPadding,
+            ViewAspect::Padding,
+            ViewAspect::UnobscuredRect,
+        ];
+        let raw = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(400.0, 600.0),
+            )),
+            ..Default::default()
+        };
+        let mut tree = None;
+        let _ = ctx.run(raw.clone(), |ctx| {
+            tree = Some(
+                ElementTree::new(
+                    ctx,
+                    Widget::flex(
+                        FlexStyle::new(crate::layout::Axis::Vertical),
+                        aspects
+                            .iter()
+                            .zip(&counts)
+                            .map(|(a, c)| {
+                                FlexItem::fixed(Widget::stateless(Observer(*a, c.clone())))
+                            })
+                            .collect(),
+                    ),
+                )
+                .unwrap(),
+            );
+        });
+        let mut tree = tree.unwrap();
+        let sample = |keyboard, bottom| PlatformInsets {
+            keyboard,
+            geometry: Some((
+                egui::vec2(400.0, 600.0),
+                MarginF32 {
+                    bottom: 24.0,
+                    ..MarginF32::ZERO
+                },
+                MarginF32 {
+                    bottom,
+                    ..MarginF32::ZERO
+                },
+            )),
+        };
+        let mut publish = |sample: Option<PlatformInsets>| {
+            ctx.data_mut(|d| {
+                let key = platform_key(egui::ViewportId::ROOT);
+                if let Some(sample) = sample {
+                    d.insert_temp(key, sample);
+                } else {
+                    d.remove::<PlatformInsets>(key);
+                }
+            });
+            let _ = ctx.run(raw.clone(), |_| {
+                tree.flush().unwrap();
+            });
+        };
+        publish(Some(sample(KeyboardVisibility::Hidden, 0.0)));
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 2, 2, 2, 2, 1]
+        );
+        publish(Some(sample(KeyboardVisibility::Visible, 300.0)));
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 3, 3, 2, 3, 2]
+        );
+        publish(Some(sample(KeyboardVisibility::Visible, 300.0))); // repeated polling is quiet
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 3, 3, 2, 3, 2]
+        );
+        publish(Some(sample(KeyboardVisibility::Visible, 0.0))); // visible floating keyboard
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 3, 4, 2, 4, 3]
+        );
+        publish(Some(sample(KeyboardVisibility::Hidden, 0.0)));
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 4, 4, 2, 4, 3]
+        );
+        publish(None); // host can no longer measure the keyboard
+        assert_eq!(
+            counts.iter().map(|c| c.get()).collect::<Vec<_>>(),
+            [1, 5, 5, 3, 5, 3]
+        );
+    }
 
     #[test]
     fn sampled_geometry_rejects_resize_mismatches_and_is_scoped_to_a_viewport() {

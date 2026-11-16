@@ -51,6 +51,52 @@ devices and floating keyboards require further validation.
 
 Read inside a frame: before the first frame, egui's default bounds are not a
 platform measurement. Measurements belong to the active viewport, not a global
-primary screen. Retained components do not acquire inherited dependencies merely
-by calling this function; an automatic inherited MediaQuery and aspect-based
-invalidations remain work to implement.
+primary screen. Calling the immediate `view_metrics` function does not create an inherited
+dependency. Retained components can subscribe through the ambient model below.
+
+
+## Retained component subscriptions
+
+Every `ElementTree` supplies a read-only ambient `ViewMetrics` inherited model.
+It refreshes from the active viewport before `update` and `flush` (also invoked
+by `layout`/`show`). Apps must continue showing/flushing their tree each frame;
+they do not need to recreate the widget description when host geometry changes.
+No extra visible element or layout wrapper is inserted, so user root IDs and
+component state remain stable.
+
+Inside a component's `build`, subscribe through its `BuildContext`:
+
+```rust,ignore
+use rust_flutter::display::{ViewAspect, ViewMetrics};
+
+let view = ctx
+    .depend_on_aspect::<ViewMetrics>(ViewAspect::Size)?
+    .expect("an ElementTree supplies ambient view metrics");
+let width = view.viewport.width();
+```
+
+`depend_on::<ViewMetrics>()` rebuilds on any metric change. `depend_on_aspect`
+accumulates selected dependencies: size, orientation, effective scale, native
+density, viewport rectangle, safe area, keyboard visibility, each occlusion
+inset group, the whole occlusion record, or the computed unobscured rectangle.
+Only matching changes trigger `did_change_dependencies` and a component build;
+multiple changes coalesce into one pass. Repeated identical samples stay quiet.
+Orientation uses viewport dimensions, with squares treated as portrait.
+
+Like other inherited snapshots, the returned value is immutable. A component
+watching only size can retain older keyboard data until it rebuilds; observe all
+the fields used by the component. `read::<ViewMetrics>()` does not subscribe and
+is permitted during `init_state`; listening during initialization remains invalid.
+A failed/unavailable host sample is a change to unknown, not a measured zero.
+
+An explicit `Widget::inherited_model(custom_metrics, child)` shadows the ambient
+model for a subtree, including previews and tests. This explicit provider has the
+ordinary inherited update handle. The host-owned ambient provider exposes no
+mutable handle. All subscription lifetime and unmount checks are unchanged.
+
+This implements selective geometry dependencies described by Flutter's
+[MediaQuery](https://api.flutter.dev/flutter/widgets/MediaQuery-class.html).
+Text scaling, accessibility preferences, display features, remove-padding widgets,
+and the rest of MediaQuery's API remain pending. The gallery's component page
+includes a retained view report; resize its window to see its build count change
+without rebuilding it for unrelated counter/notifier updates.

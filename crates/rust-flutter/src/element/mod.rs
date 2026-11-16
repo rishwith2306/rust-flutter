@@ -4,7 +4,7 @@ mod notifier_builder;
 mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};
-use inherited::{Dependencies, Phase, Provider, Scope};
+use inherited::{AmbientModel, Dependencies, Phase, Provider, Scope};
 pub use inherited::{DependencyError, InheritedHandle, InheritedModel, InheritedNotifier};
 pub use state::{
     BuildContext, State, StateContext, StateHandle, StatefulWidget, StatelessWidget, Unmounted,
@@ -412,12 +412,16 @@ impl Element {
 
 /// Own one tree per egui context. `update` reconciles a new description; `flush`
 /// processes queued state commands once per component in that build pass.
+/// Each tree supplies an ambient [`crate::display::ViewMetrics`] model, refreshed
+/// from the active viewport before reconciliation and flush. Explicit inherited
+/// models of the same type can override it for a subtree.
 pub struct ElementTree {
     root: Option<Element>,
     ctx: egui::Context,
     epoch: u64,
     render: Option<BoxNode>,
     paint: HashMap<egui::Id, Paint>,
+    view: AmbientModel<crate::display::ViewMetrics>,
 }
 impl ElementTree {
     pub fn new(ctx: &egui::Context, root: Widget) -> Result<Self, ElementError> {
@@ -427,6 +431,10 @@ impl ElementTree {
             epoch: 0,
             render: None,
             paint: HashMap::new(),
+            view: AmbientModel::new(
+                ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
+                crate::display::view_metrics(ctx),
+            ),
         };
         tree.update(root)?;
         Ok(tree)
@@ -437,20 +445,22 @@ impl ElementTree {
         self.render = None;
         self.paint.clear();
         self.epoch = self.epoch.wrapping_add(1);
+        self.view.refresh(crate::display::view_metrics(&self.ctx));
         self.root = Some(Element::reconcile(
             self.root.take(),
             widget,
             &self.ctx,
             0,
             self.epoch,
-            &Scope::new(),
+            &self.view.scope(),
         )?);
         Ok(())
     }
     pub fn flush(&mut self) -> Result<bool, ElementError> {
         self.epoch = self.epoch.wrapping_add(1);
         let mut root = self.root.take().ok_or(ElementError::EmptyTree)?;
-        let result = root.flush(&self.ctx, 0, self.epoch, &Scope::new());
+        self.view.refresh(crate::display::view_metrics(&self.ctx));
+        let result = root.flush(&self.ctx, 0, self.epoch, &self.view.scope());
         match result {
             Ok(changed) => {
                 self.root = Some(root);

@@ -1,4 +1,5 @@
 use rust_flutter::{
+    display::{ViewAspect, ViewMetrics},
     egui,
     element::*,
     layout::{Axis, BoxConstraints, CrossAxisAlignment},
@@ -147,6 +148,47 @@ impl StatelessWidget for List {
         )
     }
 }
+struct ViewReport;
+#[derive(Default)]
+struct ViewReportState {
+    builds: usize,
+}
+impl StatefulWidget for ViewReport {
+    type State = ViewReportState;
+    fn create_state(&self) -> Self::State {
+        ViewReportState::default()
+    }
+}
+impl State<ViewReport> for ViewReportState {
+    fn build(&mut self, _: &ViewReport, ctx: &StateContext<Self>) -> Widget {
+        let mut view = None;
+        for aspect in [
+            ViewAspect::Size,
+            ViewAspect::Keyboard,
+            ViewAspect::ViewInsets,
+        ] {
+            view = ctx
+                .depend_on_aspect::<ViewMetrics>(aspect)
+                .expect("mounted view query");
+        }
+        let view = view.expect("ambient view metrics");
+        self.builds += 1;
+        let size = view.viewport.size();
+        #[cfg(debug_assertions)]
+        eprintln!(
+            "rust-flutter gallery inherited-view build={} size={}x{} keyboard={:?}",
+            self.builds, size.x, size.y, view.keyboard
+        );
+        let text = format!(
+            "View: {:.0} × {:.0} · keyboard: {:?} · view builds: {}",
+            size.x, size.y, view.keyboard, self.builds
+        );
+        Widget::leaf(egui::vec2(0.0, 28.0), move |ui| {
+            ui.label(&text);
+        })
+    }
+}
+
 pub(super) struct ComponentDemo {
     tree: ElementTree,
     reversed: bool,
@@ -156,6 +198,7 @@ pub(super) struct ComponentDemo {
     a_step: i32,
     observable: ValueNotifier<i32>,
     observable_tree: ElementTree,
+    view_tree: ElementTree,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -196,6 +239,8 @@ impl ComponentDemo {
         Self {
             observable,
             observable_tree,
+            view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
+                .expect("valid view report"),
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
             reversed: false,
             show_b: true,
@@ -317,6 +362,11 @@ impl ComponentDemo {
         });
         if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0))
             && let Err(error) = self.observable_tree.show(ui, constraints)
+        {
+            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+        }
+        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 28.0))
+            && let Err(error) = self.view_tree.show(ui, constraints)
         {
             ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
         }

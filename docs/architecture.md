@@ -39,7 +39,10 @@ queues state updates for selective component builds. Typed inherited scopes
 register consumers and notify their dependency hooks without resetting state. See `layout.md` and
 `components.md` / `inherited.md`. Typed model aspects and supported-aspect
 ancestor traversal are described in `inherited-models.md`. Observable sources and notifier-driven inherited/build adapters are described in
-`notifiers.md`. The full RenderObject pipeline and
+`notifiers.md`. Every retained tree also supplies a host-owned view-metrics model,
+refreshed from the active viewport before each build/flush. Selective geometry
+subscriptions and explicit subtree overrides are described in `display.md`.
+The full RenderObject pipeline and
 GlobalKey reparenting remain unfinished. Rust owns data and lifetimes; closure composition avoids a custom
 language and a separate runtime. Long-lived state belongs in the application or mounted component state,
 not temporary widget variables. Stable IDs preserve egui's internal input state.

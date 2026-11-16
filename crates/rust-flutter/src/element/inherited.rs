@@ -233,11 +233,11 @@ pub(super) struct Link {
     subscribers: RefCell<HashMap<ElementId, DependentSubscription>>,
 }
 impl Link {
-    fn new<T: 'static>(id: ElementId, queue: &Arc<Queue>, value: Rc<T>) -> Rc<Self> {
+    fn new<T: 'static>(id: ElementId, queue: Option<&Arc<Queue>>, value: Rc<T>) -> Rc<Self> {
         Rc::new(Self {
             id,
             kind: TypeId::of::<T>(),
-            queue: Arc::downgrade(queue),
+            queue: queue.map_or_else(SyncWeak::new, Arc::downgrade),
             parent: RefCell::new(None),
             active: Cell::new(true),
             value: RefCell::new(Some(value)),
@@ -481,7 +481,7 @@ impl<T: 'static> ProviderDescription for Provided<T> {
     }
     fn mount(self: Box<Self>, id: ElementId, queue: Arc<Queue>) -> Box<dyn Provider> {
         let value = Rc::new(self.value);
-        let link = Link::new(id, &queue, value.clone());
+        let link = Link::new(id, Some(&queue), value.clone());
         let mut state = ValueState {
             value,
             notify: self.notify,
@@ -547,5 +547,42 @@ impl<T: 'static> Drop for MountedProvider<T> {
         self.queue.close();
         self.state.subscription.take();
         self.state.link.close();
+    }
+}
+
+/// Host-owned root model. It has no command queue, so consumers can subscribe
+/// and read snapshots but cannot obtain a handle that edits platform truth.
+pub(super) struct AmbientModel<T: InheritedModel> {
+    value: Rc<T>,
+    link: Rc<Link>,
+}
+impl<T: InheritedModel> AmbientModel<T> {
+    pub fn new(id: ElementId, value: T) -> Self {
+        let value = Rc::new(value);
+        Self {
+            link: Link::new(id, None, value.clone()),
+            value,
+        }
+    }
+    pub fn refresh(&mut self, value: T) {
+        let next = Rc::new(value);
+        let old = std::mem::replace(&mut self.value, next.clone());
+        *self.link.value.borrow_mut() = Some(next.clone());
+        if next.update_should_notify(&old) {
+            self.link.notify_where(|aspects| {
+                next.update_should_notify_dependent(
+                    &old,
+                    aspects.downcast_ref().expect("ambient model aspect type"),
+                )
+            });
+        }
+    }
+    pub fn scope(&self) -> Scope {
+        Scope::from([(self.link.kind, self.link.clone())])
+    }
+}
+impl<T: InheritedModel> Drop for AmbientModel<T> {
+    fn drop(&mut self) {
+        self.link.close();
     }
 }

@@ -4,6 +4,7 @@ Requires Xvfb, xdotool and ImageMagick. App data stays inside a temporary direct
 """
 import json
 import os
+import re
 from pathlib import Path
 import select
 import subprocess
@@ -131,8 +132,18 @@ try:
                 subprocess.run(["import", "-window", window, str(path)], env=env, timeout=10, check=True)
                 return path
             components = probe_components(component_capture, lambda x,y: click(window, round(x), round(y)))
-            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
-            print("PASS: gallery input/restoration/assets, resized layout and keyed component state across swap/removal/reinsertion")
+            def view_report():
+                matches = re.findall(r"inherited-view build=(\d+) size=([\d.]+)x([\d.]+) keyboard=(\w+)", (output / "gallery.log").read_text())
+                return matches[-1] if matches else None
+            before = wait_for(view_report, "retained view report did not build")
+            assert before == ("1", "1000", "600", "Unknown"), before
+            assert xdo("windowsize", window, "900", "650").returncode == 0
+            after = wait_for(lambda: (v if (v := view_report()) and v[1:3] == ("900", "650") else None), "ambient view size did not update after native resize")
+            assert int(after[0]) == 2, after
+            component_capture("desktop-inherited-view-resized.png")
+            view_metrics = {"before": before, "after": after}
+            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
+            print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:
     if app is not None and app.poll() is None:
         app.terminate()

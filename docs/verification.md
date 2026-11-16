@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 117 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 121 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -208,3 +208,20 @@ IME occlusion matched the system frame, with stable 63-pixel bottom view padding
 dismissal returned occlusion to zero and padding to 63. This does not establish
 IME composition/candidates, automatic
 focused-editor scrolling or animation-frame synchronization.
+
+
+## Ambient retained view dependencies
+
+Every retained tree now provides host-owned `ViewMetrics` through the inherited
+model mechanism. Components can watch all metrics or selected `ViewAspect`s.
+Tests cover initial/non-listening reads, notification coalescing, stable IDs and
+state, subtree overrides and their independent handles, unmount/remount, keyboard
+visibility versus edge occlusion, repeated identical samples, and zoom versus
+native density. Host values expose no mutable inherited handle.
+
+The Linux X11/Xvfb rendered probe leaves the view component at one build across
+keyed counter and notifier interactions, resizes the native window from
+1000×600 to 900×650, and observes exactly one additional view build. Its screenshot
+shows the new dimensions and build count. Existing exact-color/glyph interaction
+checks continue to pass. This verifies a native resize on Linux; it does not
+establish macOS window events or every Android configuration-change path.
