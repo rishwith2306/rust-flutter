@@ -101,6 +101,8 @@ pub(super) enum Kind {
         paint: Paint,
     },
     Padding(Insets),
+    IntrinsicWidth(Option<f32>, Option<f32>),
+    IntrinsicHeight,
     SafeArea(SafeAreaOptions),
     Constrained(BoxConstraints),
     Align {
@@ -118,6 +120,8 @@ pub(super) enum Kind {
 pub(super) enum Token {
     Leaf,
     Padding,
+    IntrinsicWidth,
+    IntrinsicHeight,
     SafeArea,
     Constrained,
     Align,
@@ -132,6 +136,8 @@ impl Kind {
         match self {
             Self::Leaf { .. } => Token::Leaf,
             Self::Padding(_) => Token::Padding,
+            Self::IntrinsicWidth(..) => Token::IntrinsicWidth,
+            Self::IntrinsicHeight => Token::IntrinsicHeight,
             Self::SafeArea(_) => Token::SafeArea,
             Self::Constrained(_) => Token::Constrained,
             Self::Align { .. } => Token::Align,
@@ -146,6 +152,8 @@ impl Kind {
         match self {
             Self::Leaf { .. } => "Leaf",
             Self::Padding(_) => "Padding",
+            Self::IntrinsicWidth(..) => "IntrinsicWidth",
+            Self::IntrinsicHeight => "IntrinsicHeight",
             Self::SafeArea(_) => "SafeArea",
             Self::Constrained(_) => "Constrained",
             Self::Align { .. } => "Align",
@@ -275,6 +283,12 @@ impl Widget {
             },
             vec![],
         )
+    }
+    pub fn intrinsic_width(step_width: Option<f32>, step_height: Option<f32>, child: Self) -> Self {
+        Self::new(Kind::IntrinsicWidth(step_width, step_height), vec![child])
+    }
+    pub fn intrinsic_height(child: Self) -> Self {
+        Self::new(Kind::IntrinsicHeight, vec![child])
     }
     pub fn padding(insets: Insets, child: Self) -> Self {
         Self::new(Kind::Padding(insets), vec![child])

@@ -2,7 +2,9 @@
 //! Own a `BoxNode` tree, compute geometry, then paint leaves through `show_layout`.
 mod custom;
 mod flex;
+mod query;
 pub use custom::{BoxChildren, BoxGeometry, CustomBox, CustomBoxLayout};
+pub use query::{BoxQueries, IntrinsicDimension};
 mod stack;
 mod ui;
 use egui::{Id, Pos2, Rect, Vec2};
@@ -14,6 +16,7 @@ pub enum LayoutError {
     InvalidConstraints,
     InvalidSize,
     InvalidConfiguration(&'static str),
+    UnsupportedQuery(&'static str),
     UnboundedSize,
     UnboundedFlex,
     UnboundedStretch,
@@ -27,6 +30,7 @@ impl fmt::Display for LayoutError {
             Self::InvalidConstraints => f.write_str("box constraints must satisfy 0 <= min <= max on each axis"),
             Self::InvalidSize => f.write_str("box sizes must be nonnegative and must not contain NaN"),
             Self::InvalidConfiguration(reason) => f.write_str(reason),
+            Self::UnsupportedQuery(reason) => write!(f,"size query is unsupported: {reason}"),
             Self::UnboundedSize => f.write_str("layout needs a finite size; constrain the unbounded axis"),
             Self::UnboundedFlex => f.write_str("flex cannot expand in an unbounded main axis; constrain it or use loose flex with MainAxisSize::Min"),
             Self::UnboundedStretch => f.write_str("stretch requires a bounded cross axis"),
@@ -386,6 +390,14 @@ impl Stack {
 
 type Measure = dyn FnMut(BoxConstraints) -> Result<Vec2, LayoutError>;
 pub enum BoxKind {
+    IntrinsicWidth {
+        step_width: Option<f32>,
+        step_height: Option<f32>,
+        child: Box<BoxNode>,
+    },
+    IntrinsicHeight {
+        child: Box<BoxNode>,
+    },
     Custom {
         layout: CustomBox,
         children: Vec<BoxNode>,
@@ -442,6 +454,29 @@ impl BoxNode {
             },
         )
     }
+    pub fn intrinsic_width(
+        key: impl Hash,
+        step_width: Option<f32>,
+        step_height: Option<f32>,
+        child: Self,
+    ) -> Self {
+        Self::new(
+            key,
+            BoxKind::IntrinsicWidth {
+                step_width,
+                step_height,
+                child: Box::new(child),
+            },
+        )
+    }
+    pub fn intrinsic_height(key: impl Hash, child: Self) -> Self {
+        Self::new(
+            key,
+            BoxKind::IntrinsicHeight {
+                child: Box::new(child),
+            },
+        )
+    }
     pub fn constrained(key: impl Hash, constraints: BoxConstraints, child: Self) -> Self {
         Self::new(
             key,
@@ -487,7 +522,9 @@ impl BoxNode {
             }
             BoxKind::Padding { child, .. }
             | BoxKind::Constrained { child, .. }
-            | BoxKind::Align { child, .. } => child.validate(keys, depth + 1)?,
+            | BoxKind::Align { child, .. }
+            | BoxKind::IntrinsicWidth { child, .. }
+            | BoxKind::IntrinsicHeight { child } => child.validate(keys, depth + 1)?,
             BoxKind::Flex(flex) => {
                 for child in &flex.children {
                     child.node.validate(keys, depth + 1)?;
@@ -512,6 +549,36 @@ impl BoxNode {
             }
             BoxKind::Leaf { preferred } => constraints.constrain(*preferred)?,
             BoxKind::Measured(measure) => measure(constraints)?,
+            BoxKind::IntrinsicWidth {
+                step_width,
+                step_height,
+                child,
+            } => {
+                let layout = child.perform_layout(query::intrinsic_constraints(
+                    constraints,
+                    child,
+                    Some((*step_width, *step_height)),
+                )?)?;
+                let size = layout.size;
+                children.push(PlacedBox {
+                    offset: Vec2::ZERO,
+                    layout,
+                });
+                size
+            }
+            BoxKind::IntrinsicHeight { child } => {
+                let layout = child.perform_layout(query::intrinsic_constraints(
+                    constraints,
+                    child,
+                    None,
+                )?)?;
+                let size = layout.size;
+                children.push(PlacedBox {
+                    offset: Vec2::ZERO,
+                    layout,
+                });
+                size
+            }
             BoxKind::Padding { insets, child } => {
                 let layout = child.perform_layout(constraints.deflate(*insets)?)?;
                 let size = constraints.constrain(layout.size + insets.total())?;

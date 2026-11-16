@@ -31,6 +31,10 @@ pub struct BoxChildren<'a> {
     offsets: Vec<Vec2>,
 }
 impl BoxChildren<'_> {
+    /// Speculate without laying out or placing a child in the current pass.
+    pub fn queries(&self) -> BoxQueries<'_> {
+        BoxQueries::new(self.nodes)
+    }
     pub fn len(&self) -> usize {
         self.nodes.len()
     }
@@ -92,6 +96,25 @@ impl BoxChildren<'_> {
 /// change without replacing children. The retained render-object adapter uses
 /// its tree's layout revision. Call `CustomBox::invalidate` for standalone use.
 pub trait CustomBoxLayout: 'static {
+    fn dry_layout(
+        &self,
+        _constraints: BoxConstraints,
+        _children: &BoxQueries<'_>,
+    ) -> Result<Vec2, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "custom box has no dry-layout implementation",
+        ))
+    }
+    fn intrinsic(
+        &self,
+        _dimension: IntrinsicDimension,
+        _extent: f32,
+        _children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "custom box has no intrinsic-size implementation",
+        ))
+    }
     fn revision(&self) -> u64 {
         0
     }
@@ -132,6 +155,29 @@ impl CustomBox {
     }
     pub fn invalidate(&self) {
         self.revision.set(self.revision.get().wrapping_add(1));
+    }
+    pub(super) fn dry_layout(
+        &self,
+        c: BoxConstraints,
+        children: &[BoxNode],
+    ) -> Result<Vec2, LayoutError> {
+        let state = self.state.try_borrow().map_err(|_| {
+            LayoutError::InvalidConfiguration("custom layout object is already active")
+        })?;
+        state.layout.dry_layout(c, &BoxQueries::new(children))
+    }
+    pub(super) fn intrinsic(
+        &self,
+        d: IntrinsicDimension,
+        extent: f32,
+        children: &[BoxNode],
+    ) -> Result<f32, LayoutError> {
+        let state = self.state.try_borrow().map_err(|_| {
+            LayoutError::InvalidConfiguration("custom layout object is already active")
+        })?;
+        state
+            .layout
+            .intrinsic(d, extent, &BoxQueries::new(children))
     }
     pub(super) fn perform_layout(
         &self,

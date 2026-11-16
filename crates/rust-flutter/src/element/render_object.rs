@@ -6,7 +6,8 @@ use super::{
     widget::Paint,
 };
 use crate::layout::{
-    BoxChildren, BoxConstraints, BoxGeometry, CustomBox, CustomBoxLayout, LayoutError,
+    BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CustomBox, CustomBoxLayout,
+    IntrinsicDimension, LayoutError,
 };
 use std::{
     any::{Any, TypeId},
@@ -81,6 +82,26 @@ pub trait RenderObjectWidget: Sized + 'static {
 /// Custom leaf or container layout, paint and mounted lifetime hooks. Child
 /// geometry is validated by BoxChildren; paint runs before placed children.
 pub trait RenderBox: 'static {
+    /// Read-only sizing. Never call wet layout as a fallback for these protocols.
+    fn dry_layout(
+        &self,
+        _constraints: BoxConstraints,
+        _children: &BoxQueries<'_>,
+    ) -> Result<egui::Vec2, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "render box has no dry-layout implementation",
+        ))
+    }
+    fn intrinsic(
+        &self,
+        _dimension: IntrinsicDimension,
+        _extent: f32,
+        _children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "render box has no intrinsic-size implementation",
+        ))
+    }
     fn attach(&mut self, _ctx: &RenderContext) {}
     fn children_changed(&mut self, _old: &[egui::Id], _new: &[egui::Id], _ctx: &RenderContext) {}
     fn layout(
@@ -121,6 +142,29 @@ struct Mounted<W: RenderObjectWidget> {
 }
 struct Adapter<W: RenderObjectWidget>(Rc<RefCell<Instance<W>>>);
 impl<W: RenderObjectWidget> CustomBoxLayout for Adapter<W> {
+    fn dry_layout(
+        &self,
+        c: BoxConstraints,
+        children: &BoxQueries<'_>,
+    ) -> Result<egui::Vec2, LayoutError> {
+        let instance = self
+            .0
+            .try_borrow()
+            .map_err(|_| LayoutError::InvalidConfiguration("render object is already active"))?;
+        instance.object.dry_layout(c, children)
+    }
+    fn intrinsic(
+        &self,
+        d: IntrinsicDimension,
+        extent: f32,
+        children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        let instance = self
+            .0
+            .try_borrow()
+            .map_err(|_| LayoutError::InvalidConfiguration("render object is already active"))?;
+        instance.object.intrinsic(d, extent, children)
+    }
     fn revision(&self) -> u64 {
         self.0.borrow().context.build.queue.pipeline.revision()
     }

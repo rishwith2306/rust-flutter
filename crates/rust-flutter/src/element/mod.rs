@@ -399,6 +399,14 @@ impl Element {
                     }
                 }
             }
+            Kind::IntrinsicWidth(step_width, step_height) => BoxKind::IntrinsicWidth {
+                step_width: *step_width,
+                step_height: *step_height,
+                child: Box::new(children.into_iter().next().unwrap()),
+            },
+            Kind::IntrinsicHeight => BoxKind::IntrinsicHeight {
+                child: Box::new(children.into_iter().next().unwrap()),
+            },
             Kind::Padding(insets) => BoxKind::Padding {
                 insets: *insets,
                 child: Box::new(children.into_iter().next().unwrap()),
@@ -599,9 +607,20 @@ impl ElementTree {
             _ => None,
         }
     }
-    /// Flush pending builds and compute current box geometry. State errors unmount
-    /// the tree; layout errors keep component state mounted for a later retry.
-    pub fn layout(&mut self, constraints: BoxConstraints) -> Result<LayoutBox, ElementError> {
+    /// Flush widget updates and query size without wet layout or painting.
+    pub fn dry_layout(&mut self, constraints: BoxConstraints) -> Result<egui::Vec2, ElementError> {
+        self.prepare_render()?;
+        Ok(self.render.as_ref().unwrap().dry_layout(constraints)?)
+    }
+    pub fn intrinsic(
+        &mut self,
+        dimension: layout::IntrinsicDimension,
+        extent: f32,
+    ) -> Result<f32, ElementError> {
+        self.prepare_render()?;
+        Ok(self.render.as_ref().unwrap().intrinsic(dimension, extent)?)
+    }
+    fn prepare_render(&mut self) -> Result<(), ElementError> {
         self.flush()?;
         if self.render.is_none() {
             self.render = Some(
@@ -611,6 +630,12 @@ impl ElementTree {
                     .render_node(&mut self.paint),
             );
         }
+        Ok(())
+    }
+    /// Flush pending builds and compute current box geometry. State errors unmount
+    /// the tree; layout errors keep component state mounted for a later retry.
+    pub fn layout(&mut self, constraints: BoxConstraints) -> Result<LayoutBox, ElementError> {
+        self.prepare_render()?;
         Ok(self.render.as_mut().unwrap().layout(constraints)?)
     }
     pub fn show(

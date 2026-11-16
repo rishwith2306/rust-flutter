@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 138 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 150 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -257,3 +257,21 @@ configuration and layout for that container during ordinary component interactio
 (395.4375 × 28 logical points).
 These are scoped render-object checks, not complete RenderBox/PipelineOwner parity.
 Full limitations and API usage are in [render objects](render-objects.md).
+
+
+## Dry layout and intrinsic sizing
+
+The pure query suite compares wet/dry flex results over axes, main-size policies,
+alignment, fits, directions and finite/unbounded constraints. It checks intrinsic
+flex contributions, padding deflation, aligned/constrained boxes, positioned-stack
+exclusion, stepped intrinsic wrappers, unbounded stretched flex, tight-axis
+shortcuts, invalid arguments/results, explicit unsupported callbacks, and retained
+state/error recovery. A custom parent queries its child without satisfying the
+wet layout/placement protocol. Retained queries flush inherited changes without
+performing actual layout or invalidating a warm layout cache.
+
+The Linux native resize probe records matching dry and allocated rectangles at
+984×28 and 884×28 logical points, while retaining exactly one/two actual layouts.
+Existing interaction, restoration and exact-color/glyph probes still pass. The
+Android probe also checks a matching dry/allocated rectangle and one wet layout.
+This is not text-shaping, baseline or complete intrinsic-compatibility evidence.

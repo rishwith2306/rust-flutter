@@ -229,7 +229,9 @@ assert render_trace.count("render-view create") == 1, render_trace
 assert render_trace.count("render-view update") == 1, render_trace
 assert len(render_layouts) == 1 and render_layouts[0][0] == "1", render_layouts
 (output / "android-render-object.txt").write_text(render_trace)
-render_objects = {"created": 1, "updated": 1, "layouts": render_layouts}
+render_queries = re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)", render_trace)
+assert len(render_queries) == 1 and render_queries[0][-1] == "true", render_queries
+render_objects = {"created": 1, "updated": 1, "layouts": render_layouts, "dry_queries": render_queries}
 result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
           "sdk": device("shell", "getprop", "ro.build.version.sdk").stdout.decode().strip(),

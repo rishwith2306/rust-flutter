@@ -1,8 +1,58 @@
 use super::*;
+#[derive(Clone, Copy)]
+struct FlexSpec {
+    axis: Axis,
+    main_size: MainAxisSize,
+    main_alignment: MainAxisAlignment,
+    cross_alignment: CrossAxisAlignment,
+    text_direction: TextDirection,
+    vertical_direction: VerticalDirection,
+    spacing: f32,
+}
 impl Flex {
+    fn spec(&self) -> FlexSpec {
+        FlexSpec {
+            axis: self.axis,
+            main_size: self.main_size,
+            main_alignment: self.main_alignment,
+            cross_alignment: self.cross_alignment,
+            text_direction: self.text_direction,
+            vertical_direction: self.vertical_direction,
+            spacing: self.spacing,
+        }
+    }
     pub(super) fn layout(
         &mut self,
         c: BoxConstraints,
+    ) -> Result<(Vec2, Vec<PlacedBox>), LayoutError> {
+        let spec = self.spec();
+        let sizing: Vec<_> = self.children.iter().map(|child| child.sizing).collect();
+        spec.layout(&sizing, c, |index, c| {
+            self.children[index].node.perform_layout(c)
+        })
+    }
+    pub(super) fn dry_layout(&self, c: BoxConstraints) -> Result<Vec2, LayoutError> {
+        let sizing: Vec<_> = self.children.iter().map(|child| child.sizing).collect();
+        self.spec()
+            .layout(&sizing, c, |index, c| {
+                let node = &self.children[index].node;
+                LayoutBox::new(
+                    node.id,
+                    node.compute_dry_layout(c)?,
+                    vec![],
+                    Clip::None,
+                    true,
+                )
+            })
+            .map(|(size, _)| size)
+    }
+}
+impl FlexSpec {
+    fn layout(
+        self,
+        sizing: &[FlexSizing],
+        c: BoxConstraints,
+        mut measure: impl FnMut(usize, BoxConstraints) -> Result<LayoutBox, LayoutError>,
     ) -> Result<(Vec2, Vec<PlacedBox>), LayoutError> {
         if !self.spacing.is_finite() || self.spacing < 0.0 {
             return Err(LayoutError::InvalidConfiguration(
@@ -14,8 +64,8 @@ impl Flex {
         let max_cross = axis.cross(c.max);
         let mut factors = 0_u64;
         let mut tight_flex = false;
-        for child in &self.children {
-            if let FlexSizing::Flexible { factor, fit } = child.sizing {
+        for child_sizing in sizing {
+            if let FlexSizing::Flexible { factor, fit } = *child_sizing {
                 if factor == 0 {
                     return Err(LayoutError::InvalidConfiguration(
                         "flex factors must be greater than zero",
@@ -33,7 +83,7 @@ impl Flex {
         }
         if self.cross_alignment == CrossAxisAlignment::Stretch
             && !max_cross.is_finite()
-            && !self.children.is_empty()
+            && !sizing.is_empty()
         {
             return Err(LayoutError::UnboundedStretch);
         }
@@ -44,35 +94,36 @@ impl Flex {
         };
         let child_constraints =
             |min, max| BoxConstraints::new(axis.size(min, cross_min), axis.size(max, max_cross));
-        let mut layouts: Vec<Option<LayoutBox>> = (0..self.children.len()).map(|_| None).collect();
-        let mut used = self.spacing * (self.children.len().saturating_sub(1) as f32);
+        let mut layouts: Vec<Option<LayoutBox>> = (0..sizing.len()).map(|_| None).collect();
+        let mut used = self.spacing * (sizing.len().saturating_sub(1) as f32);
         let mut cross = 0.0_f32;
-        for (index, child) in self.children.iter_mut().enumerate() {
-            if matches!(child.sizing, FlexSizing::Fixed) {
-                let layout = child
-                    .node
-                    .perform_layout(child_constraints(0.0, f32::INFINITY)?)?;
+        for (index, child_sizing) in sizing.iter().enumerate() {
+            if matches!(*child_sizing, FlexSizing::Fixed) {
+                let layout = measure(index, child_constraints(0.0, f32::INFINITY)?)?;
                 used += axis.main(layout.size);
                 cross = cross.max(axis.cross(layout.size));
                 layouts[index] = Some(layout);
             }
         }
         let remaining = (max_main - used).max(0.0);
-        for (index, child) in self.children.iter_mut().enumerate() {
-            if let FlexSizing::Flexible { factor, fit } = child.sizing {
+        for (index, child_sizing) in sizing.iter().enumerate() {
+            if let FlexSizing::Flexible { factor, fit } = *child_sizing {
                 let allocated = if max_main.is_finite() {
                     remaining * (factor as f64 / factors as f64) as f32
                 } else {
                     f32::INFINITY
                 };
-                let layout = child.node.perform_layout(child_constraints(
-                    if fit == FlexFit::Tight {
-                        allocated
-                    } else {
-                        0.0
-                    },
-                    allocated,
-                )?)?;
+                let layout = measure(
+                    index,
+                    child_constraints(
+                        if fit == FlexFit::Tight {
+                            allocated
+                        } else {
+                            0.0
+                        },
+                        allocated,
+                    )?,
+                )?;
                 used += axis.main(layout.size);
                 cross = cross.max(axis.cross(layout.size));
                 layouts[index] = Some(layout);
@@ -88,7 +139,7 @@ impl Flex {
         );
         let size = c.constrain(desired)?;
         let free = (axis.main(size) - used).max(0.0);
-        let n = self.children.len();
+        let n = sizing.len();
         let (leading, between) = match self.main_alignment {
             MainAxisAlignment::Start => (0.0, 0.0),
             MainAxisAlignment::End => (free, 0.0),
@@ -143,5 +194,64 @@ impl Flex {
             placed.push(PlacedBox { offset, layout });
         }
         Ok((size, placed))
+    }
+}
+
+impl Flex {
+    pub(super) fn intrinsic(&self, d: IntrinsicDimension, extent: f32) -> Result<f32, LayoutError> {
+        if !self.spacing.is_finite() || self.spacing < 0.0 {
+            return Err(LayoutError::InvalidConfiguration(
+                "flex spacing must be finite and nonnegative",
+            ));
+        }
+        let mut factors = 0_u64;
+        for child in &self.children {
+            if let FlexSizing::Flexible { factor, .. } = child.sizing {
+                if factor == 0 {
+                    return Err(LayoutError::InvalidConfiguration(
+                        "flex factors must be greater than zero",
+                    ));
+                }
+                factors += u64::from(factor);
+            }
+        }
+        let gaps = self.spacing * self.children.len().saturating_sub(1) as f32;
+        if d.axis() == self.axis {
+            let mut fixed = gaps;
+            let mut unit = 0.0_f32;
+            for child in &self.children {
+                let value = child.node.compute_intrinsic(d, extent)?;
+                match child.sizing {
+                    FlexSizing::Fixed => fixed += value,
+                    FlexSizing::Flexible { factor, .. } => unit = unit.max(value / factor as f32),
+                }
+            }
+            Ok(fixed + unit * factors as f32)
+        } else {
+            // Determine main-axis allocation from max-content contributions,
+            // then ask each child for the selected cross-axis contribution.
+            let main_query = IntrinsicDimension::MaxWidth.for_axis(self.axis);
+            let mut main: Vec<Option<f32>> = vec![None; self.children.len()];
+            let mut used = gaps;
+            for (i, child) in self.children.iter().enumerate() {
+                if matches!(child.sizing, FlexSizing::Fixed) {
+                    let size = child.node.compute_intrinsic(main_query, f32::INFINITY)?;
+                    main[i] = Some(size);
+                    used += size;
+                }
+            }
+            let mut cross = 0.0_f32;
+            for (i, child) in self.children.iter().enumerate() {
+                let main = match (main[i], child.sizing) {
+                    (Some(size), _) => size,
+                    (_, FlexSizing::Flexible { factor, .. }) if extent.is_finite() => {
+                        (extent - used).max(0.0) * (factor as f64 / factors as f64) as f32
+                    }
+                    _ => child.node.compute_intrinsic(main_query, f32::INFINITY)?,
+                };
+                cross = cross.max(child.node.compute_intrinsic(d, main)?);
+            }
+            Ok(cross)
+        }
     }
 }

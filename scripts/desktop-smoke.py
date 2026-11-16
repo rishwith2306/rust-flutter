@@ -147,7 +147,9 @@ try:
             assert trace.count("render-view create") == 1, trace
             assert trace.count("render-view update") == 2, trace
             assert len(render_layouts) == 2 and [v[0] for v in render_layouts] == ["1", "2"], render_layouts
-            render_objects={"created":1,"updated":2,"layouts":render_layouts}
+            render_queries=re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)",trace)
+            assert len(render_queries)==2 and all(q[-1]=="true" for q in render_queries), render_queries
+            render_objects={"created":1,"updated":2,"layouts":render_layouts,"dry_queries":render_queries}
             (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
             print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:

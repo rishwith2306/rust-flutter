@@ -133,3 +133,7 @@ Reviewed primary references:
 [RenderObjectElement](https://api.flutter.dev/flutter/widgets/RenderObjectElement-class.html),
 [RenderBox](https://api.flutter.dev/flutter/rendering/RenderBox-class.html), and
 [PipelineOwner](https://api.flutter.dev/flutter/rendering/PipelineOwner-class.html).
+
+Read-only dry layout, intrinsic dimensions and sizing wrappers are described in
+[size queries](size-queries.md). Missing pure implementations return explicit errors;
+queries do not fall back to the mutable layout method.

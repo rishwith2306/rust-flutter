@@ -2,7 +2,10 @@ use rust_flutter::{
     display::{ViewAspect, ViewMetrics},
     egui,
     element::*,
-    layout::{Axis, BoxChildren, BoxConstraints, BoxGeometry, CrossAxisAlignment, LayoutError},
+    layout::{
+        Axis, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
+        IntrinsicDimension, LayoutError,
+    },
     notifier::ValueNotifier,
 };
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
@@ -165,6 +168,21 @@ impl RenderObjectWidget for ViewReportRender {
     }
 }
 impl RenderBox for ViewReportBox {
+    fn dry_layout(
+        &self,
+        c: BoxConstraints,
+        children: &BoxQueries<'_>,
+    ) -> Result<egui::Vec2, LayoutError> {
+        children.dry_layout(0, c)
+    }
+    fn intrinsic(
+        &self,
+        d: IntrinsicDimension,
+        extent: f32,
+        children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        children.intrinsic(0, d, extent)
+    }
     fn layout(
         &mut self,
         constraints: BoxConstraints,
@@ -240,6 +258,7 @@ pub(super) struct ComponentDemo {
     observable: ValueNotifier<i32>,
     observable_tree: ElementTree,
     view_tree: ElementTree,
+    last_view_query: Option<egui::Vec2>,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -280,6 +299,7 @@ impl ComponentDemo {
         Self {
             observable,
             observable_tree,
+            last_view_query: None,
             view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
                 .expect("valid view report"),
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
@@ -406,10 +426,32 @@ impl ComponentDemo {
         {
             ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
         }
-        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 28.0))
-            && let Err(error) = self.view_tree.show(ui, constraints)
-        {
-            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 28.0)) {
+            let dry = self.view_tree.dry_layout(constraints);
+            let shown = self.view_tree.show(ui, constraints);
+            match (dry, shown) {
+                (Ok(dry), Ok(shown)) => {
+                    let actual = shown.rect.size();
+                    let matched = (dry - actual).abs().max_elem() < 0.01;
+                    if self.last_view_query != Some(dry) {
+                        #[cfg(debug_assertions)]
+                        eprintln!(
+                            "rust-flutter gallery render-view query dry={}x{} actual={}x{} matched={matched}",
+                            dry.x, dry.y, actual.x, actual.y
+                        );
+                        self.last_view_query = Some(dry);
+                    }
+                    if !matched {
+                        ui.colored_label(
+                            egui::Color32::LIGHT_RED,
+                            "Dry and actual view layout differ",
+                        );
+                    }
+                }
+                (Err(error), _) | (_, Err(error)) => {
+                    ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+                }
+            }
         }
     }
 }

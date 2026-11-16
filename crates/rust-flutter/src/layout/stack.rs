@@ -78,3 +78,27 @@ impl Stack {
         Ok((size, placed))
     }
 }
+
+impl Stack {
+    pub(super) fn dry_layout(&self, c: BoxConstraints) -> Result<Vec2, LayoutError> {
+        self.alignment.offset(Vec2::ZERO)?;
+        let child_c = match self.fit {
+            StackFit::Loose => c.loosen(),
+            StackFit::Expand => BoxConstraints::tight(finite(c.max)?)?,
+            StackFit::Passthrough => c,
+        };
+        let mut size = c.min;
+        let mut any = false;
+        for child in &self.children {
+            if !child.position.is_positioned() {
+                size = size.max(child.node.compute_dry_layout(child_c)?);
+                any = true;
+            }
+        }
+        if any {
+            c.constrain(size)
+        } else {
+            finite(c.max)
+        }
+    }
+}
