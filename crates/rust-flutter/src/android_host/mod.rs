@@ -281,13 +281,28 @@ impl<A: Application> Host<A> {
         // future frames. Otherwise a delayed insets refresh would be discarded.
         self.insets.update(&self.ctx, &mut raw);
         #[cfg(debug_assertions)]
-        let geometry = format!(
+        let mut geometry = format!(
             "{}x{} scale={scale} safe_top_px={}",
             size[0],
             size[1],
             raw.safe_area_insets.unwrap_or_default().0.top * scale
         );
-        let output = self.ctx.run(raw, |ctx| self.runtime.frame(ctx));
+        let output = self.ctx.run(raw, |ctx| {
+            self.runtime.frame(ctx);
+            #[cfg(debug_assertions)]
+            {
+                // Exercise the same public API an application's build reads.
+                let metrics = crate::display::view_metrics(ctx);
+                let occlusion = metrics.occlusion;
+                geometry.push_str(&format!(
+                    " keyboard={:?} view_padding_bottom_px={} view_insets_bottom_px={} padding_bottom_px={}",
+                    metrics.keyboard,
+                    occlusion.map_or(-1.0, |o| o.view_padding.bottom * scale),
+                    occlusion.map_or(-1.0, |o| o.view_insets.bottom * scale),
+                    occlusion.map_or(-1.0, |o| o.padding.bottom * scale),
+                ));
+            }
+        });
 
         if let Some(viewport) = output.viewport_output.get(&ViewportId::ROOT) {
             self.schedule

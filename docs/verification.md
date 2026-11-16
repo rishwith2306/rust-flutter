@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 114 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 117 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -137,9 +137,11 @@ capture is `android-edge-to-edge.png`.
 3. Repeat on stable Android SDKs and physical devices, then expand the OS matrix.
 4. Run macOS window/input/Metal/VoiceOver checks on a Mac.
 
-Insets currently poll at 1 Hz for edge-to-edge apps on Android/target SDK 35+.
-An event-driven inset listener, older OS/device validation and IME view-inset
-handling remain work items. Lifecycle notifications do not yet serialize Android
+Insets currently poll at approximately 1 Hz. Keyboard visibility is queried on
+Android API 30+; edge occlusion requires Android/target SDK 35+.
+An event-driven inset listener, older OS/device validation and animation-frame
+tracking remain work items. The app-facing display API now exposes sampled
+keyboard visibility and optional IME edge occlusion; see [display metrics](display.md). Lifecycle notifications do not yet serialize Android
 native saved-instance bytes; the gallery persists its model in private JSON.
 
 ## ANR stack finding
@@ -191,3 +193,18 @@ include the renderer override at the same source revision as the framework;
 manual/existing apps must add it explicitly. The selection verifier checks the
 resolved HAL source, and Android rejects an RGB565 native surface with an
 explanation of the required patch. The renderer continues using wgpu.
+
+
+## App-facing keyboard geometry
+
+The public `display::view_metrics` API exposes effective scale, native density,
+viewport bounds, safe areas, sampled keyboard visibility and optional occlusion.
+Headless tests cover zoom/density separation, unknown measurements, scoped
+viewports, rejection of stale resize geometry and overlapping-inset arithmetic.
+The ordinary Android interaction test now checks public API diagnostics against
+the Window Manager IME source frame, along with stable bottom padding before and
+after dismissal. The local API 37 / x86_64 run passed: 972 physical pixels of
+IME occlusion matched the system frame, with stable 63-pixel bottom view padding;
+dismissal returned occlusion to zero and padding to 63. This does not establish
+IME composition/candidates, automatic
+focused-editor scrolling or animation-frame synchronization.

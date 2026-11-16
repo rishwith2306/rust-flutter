@@ -1,5 +1,8 @@
-//! Android edge-to-edge insets. Java View access stays on the Java UI thread.
-use crate::AndroidApp;
+//! Android safe areas and keyboard samples. Java View access stays on the Java UI thread.
+use crate::{
+    AndroidApp,
+    display::{KeyboardVisibility, PlatformInsets},
+};
 use egui::{SafeAreaInsets, epaint::MarginF32};
 use jni::{
     jni_sig, jni_str,
@@ -11,9 +14,14 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Sample {
+    platform: PlatformInsets,
+    safe_area: Option<MarginF32>,
+}
 #[derive(Default)]
 struct Snapshot {
-    insets: Option<MarginF32>,
+    sample: Option<Sample>,
     pending: bool,
 }
 pub(crate) struct AndroidInsets {
@@ -52,14 +60,22 @@ impl AndroidInsets {
             );
         }
         let mut snapshot = self.snapshot.lock().unwrap();
-        if let Some(insets) = snapshot.insets {
-            raw.safe_area_insets = Some(SafeAreaInsets(MarginF32 {
-                left: insets.left / scale,
-                top: insets.top / scale,
-                right: insets.right / scale,
-                bottom: insets.bottom / scale,
-            }));
-        }
+        let sample = snapshot.sample;
+        let platform = sample.map(|mut sample| {
+            if let Some((size, _, _)) = sample.platform.geometry {
+                let actual = self
+                    .activity
+                    .native_window()
+                    .map(|w| egui::vec2(w.width() as f32, w.height() as f32));
+                if actual.is_none_or(|actual| (size - actual).abs().max_elem() > 1.0) {
+                    sample.platform.geometry = None;
+                } else if let Some(insets) = sample.safe_area {
+                    raw.safe_area_insets = Some(SafeAreaInsets(insets / scale));
+                }
+            }
+            sample.platform
+        });
+        crate::display::set_platform_insets(ctx, platform);
         // No Java subclass/listener is required for a NativeActivity APK. Poll at
         // 1 Hz until a listener-backed platform host replaces this integration.
         ctx.request_repaint_after(Duration::from_secs(1));
@@ -79,7 +95,7 @@ impl AndroidInsets {
         self.activity.run_on_java_main_thread(Box::new(move || {
             // SAFETY: AndroidApp supplies the VM pointer, valid for the app lifetime.
             let vm = unsafe { jni::JavaVM::from_raw(activity.vm_as_ptr().cast()) };
-            let result: jni::errors::Result<Option<MarginF32>> = vm.attach_current_thread(|env| {
+            let result: jni::errors::Result<Option<Sample>> = vm.attach_current_thread(|env| {
                 let result = read_insets(env, &activity);
                 if result.is_err() {
                     env.exception_clear();
@@ -88,40 +104,23 @@ impl AndroidInsets {
             });
             let mut snapshot = cache.lock().unwrap();
             snapshot.pending = false;
-            if let Ok(Some(insets)) = result
-                && snapshot.insets != Some(insets)
-            {
-                snapshot.insets = Some(insets);
+            let sample = result.ok().flatten();
+            if snapshot.sample != sample {
+                snapshot.sample = sample;
                 drop(snapshot);
                 context.request_repaint();
             }
         }));
     }
 }
-fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<Option<MarginF32>> {
-    // Edge-to-edge enforcement is active for target SDK 35+ on Android 35+.
-    if AndroidApp::sdk_version() < 35 {
+fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<Option<Sample>> {
+    if AndroidApp::sdk_version() < 30 {
         return Ok(None);
     }
     let raw_activity = app.activity_as_ptr() as jni::sys::jobject;
     // SAFETY: This borrows AndroidApp's global reference without taking ownership;
     // `app` outlives all JNI calls and the reference is never deleted here.
     let activity = unsafe { env.as_cast_raw::<Global<JObject>>(&raw_activity)? };
-    let info = env
-        .call_method(
-            &activity,
-            jni_str!("getApplicationInfo"),
-            jni_sig!("()Landroid/content/pm/ApplicationInfo;"),
-            &[],
-        )?
-        .l()?;
-    if env
-        .get_field(&info, jni_str!("targetSdkVersion"), jni_sig!("I"))?
-        .i()?
-        < 35
-    {
-        return Ok(None);
-    }
     let window = env
         .call_method(
             &activity,
@@ -149,6 +148,57 @@ fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<
     if insets.is_null() {
         return Ok(None);
     }
+    let ime = env
+        .call_static_method(
+            jni_str!("android/view/WindowInsets$Type"),
+            jni_str!("ime"),
+            jni_sig!("()I"),
+            &[],
+        )?
+        .i()?;
+    let visible = env
+        .call_method(
+            &insets,
+            jni_str!("isVisible"),
+            jni_sig!("(I)Z"),
+            &[JValue::Int(ime)],
+        )?
+        .z()?;
+    let mut sample = Sample {
+        platform: PlatformInsets {
+            keyboard: if visible {
+                KeyboardVisibility::Visible
+            } else {
+                KeyboardVisibility::Hidden
+            },
+            geometry: None,
+        },
+        safe_area: None,
+    };
+    let info = env
+        .call_method(
+            &activity,
+            jni_str!("getApplicationInfo"),
+            jni_sig!("()Landroid/content/pm/ApplicationInfo;"),
+            &[],
+        )?
+        .l()?;
+    // Only the enforced edge-to-edge host currently guarantees the native surface
+    // shares the decor's coordinate space. Older hosts still report visibility.
+    if AndroidApp::sdk_version() < 35
+        || env
+            .get_field(&info, jni_str!("targetSdkVersion"), jni_sig!("I"))?
+            .i()?
+            < 35
+    {
+        return Ok(Some(sample));
+    }
+    let width = env
+        .call_method(&decor, jni_str!("getWidth"), jni_sig!("()I"), &[])?
+        .i()?;
+    let height = env
+        .call_method(&decor, jni_str!("getHeight"), jni_sig!("()I"), &[])?
+        .i()?;
     let bars = env
         .call_static_method(
             jni_str!("android/view/WindowInsets$Type"),
@@ -165,15 +215,35 @@ fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<
             &[],
         )?
         .i()?;
+    let safe_area = read_dimensions(env, &insets, bars | cutout, false)?;
+    let padding = read_dimensions(env, &insets, bars | cutout, true)?;
+    // IME must never be passed to getInsetsIgnoringVisibility: Android rejects it.
+    let obscured = read_dimensions(env, &insets, ime, false)?;
+    sample.platform.geometry = Some((egui::vec2(width as f32, height as f32), padding, obscured));
+    sample.safe_area = Some(safe_area);
+    Ok(Some(sample))
+}
+
+fn read_dimensions(
+    env: &mut jni::Env<'_>,
+    insets: &JObject<'_>,
+    mask: i32,
+    ignoring_visibility: bool,
+) -> jni::errors::Result<MarginF32> {
+    let method = if ignoring_visibility {
+        jni_str!("getInsetsIgnoringVisibility")
+    } else {
+        jni_str!("getInsets")
+    };
     let dimensions = env
         .call_method(
-            &insets,
-            jni_str!("getInsets"),
+            insets,
+            method,
             jni_sig!("(I)Landroid/graphics/Insets;"),
-            &[JValue::Int(bars | cutout)],
+            &[JValue::Int(mask)],
         )?
         .l()?;
-    Ok(Some(MarginF32 {
+    Ok(MarginF32 {
         left: env
             .get_field(&dimensions, jni_str!("left"), jni_sig!("I"))?
             .i()?
@@ -190,5 +260,5 @@ fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<
             .get_field(&dimensions, jni_str!("bottom"), jni_sig!("I"))?
             .i()?
             .max(0) as f32,
-    }))
+    })
 }

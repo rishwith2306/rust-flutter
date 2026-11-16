@@ -36,6 +36,7 @@ output.mkdir(parents=True, exist_ok=True)
 package = "dev.rustflutter.gallery"
 surface_formats = []
 keyboard_states = []
+keyboard_metrics = {}
 
 
 def device(*command, check=True, timeout=15):
@@ -82,6 +83,7 @@ def wait_keyboard(shown):
                 (output / f"android-keyboard-{phase}.txt").write_text(dump)
                 (output / f"android-keyboard-{phase}-window.txt").write_text(windows)
                 screenshot(f"android-keyboard-{phase}.png")
+                wait_keyboard_metrics(shown, windows)
                 return
         time.sleep(0.3)
     (output / f"android-keyboard-{phase}-failed.txt").write_text(dump)
@@ -89,6 +91,38 @@ def wait_keyboard(shown):
     (output / "android-keyboard-logcat.txt").write_bytes(device("logcat", "-d", "-t", "1500").stdout)
     screenshot(f"android-keyboard-{phase}-failed.png")
     raise TimeoutError(f"keyboard did not become {phase}; observations: {keyboard_states}")
+
+
+def wait_keyboard_metrics(shown, windows):
+    """Check the app-facing API, separately from the OS readiness observations."""
+    deadline = time.monotonic() + 15
+    expected = "Visible" if shown else "Hidden"
+    trace = ""
+    frames = re.findall(r"\bmSource=InsetsSource\b[^\n]*\btype=ime\b[^\n]*\bframe=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]", windows)
+    assert len(frames) == 1, frames
+    left, top, right, bottom = map(int, frames[0])
+    expected_occlusion = bottom - top if shown else 0
+    while time.monotonic() < deadline:
+        pid = device("shell", "pidof", package).stdout.decode().strip()
+        trace = device("logcat", "-d", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
+        matches = re.findall(r"keyboard=(Unknown|Visible|Hidden) view_padding_bottom_px=([\d.-]+) view_insets_bottom_px=([\d.-]+) padding_bottom_px=([\d.-]+)", trace)
+        if matches:
+            visibility, stable, obscured, padding = matches[-1]
+            stable, obscured, padding = map(float, (stable, obscured, padding))
+            if visibility == expected and stable >= 0 and abs(obscured - expected_occlusion) < 1:
+                if shown:
+                    assert obscured > stable, (stable, obscured)
+                else:
+                    assert obscured == 0, obscured
+                assert abs(padding - max(stable - obscured, 0)) < 0.01
+                keyboard_metrics[expected] = {"view_padding_bottom_px": stable, "view_insets_bottom_px": obscured, "padding_bottom_px": padding, "os_ime_frame_height_px": expected_occlusion}
+                (output / f"android-keyboard-metrics-{expected}.txt").write_text(trace)
+                if len(keyboard_metrics) == 2:
+                    assert keyboard_metrics["Visible"]["view_padding_bottom_px"] == keyboard_metrics["Hidden"]["view_padding_bottom_px"]
+                return
+        time.sleep(0.3)
+    (output / "android-keyboard-metrics-failed.txt").write_text(trace)
+    raise TimeoutError(f"app-facing keyboard metrics did not become {expected}")
 
 
 def wait_keyboard_hidden():
@@ -194,6 +228,7 @@ result = {"passed": True, "serial": args.serial,
           "abi": device("shell", "getprop", "ro.product.cpu.abi").stdout.decode().strip(),
           "native_surface_formats": surface_formats,
           "keyboard_states": keyboard_states,
+          "keyboard_metrics": keyboard_metrics,
           "page_size": device("shell", "getconf", "PAGE_SIZE").stdout.decode().strip(),
           "scale": args.scale, "top_inset_px": args.top_inset_px,
           "state_after_restart": value,
@@ -202,4 +237,4 @@ result = {"passed": True, "serial": args.serial,
           "components": components,
           "scope": "rendered touch controls, injected keyboard text, route back, background/resume, process-restart restoration, bundled assets and constraint layout interaction"}
 (output / "android-result.json").write_text(json.dumps(result, indent=2) + "\n")
-print("PASS: Android touch/text, routes, resume/restoration, layout and retained component state")
+print("PASS: Android touch/text, keyboard metrics, routes, resume/restoration, layout and retained component state")

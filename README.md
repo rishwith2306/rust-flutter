@@ -118,6 +118,7 @@ boundaries, service replacement and responsive thresholds. These tests do not
 prove device lifecycle, macOS integration or full accessibility behavior.
 
 See [observable state](docs/notifiers.md), [inherited models](docs/inherited-models.md), [inherited values](docs/inherited.md), [stateful components](docs/components.md), [constraint layout](docs/layout.md), [asset bundles](docs/assets.md), [application services](docs/application-services.md),
+[view geometry and keyboard metrics](docs/display.md),
 [verification results](docs/verification.md), [architecture](docs/architecture.md), [feature audit](docs/flutter-parity.md),
 and [contributing](CONTRIBUTING.md) before extending the framework.
 

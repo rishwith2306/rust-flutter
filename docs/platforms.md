@@ -82,8 +82,10 @@ The runtime reads the legacy Android content rectangle and queries Java
 `WindowInsets` on the Java UI thread for edge-to-edge apps targeting SDK 35+ on
 Android 35+. System bars and display cutouts are converted to logical safe-area
 insets. The current NativeActivity integration polls at 1 Hz; a listener-based
-host remains future work. IME occlusion and a wider OS/device matrix still need
-validation. Insets have been visually checked on the Android 37 test emulator.
+host remains future work. The [display metrics API](display.md) also reports
+actual keyboard visibility on API 30+ and optional IME edge occlusion on the
+35+ edge-to-edge host. A wider OS/device matrix, animation callbacks and
+automatic focused-editor scrolling remain work items.
 
 ## Android lifecycle regression test
 
