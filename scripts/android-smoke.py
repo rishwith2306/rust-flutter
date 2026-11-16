@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import time
 from component_probe import probe_components, native_formats
+from android_ime import ime_state
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--serial", required=True)
@@ -71,17 +72,15 @@ def wait_keyboard(shown):
     dump = ""
     while time.monotonic() < deadline:
         dump = device("shell", "dumpsys", "input_method").stdout.decode()
-        requested = re.search(r"\bmInputShown=(true|false)\b", dump)
-        visibility = re.search(r"\bmImeWindowVis=(?:0x)?([0-9a-fA-F]+)\b", dump)
-        if requested and visibility:
-            # AOSP IME_VISIBLE is bit 0x2; IME_ACTIVE alone does not mean visible.
-            flags = int(visibility.group(1), 16)
-            status = {"phase": phase, "requested": requested.group(1) == "true",
-                      "visible": bool(flags & 0x2), "flags": flags}
+        windows = device("shell", "dumpsys", "window").stdout.decode()
+        observed = ime_state(dump, windows)
+        if observed is not None:
+            status = {"phase": phase, **observed}
             if not keyboard_states or keyboard_states[-1] != status:
                 keyboard_states.append(status)
             if status["requested"] == shown and status["visible"] == shown:
                 (output / f"android-keyboard-{phase}.txt").write_text(dump)
+                (output / f"android-keyboard-{phase}-window.txt").write_text(windows)
                 screenshot(f"android-keyboard-{phase}.png")
                 return
         time.sleep(0.3)
