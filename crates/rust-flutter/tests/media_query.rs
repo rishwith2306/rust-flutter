@@ -109,6 +109,7 @@ fn ambient_metrics_rebuild_only_observed_properties_and_keep_element_state() {
                     watch("orientation", &[ViewAspect::Orientation]),
                     watch("density", &[ViewAspect::NativePixelsPerPoint]),
                     watch("safe", &[ViewAspect::SafeArea]),
+                    watch("padding", &[ViewAspect::Padding]),
                     watch("all", &[]),
                     watch("read", &[]),
                     watch("union", &[ViewAspect::Size, ViewAspect::SafeArea]),
@@ -134,6 +135,7 @@ fn ambient_metrics_rebuild_only_observed_properties_and_keep_element_state() {
     assert_eq!(state(&tree, "orientation").builds, 1);
     assert_eq!(state(&tree, "density").builds, 1);
     assert_eq!(state(&tree, "safe").builds, 1);
+    assert_eq!(state(&tree, "padding").builds, 1);
     assert_eq!(state(&tree, "all").builds, 2);
     assert_eq!(state(&tree, "read").builds, 1);
     assert!(flush(
@@ -141,7 +143,7 @@ fn ambient_metrics_rebuild_only_observed_properties_and_keep_element_state() {
         input(egui::vec2(650.0, 450.0), 3.0, 30.0),
         &mut tree
     ));
-    for name in ["orientation", "density", "safe"] {
+    for name in ["orientation", "density", "safe", "padding"] {
         assert_eq!(state(&tree, name).builds, 2);
         assert_eq!(state(&tree, name).hooks, 2);
     }

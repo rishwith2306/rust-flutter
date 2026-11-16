@@ -1,6 +1,9 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
 mod inherited;
 mod notifier_builder;
+mod safe_area;
+use safe_area::SafeAreaNode;
+pub use safe_area::SafeAreaOptions;
 mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};
@@ -112,6 +115,7 @@ enum MountedKind {
     Render(Kind),
     Component(Box<dyn Component>),
     Inherited(Box<dyn Provider>),
+    SafeArea(SafeAreaNode),
 }
 struct Element {
     id: ElementId,
@@ -168,6 +172,9 @@ impl Element {
                 Kind::Inherited(description) => {
                     MountedKind::Inherited(description.mount(id, queue.clone()))
                 }
+                Kind::SafeArea(options) => {
+                    MountedKind::SafeArea(SafeAreaNode::new(id, options, scope))
+                }
                 other => MountedKind::Render(other),
             };
             let mut new = Self {
@@ -193,6 +200,7 @@ impl Element {
             (MountedKind::Inherited(provider), Kind::Inherited(description)) => {
                 provider.update(description.into_any())
             }
+            (MountedKind::SafeArea(node), Kind::SafeArea(options)) => node.options = options,
             (slot, render) => *slot = MountedKind::Render(render),
         }
         element.rebuild(children, ctx, depth, epoch, scope)?;
@@ -222,6 +230,9 @@ impl Element {
             }
             described
         };
+        if let MountedKind::SafeArea(node) = &mut self.kind {
+            node.refresh(scope);
+        }
         let child_scope = self.child_scope(scope);
         let mut keys = HashSet::new();
         for child in &children {
@@ -273,7 +284,11 @@ impl Element {
         epoch: u64,
         scope: &Scope,
     ) -> Result<bool, ElementError> {
-        let mut changed = false;
+        let mut changed = if let MountedKind::SafeArea(node) = &mut self.kind {
+            node.refresh(scope)
+        } else {
+            false
+        };
         self.dependencies.set_scope(scope);
         if self.last_build != epoch && self.queue.dirty.load(Ordering::Acquire) {
             if matches!(self.kind, MountedKind::Component(_)) {
@@ -299,6 +314,15 @@ impl Element {
             MountedKind::Component(_) | MountedKind::Inherited(_)
         ) {
             return self.children[0].render_node(paint);
+        }
+        if let MountedKind::SafeArea(node) = &self.kind {
+            return BoxNode::new(
+                self.id,
+                BoxKind::Padding {
+                    insets: node.insets,
+                    child: Box::new(self.children[0].render_node(paint)),
+                },
+            );
         }
         let children = self
             .children
@@ -377,11 +401,14 @@ impl Element {
                     })
                     .collect(),
             }),
-            Kind::Component(_) | Kind::Inherited(_) => unreachable!(),
+            Kind::Component(_) | Kind::Inherited(_) | Kind::SafeArea(_) => unreachable!(),
         };
         BoxNode::new(key, kind)
     }
     fn child_scope(&self, parent: &Scope) -> Scope {
+        if let MountedKind::SafeArea(node) = &self.kind {
+            return node.child_scope(parent);
+        }
         let mut scope = parent.clone();
         if let MountedKind::Inherited(provider) = &self.kind {
             let link = provider.link();

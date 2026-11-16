@@ -131,6 +131,81 @@ impl ViewMetrics {
     }
 }
 
+/// Edges affected by a view-inset transformation. The default selects no edges.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ViewEdges {
+    pub left: bool,
+    pub top: bool,
+    pub right: bool,
+    pub bottom: bool,
+}
+impl ViewEdges {
+    pub const ALL: Self = Self {
+        left: true,
+        top: true,
+        right: true,
+        bottom: true,
+    };
+    pub const NONE: Self = Self {
+        left: false,
+        top: false,
+        right: false,
+        bottom: false,
+    };
+}
+impl ViewMetrics {
+    /// Padding used by SafeArea. Unsupported occlusion falls back to the host's
+    /// current safe area without inventing keyboard or stable-bar measurements.
+    pub fn padding(&self) -> MarginF32 {
+        self.occlusion.map_or(self.safe_area.0, |o| o.padding)
+    }
+    /// Mark selected padding as consumed for descendants. The view size and
+    /// keyboard insets stay unchanged; stable view padding is reduced by the
+    /// consumed amount. This transforms data and does not add layout padding.
+    pub fn remove_padding(mut self, edges: ViewEdges) -> Self {
+        let consumed = self.padding();
+        let subtract = |value: MarginF32| MarginF32 {
+            left: if edges.left {
+                (value.left - consumed.left).max(0.0)
+            } else {
+                value.left
+            },
+            top: if edges.top {
+                (value.top - consumed.top).max(0.0)
+            } else {
+                value.top
+            },
+            right: if edges.right {
+                (value.right - consumed.right).max(0.0)
+            } else {
+                value.right
+            },
+            bottom: if edges.bottom {
+                (value.bottom - consumed.bottom).max(0.0)
+            } else {
+                value.bottom
+            },
+        };
+        self.safe_area = SafeAreaInsets(subtract(self.safe_area.0));
+        if let Some(ref mut occlusion) = self.occlusion {
+            occlusion.view_padding = subtract(occlusion.view_padding);
+            if edges.left {
+                occlusion.padding.left = 0.0;
+            }
+            if edges.top {
+                occlusion.padding.top = 0.0;
+            }
+            if edges.right {
+                occlusion.padding.right = 0.0;
+            }
+            if edges.bottom {
+                occlusion.padding.bottom = 0.0;
+            }
+        }
+        self
+    }
+}
+
 /// Selective inherited dependencies for [`ViewMetrics`]. An observation returns
 /// a full immutable snapshot but only changes to the selected aspects rebuild it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -189,9 +264,7 @@ impl crate::element::InheritedModel for ViewMetrics {
             ViewAspect::ViewInsets => {
                 self.occlusion.map(|o| o.view_insets) != old.occlusion.map(|o| o.view_insets)
             }
-            ViewAspect::Padding => {
-                self.occlusion.map(|o| o.padding) != old.occlusion.map(|o| o.padding)
-            }
+            ViewAspect::Padding => self.padding() != old.padding(),
             ViewAspect::Occlusion => self.occlusion != old.occlusion,
             ViewAspect::UnobscuredRect => self.unobscured_rect() != old.unobscured_rect(),
         })

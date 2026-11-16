@@ -270,7 +270,7 @@ impl Link {
             }
         }
     }
-    fn value<T: 'static>(&self) -> Option<Rc<T>> {
+    pub(super) fn value<T: 'static>(&self) -> Option<Rc<T>> {
         self.value.borrow().as_ref()?.clone().downcast().ok()
     }
     fn close(&self) {
@@ -578,7 +578,13 @@ impl<T: InheritedModel> AmbientModel<T> {
         }
     }
     pub fn scope(&self) -> Scope {
-        Scope::from([(self.link.kind, self.link.clone())])
+        self.child_scope(&Scope::new())
+    }
+    pub fn child_scope(&self, parent: &Scope) -> Scope {
+        let mut scope = parent.clone();
+        *self.link.parent.borrow_mut() = scope.get(&self.link.kind).map(Rc::downgrade);
+        scope.insert(self.link.kind, self.link.clone());
+        scope
     }
 }
 impl<T: InheritedModel> Drop for AmbientModel<T> {

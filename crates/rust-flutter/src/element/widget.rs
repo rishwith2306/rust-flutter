@@ -1,5 +1,5 @@
 use super::inherited::{InheritedModel, InheritedNotifier, Provided, ProviderDescription, Watch};
-use super::{Key, state::*};
+use super::{Key, SafeAreaOptions, state::*};
 use crate::{layout::*, notifier::Listenable};
 use std::{cell::RefCell, rc::Rc};
 
@@ -100,6 +100,7 @@ pub(super) enum Kind {
         paint: Paint,
     },
     Padding(Insets),
+    SafeArea(SafeAreaOptions),
     Constrained(BoxConstraints),
     Align {
         alignment: Alignment,
@@ -115,6 +116,7 @@ pub(super) enum Kind {
 pub(super) enum Token {
     Leaf,
     Padding,
+    SafeArea,
     Constrained,
     Align,
     Flex,
@@ -127,6 +129,7 @@ impl Kind {
         match self {
             Self::Leaf { .. } => Token::Leaf,
             Self::Padding(_) => Token::Padding,
+            Self::SafeArea(_) => Token::SafeArea,
             Self::Constrained(_) => Token::Constrained,
             Self::Align { .. } => Token::Align,
             Self::Flex(..) => Token::Flex,
@@ -139,6 +142,7 @@ impl Kind {
         match self {
             Self::Leaf { .. } => "Leaf",
             Self::Padding(_) => "Padding",
+            Self::SafeArea(_) => "SafeArea",
             Self::Constrained(_) => "Constrained",
             Self::Align { .. } => "Align",
             Self::Flex(..) => "Flex",
@@ -269,6 +273,13 @@ impl Widget {
     }
     pub fn padding(insets: Insets, child: Self) -> Self {
         Self::new(Kind::Padding(insets), vec![child])
+    }
+    /// Pad around the inherited safe area and consume that padding below it.
+    pub fn safe_area(child: Self) -> Self {
+        Self::safe_area_with(SafeAreaOptions::default(), child)
+    }
+    pub fn safe_area_with(options: SafeAreaOptions, child: Self) -> Self {
+        Self::new(Kind::SafeArea(options), vec![child])
     }
     pub fn constrained(constraints: BoxConstraints, child: Self) -> Self {
         Self::new(Kind::Constrained(constraints), vec![child])

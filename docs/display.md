@@ -96,7 +96,56 @@ mutable handle. All subscription lifetime and unmount checks are unchanged.
 
 This implements selective geometry dependencies described by Flutter's
 [MediaQuery](https://api.flutter.dev/flutter/widgets/MediaQuery-class.html).
-Text scaling, accessibility preferences, display features, remove-padding widgets,
+Text scaling, accessibility preferences, display features, additional inset-removal widgets,
 and the rest of MediaQuery's API remain pending. The gallery's component page
 includes a retained view report; resize its window to see its build count change
 without rebuilding it for unrelated counter/notifier updates.
+
+
+## SafeArea in retained layouts
+
+`Widget::safe_area(child)` adds padding from the inherited view and exposes a
+consumed-padding model to its child. Nested SafeAreas therefore apply each
+selected inset once. The child is retained when host insets change; the wrapper
+updates box geometry without recreating its widget description or state.
+
+```rust,ignore
+use rust_flutter::{display::ViewEdges, element::{SafeAreaOptions, Widget}, layout::Insets};
+
+let protected = Widget::safe_area_with(
+    SafeAreaOptions {
+        edges: ViewEdges { top: true, bottom: true, ..ViewEdges::NONE },
+        minimum: Insets::all(8.0),
+        maintain_bottom_view_padding: false,
+    },
+    child,
+);
+```
+
+Minimum padding is a per-edge lower bound, including on disabled edges. Only
+selected edges are marked consumed; applying a minimum to a disabled edge does
+not erase that edge's inherited inset. Invalid minimum values produce ordinary
+layout errors and preserve mounted state for recovery.
+
+`maintain_bottom_view_padding` retains measured stable bottom bar space while a
+keyboard covers that edge. It uses current safe-area space if stable measurements
+are unavailable. SafeArea does **not** add keyboard occlusion or scroll a focused
+editor. `ViewMetrics::padding()` returns measured effective padding, falling back
+to host safe areas when occlusion is unsupported. `ViewAspect::Padding` watches
+that effective value, including changes to the fallback.
+
+SafeArea is for view edges that the enclosing layout has not already consumed.
+The default runtime's egui `CentralPanel` already accounts for host safe areas;
+putting another raw-view SafeArea inside that panel would add system padding
+again. Use it in custom full-viewport compositions, or explicitly supply a model
+with the enclosing layout's consumed edges removed. `ViewMetrics::remove_padding`
+transforms selected data without adding layout space; preserve/update an explicit
+model when its host metrics change. Automatic consumption across all egui panel
+and framework layout boundaries remains an integration task.
+
+The implementation follows the reviewed behavior of Flutter's
+[SafeArea](https://api.flutter.dev/flutter/widgets/SafeArea/build.html) and
+[padding removal](https://api.flutter.dev/flutter/widgets/MediaQueryData/removePadding.html).
+View size and IME insets survive padding removal; stable padding is reduced by
+what was consumed. `removeViewInsets`, `removeViewPadding`, sliver variants and
+full MediaQuery compatibility remain pending.
