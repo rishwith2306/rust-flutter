@@ -384,6 +384,7 @@ impl Element {
         let kind = match kind {
             Kind::Leaf {
                 preferred,
+                baselines,
                 measure,
                 paint: callback,
             } => {
@@ -394,11 +395,20 @@ impl Element {
                         (measure.borrow_mut())(constraints)
                     }))
                 } else {
-                    BoxKind::Leaf {
+                    BoxKind::BaselineLeaf {
                         preferred: *preferred,
+                        baselines: *baselines,
                     }
                 }
             }
+            Kind::Baseline(distance, baseline) => BoxKind::Baseline {
+                distance: *distance,
+                baseline: *baseline,
+                child: Box::new(children.into_iter().next().unwrap()),
+            },
+            Kind::IgnoreBaseline => BoxKind::IgnoreBaseline {
+                child: Box::new(children.into_iter().next().unwrap()),
+            },
             Kind::IntrinsicWidth(step_width, step_height) => BoxKind::IntrinsicWidth {
                 step_width: *step_width,
                 step_height: *step_height,
@@ -611,6 +621,18 @@ impl ElementTree {
     pub fn dry_layout(&mut self, constraints: BoxConstraints) -> Result<egui::Vec2, ElementError> {
         self.prepare_render()?;
         Ok(self.render.as_ref().unwrap().dry_layout(constraints)?)
+    }
+    pub fn dry_baseline(
+        &mut self,
+        constraints: BoxConstraints,
+        kind: layout::TextBaseline,
+    ) -> Result<Option<f32>, ElementError> {
+        self.prepare_render()?;
+        Ok(self
+            .render
+            .as_ref()
+            .unwrap()
+            .dry_baseline(constraints, kind)?)
     }
     pub fn intrinsic(
         &mut self,

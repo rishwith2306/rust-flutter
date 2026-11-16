@@ -128,7 +128,7 @@ actual-layout assertions, so speculative queries cannot hide extra wet layouts.
 
 There is no intrinsic-query cache or per-child dependency graph yet. Repeated
 speculation can be expensive, particularly for nested intrinsic wrappers; do not
-assume a fixed frame-time cost. Text shaping/intrinsics, baselines and dry baselines,
+assume a fixed frame-time cost. Text shaping/intrinsics,
 slivers, intrinsic debug cross-validation and full Flutter rendering compatibility
 remain unfinished.
 
@@ -138,3 +138,6 @@ Primary references reviewed:
 [maximum intrinsic width](https://api.flutter.dev/flutter/rendering/RenderBox/getMaxIntrinsicWidth.html),
 [RenderFlex](https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/rendering/flex.dart), and
 [intrinsic proxy boxes](https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/rendering/proxy_box.dart).
+
+Read-only baseline queries and baseline-aware flex geometry are described in
+[baseline layout](baselines.md).

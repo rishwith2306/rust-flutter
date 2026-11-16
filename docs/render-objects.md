@@ -137,3 +137,7 @@ Reviewed primary references:
 Read-only dry layout, intrinsic dimensions and sizing wrappers are described in
 [size queries](size-queries.md). Missing pure implementations return explicit errors;
 queries do not fall back to the mutable layout method.
+
+Actual and pure baseline metrics, row alignment and baseline wrappers are described
+in [baseline layout](baselines.md). Unknown pure baselines are distinct from known
+absence, and custom geometry can report both supported coordinate systems.

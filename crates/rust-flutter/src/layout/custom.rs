@@ -12,6 +12,7 @@ pub struct BoxGeometry {
     pub size: Vec2,
     pub clip: Clip,
     pub hit_test_self: bool,
+    pub baselines: Baselines,
 }
 impl BoxGeometry {
     pub fn new(size: Vec2) -> Self {
@@ -19,6 +20,7 @@ impl BoxGeometry {
             size,
             clip: Clip::None,
             hit_test_self: false,
+            baselines: Baselines::NONE,
         }
     }
 }
@@ -48,6 +50,17 @@ impl BoxChildren<'_> {
             .ok_or(LayoutError::InvalidConfiguration(
                 "custom child index is out of bounds",
             ))
+    }
+    pub fn baseline(
+        &self,
+        index: usize,
+        kind: TextBaseline,
+        only_real: bool,
+    ) -> Result<Option<f32>, LayoutError> {
+        let layout = self.measured.get(index).and_then(Option::as_ref).ok_or(
+            LayoutError::InvalidConfiguration("baseline query requires a laid-out child"),
+        )?;
+        Ok(layout.distance_to_baseline(kind, only_real))
     }
     pub fn layout(
         &mut self,
@@ -96,6 +109,16 @@ impl BoxChildren<'_> {
 /// change without replacing children. The retained render-object adapter uses
 /// its tree's layout revision. Call `CustomBox::invalidate` for standalone use.
 pub trait CustomBoxLayout: 'static {
+    fn dry_baseline(
+        &self,
+        _constraints: BoxConstraints,
+        _kind: TextBaseline,
+        _children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "custom box has no dry-baseline implementation",
+        ))
+    }
     fn dry_layout(
         &self,
         _constraints: BoxConstraints,
@@ -156,6 +179,19 @@ impl CustomBox {
     pub fn invalidate(&self) {
         self.revision.set(self.revision.get().wrapping_add(1));
     }
+    pub(super) fn dry_baseline(
+        &self,
+        c: BoxConstraints,
+        kind: TextBaseline,
+        children: &[BoxNode],
+    ) -> Result<Option<f32>, LayoutError> {
+        let state = self.state.try_borrow().map_err(|_| {
+            LayoutError::InvalidConfiguration("custom layout object is already active")
+        })?;
+        state
+            .layout
+            .dry_baseline(c, kind, &BoxQueries::new(children))
+    }
     pub(super) fn dry_layout(
         &self,
         c: BoxConstraints,
@@ -208,6 +244,7 @@ impl CustomBox {
             nodes,
         };
         let geometry = state.layout.layout(constraints, &mut children)?;
+        geometry.baselines.validate()?;
         if !constraints.contains(geometry.size) {
             return Err(LayoutError::ChildViolatedConstraints(id));
         }
@@ -233,6 +270,7 @@ impl CustomBox {
             geometry.clip,
             children.nodes.is_empty(),
         )?;
+        layout.baselines = geometry.baselines;
         layout.paint_self = true;
         layout.hit_self = geometry.hit_test_self;
         state.cache = Some(Cache {

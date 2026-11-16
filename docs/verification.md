@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 150 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 163 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -275,3 +275,21 @@ The Linux native resize probe records matching dry and allocated rectangles at
 Existing interaction, restoration and exact-color/glyph probes still pass. The
 Android probe also checks a matching dry/allocated rectangle and one wet layout.
 This is not text-shaping, baseline or complete intrinsic-compatibility evidence.
+
+
+## Baseline geometry and mixed font sizes
+
+The baseline suite covers both coordinate systems, flex ascent/descent grouping,
+missing-baseline fallbacks, direction/fit/tight-constraint sweeps, shifted and
+ignored baselines, first/highest propagation, positioned stacks, negative overflow
+and gated hits, finite-data validation, custom child access, retained state/error
+recovery and dry-query cache preservation. These are declared-metric tests.
+
+The native gallery additionally uses the backend's actual galley glyph positions
+for two ASCII font sizes. A pixel probe locates their distinct backgrounds and
+reference line; it checks common physical baseline coordinates within two pixels.
+The Linux X11 run passes with both text baselines and the line at y=429 after
+resize. The local API 37 / x86_64 run places both text baselines at y≈1405 and
+the reference line at y=1404.5, within the two-pixel tolerance. Existing exact-color/glyph interactions and dry/actual size checks remain
+passing. This does not establish complete shaping, font fallback, ideographic
+metrics or accessibility behavior; see [baseline scope](baselines.md).

@@ -97,10 +97,13 @@ pub struct Widget {
 pub(super) enum Kind {
     Leaf {
         preferred: egui::Vec2,
+        baselines: Baselines,
         measure: Option<Measure>,
         paint: Paint,
     },
     Padding(Insets),
+    Baseline(f32, TextBaseline),
+    IgnoreBaseline,
     IntrinsicWidth(Option<f32>, Option<f32>),
     IntrinsicHeight,
     SafeArea(SafeAreaOptions),
@@ -120,6 +123,8 @@ pub(super) enum Kind {
 pub(super) enum Token {
     Leaf,
     Padding,
+    Baseline,
+    IgnoreBaseline,
     IntrinsicWidth,
     IntrinsicHeight,
     SafeArea,
@@ -136,6 +141,8 @@ impl Kind {
         match self {
             Self::Leaf { .. } => Token::Leaf,
             Self::Padding(_) => Token::Padding,
+            Self::Baseline(..) => Token::Baseline,
+            Self::IgnoreBaseline => Token::IgnoreBaseline,
             Self::IntrinsicWidth(..) => Token::IntrinsicWidth,
             Self::IntrinsicHeight => Token::IntrinsicHeight,
             Self::SafeArea(_) => Token::SafeArea,
@@ -152,6 +159,8 @@ impl Kind {
         match self {
             Self::Leaf { .. } => "Leaf",
             Self::Padding(_) => "Padding",
+            Self::Baseline(..) => "Baseline",
+            Self::IgnoreBaseline => "IgnoreBaseline",
             Self::IntrinsicWidth(..) => "IntrinsicWidth",
             Self::IntrinsicHeight => "IntrinsicHeight",
             Self::SafeArea(_) => "SafeArea",
@@ -258,14 +267,29 @@ impl Widget {
         self
     }
     pub fn leaf(preferred: egui::Vec2, paint: impl FnMut(&mut egui::Ui) + 'static) -> Self {
+        Self::baseline_leaf(preferred, Baselines::NONE, paint)
+    }
+    /// A fixed preferred-size leaf with declared real baseline metrics.
+    pub fn baseline_leaf(
+        preferred: egui::Vec2,
+        baselines: Baselines,
+        paint: impl FnMut(&mut egui::Ui) + 'static,
+    ) -> Self {
         Self::new(
             Kind::Leaf {
                 preferred,
+                baselines,
                 measure: None,
                 paint: Rc::new(RefCell::new(paint)),
             },
             vec![],
         )
+    }
+    pub fn baseline(distance: f32, kind: TextBaseline, child: Self) -> Self {
+        Self::new(Kind::Baseline(distance, kind), vec![child])
+    }
+    pub fn ignore_baseline(child: Self) -> Self {
+        Self::new(Kind::IgnoreBaseline, vec![child])
     }
     pub fn empty() -> Self {
         Self::leaf(egui::Vec2::ZERO, |_| {})
@@ -278,6 +302,7 @@ impl Widget {
         Self::new(
             Kind::Leaf {
                 preferred: egui::Vec2::ZERO,
+                baselines: Baselines::NONE,
                 measure: Some(Rc::new(RefCell::new(measure))),
                 paint: Rc::new(RefCell::new(paint)),
             },

@@ -3,8 +3,8 @@ use rust_flutter::{
     egui,
     element::*,
     layout::{
-        Axis, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
-        IntrinsicDimension, LayoutError,
+        Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
+        IntrinsicDimension, LayoutError, TextBaseline,
     },
     notifier::ValueNotifier,
 };
@@ -248,6 +248,51 @@ impl State<ViewReport> for ViewReportState {
     }
 }
 
+fn baseline_example(ctx: &egui::Context) -> Widget {
+    let mut baselines = Vec::new();
+    let children = [
+        (16.0, "Ag small", egui::Color32::from_rgb(49, 83, 123)),
+        (28.0, "Ag large", egui::Color32::from_rgb(103, 81, 47)),
+    ]
+    .into_iter()
+    .map(|(size, text, color)| {
+        let galley = ctx.fonts_mut(|fonts| {
+            fonts.layout_no_wrap(
+                text.into(),
+                egui::FontId::proportional(size),
+                egui::Color32::WHITE,
+            )
+        });
+        let distance = galley
+            .rows
+            .first()
+            .and_then(|row| row.glyphs.first().map(|glyph| row.pos.y + glyph.pos.y))
+            .expect("ASCII demo has a baseline");
+        baselines.push(distance);
+        FlexItem::fixed(Widget::baseline_leaf(
+            galley.size(),
+            Baselines {
+                alphabetic: Some(distance),
+                ideographic: None,
+            },
+            move |ui| {
+                ui.painter().rect_filled(ui.max_rect(), 0.0, color);
+                ui.painter()
+                    .galley(ui.max_rect().min, galley.clone(), egui::Color32::WHITE);
+            },
+        ))
+    })
+    .collect();
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "rust-flutter gallery baseline-demo small={} large={}",
+        baselines[0], baselines[1]
+    );
+    let mut style = FlexStyle::new(Axis::Horizontal);
+    style.cross_alignment = CrossAxisAlignment::Baseline(TextBaseline::Alphabetic);
+    style.spacing = 16.0;
+    Widget::flex(style, children)
+}
 pub(super) struct ComponentDemo {
     tree: ElementTree,
     reversed: bool,
@@ -259,6 +304,8 @@ pub(super) struct ComponentDemo {
     observable_tree: ElementTree,
     view_tree: ElementTree,
     last_view_query: Option<egui::Vec2>,
+    baseline_tree: ElementTree,
+    baseline_scale: f32,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -300,6 +347,9 @@ impl ComponentDemo {
             observable,
             observable_tree,
             last_view_query: None,
+            baseline_tree: ElementTree::new(ctx, baseline_example(ctx))
+                .expect("valid baseline demo"),
+            baseline_scale: ctx.pixels_per_point(),
             view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
                 .expect("valid view report"),
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
@@ -451,6 +501,25 @@ impl ComponentDemo {
                 (Err(error), _) | (_, Err(error)) => {
                     ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
                 }
+            }
+        }
+        if self.baseline_scale != ui.ctx().pixels_per_point() {
+            self.baseline_scale = ui.ctx().pixels_per_point();
+            if let Err(error) = self.baseline_tree.update(baseline_example(ui.ctx())) {
+                ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+            }
+        }
+        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0)) {
+            let geometry = self.baseline_tree.layout(constraints);
+            let response = self.baseline_tree.show(ui, constraints);
+            if let (Ok(geometry), Ok(response)) = (geometry, response)
+                && let Some(distance) = geometry.baseline(TextBaseline::Alphabetic)
+            {
+                ui.painter().hline(
+                    response.rect.x_range(),
+                    response.rect.top() + distance,
+                    egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(78, 164, 168)),
+                );
             }
         }
     }

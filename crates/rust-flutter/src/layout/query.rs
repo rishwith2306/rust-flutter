@@ -55,6 +55,14 @@ impl<'a> BoxQueries<'a> {
     pub fn dry_layout(&self, index: usize, c: BoxConstraints) -> Result<Vec2, LayoutError> {
         self.node(index)?.compute_dry_layout(c)
     }
+    pub fn dry_baseline(
+        &self,
+        index: usize,
+        c: BoxConstraints,
+        kind: TextBaseline,
+    ) -> Result<Option<f32>, LayoutError> {
+        self.node(index)?.compute_dry_baseline(c, kind)
+    }
     pub fn intrinsic(
         &self,
         index: usize,
@@ -168,6 +176,29 @@ impl BoxNode {
     }
     pub(super) fn compute_dry_layout(&self, c: BoxConstraints) -> Result<Vec2, LayoutError> {
         let size = match &self.kind {
+            BoxKind::BaselineLeaf {
+                preferred,
+                baselines,
+            } => {
+                baselines.validate()?;
+                c.constrain(*preferred)?
+            }
+            BoxKind::Baseline {
+                distance,
+                baseline,
+                child,
+            } => {
+                baseline::validate_target(*distance)?;
+                let size = child.compute_dry_layout(c.loosen())?;
+                baseline::baseline_size(
+                    c,
+                    size,
+                    child.compute_dry_baseline(c.loosen(), *baseline)?,
+                    *distance,
+                )?
+                .0
+            }
+            BoxKind::IgnoreBaseline { child } => child.compute_dry_layout(c)?,
             BoxKind::Leaf { preferred } => c.constrain(*preferred)?,
             BoxKind::Measured(_) => {
                 return Err(LayoutError::UnsupportedQuery(
@@ -239,7 +270,10 @@ impl BoxNode {
         intrinsic_argument(extent)?;
         let axis = d.axis();
         let value = match &self.kind {
-            BoxKind::Leaf { preferred } => {
+            BoxKind::Baseline { child, .. } | BoxKind::IgnoreBaseline { child } => {
+                child.compute_intrinsic(d, extent)?
+            }
+            BoxKind::BaselineLeaf { preferred, .. } | BoxKind::Leaf { preferred } => {
                 if !nonnegative(*preferred) {
                     return Err(LayoutError::InvalidSize);
                 }

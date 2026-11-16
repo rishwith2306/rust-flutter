@@ -7,7 +7,7 @@ use super::{
 };
 use crate::layout::{
     BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CustomBox, CustomBoxLayout,
-    IntrinsicDimension, LayoutError,
+    IntrinsicDimension, LayoutError, TextBaseline,
 };
 use std::{
     any::{Any, TypeId},
@@ -82,6 +82,16 @@ pub trait RenderObjectWidget: Sized + 'static {
 /// Custom leaf or container layout, paint and mounted lifetime hooks. Child
 /// geometry is validated by BoxChildren; paint runs before placed children.
 pub trait RenderBox: 'static {
+    fn dry_baseline(
+        &self,
+        _constraints: BoxConstraints,
+        _kind: TextBaseline,
+        _children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        Err(LayoutError::UnsupportedQuery(
+            "render box has no dry-baseline implementation",
+        ))
+    }
     /// Read-only sizing. Never call wet layout as a fallback for these protocols.
     fn dry_layout(
         &self,
@@ -142,6 +152,18 @@ struct Mounted<W: RenderObjectWidget> {
 }
 struct Adapter<W: RenderObjectWidget>(Rc<RefCell<Instance<W>>>);
 impl<W: RenderObjectWidget> CustomBoxLayout for Adapter<W> {
+    fn dry_baseline(
+        &self,
+        c: BoxConstraints,
+        kind: TextBaseline,
+        children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        let instance = self
+            .0
+            .try_borrow()
+            .map_err(|_| LayoutError::InvalidConfiguration("render object is already active"))?;
+        instance.object.dry_baseline(c, kind, children)
+    }
     fn dry_layout(
         &self,
         c: BoxConstraints,

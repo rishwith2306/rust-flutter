@@ -10,7 +10,7 @@ import select
 import subprocess
 import tempfile
 import time
-from component_probe import probe_components
+from component_probe import probe_baselines, probe_components
 
 root = Path(__file__).resolve().parents[1]
 output = root / "target" / "smoke"
@@ -140,9 +140,10 @@ try:
             assert xdo("windowsize", window, "900", "650").returncode == 0
             after = wait_for(lambda: (v if (v := view_report()) and v[1:3] == ("900", "650") else None), "ambient view size did not update after native resize")
             assert int(after[0]) == 2, after
-            component_capture("desktop-inherited-view-resized.png")
+            baseline_image = component_capture("desktop-inherited-view-resized.png")
             view_metrics = {"before": before, "after": after}
             trace=(output / "gallery.log").read_text()
+            baselines = probe_baselines(baseline_image, trace)
             render_layouts=re.findall(r"render-view layout=(\d+) size=([\d.]+)x([\d.]+)",trace)
             assert trace.count("render-view create") == 1, trace
             assert trace.count("render-view update") == 2, trace
@@ -150,7 +151,7 @@ try:
             render_queries=re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)",trace)
             assert len(render_queries)==2 and all(q[-1]=="true" for q in render_queries), render_queries
             render_objects={"created":1,"updated":2,"layouts":render_layouts,"dry_queries":render_queries}
-            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
+            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "baseline_alignment": baselines, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
             print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:
     if app is not None and app.poll() is None:

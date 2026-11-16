@@ -13,7 +13,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-from component_probe import probe_components, native_formats
+from component_probe import probe_baselines, probe_components, native_formats
 from android_ime import ime_state
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -231,6 +231,7 @@ assert len(render_layouts) == 1 and render_layouts[0][0] == "1", render_layouts
 (output / "android-render-object.txt").write_text(render_trace)
 render_queries = re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)", render_trace)
 assert len(render_queries) == 1 and render_queries[0][-1] == "true", render_queries
+baselines = probe_baselines(output / "android-components-initial.png", render_trace, args.scale)
 render_objects = {"created": 1, "updated": 1, "layouts": render_layouts, "dry_queries": render_queries}
 result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
@@ -246,6 +247,7 @@ result = {"passed": True, "serial": args.serial,
           "layout_state_after_touch": layout_value,
           "components": components,
           "render_objects": render_objects,
+          "baseline_alignment": baselines,
           "scope": "rendered touch controls, injected keyboard text, route back, background/resume, process-restart restoration, bundled assets and constraint layout interaction"}
 (output / "android-result.json").write_text(json.dumps(result, indent=2) + "\n")
 print("PASS: Android touch/text, keyboard metrics, routes, resume/restoration, layout and retained component state")

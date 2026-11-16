@@ -116,6 +116,7 @@ impl RenderBox for StripBox {
             size,
             clip: Clip::HardEdge,
             hit_test_self: true,
+            ..BoxGeometry::new(size)
         })
     }
     fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {

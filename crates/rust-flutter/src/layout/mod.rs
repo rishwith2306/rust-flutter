@@ -1,5 +1,7 @@
 //! Constraint-based box layout independent of egui's immediate layout algorithm.
 //! Own a `BoxNode` tree, compute geometry, then paint leaves through `show_layout`.
+mod baseline;
+pub use baseline::{Baselines, TextBaseline};
 mod custom;
 mod flex;
 mod query;
@@ -247,6 +249,7 @@ pub enum CrossAxisAlignment {
     #[default]
     Center,
     Stretch,
+    Baseline(TextBaseline),
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TextDirection {
@@ -390,6 +393,18 @@ impl Stack {
 
 type Measure = dyn FnMut(BoxConstraints) -> Result<Vec2, LayoutError>;
 pub enum BoxKind {
+    BaselineLeaf {
+        preferred: Vec2,
+        baselines: Baselines,
+    },
+    Baseline {
+        distance: f32,
+        baseline: TextBaseline,
+        child: Box<BoxNode>,
+    },
+    IgnoreBaseline {
+        child: Box<BoxNode>,
+    },
     IntrinsicWidth {
         step_width: Option<f32>,
         step_height: Option<f32>,
@@ -438,6 +453,33 @@ impl BoxNode {
     }
     pub fn leaf(key: impl Hash, preferred: Vec2) -> Self {
         Self::new(key, BoxKind::Leaf { preferred })
+    }
+    pub fn baseline_leaf(key: impl Hash, preferred: Vec2, baselines: Baselines) -> Self {
+        Self::new(
+            key,
+            BoxKind::BaselineLeaf {
+                preferred,
+                baselines,
+            },
+        )
+    }
+    pub fn baseline(key: impl Hash, distance: f32, baseline: TextBaseline, child: Self) -> Self {
+        Self::new(
+            key,
+            BoxKind::Baseline {
+                distance,
+                baseline,
+                child: Box::new(child),
+            },
+        )
+    }
+    pub fn ignore_baseline(key: impl Hash, child: Self) -> Self {
+        Self::new(
+            key,
+            BoxKind::IgnoreBaseline {
+                child: Box::new(child),
+            },
+        )
     }
     pub fn measured(
         key: impl Hash,
@@ -524,7 +566,9 @@ impl BoxNode {
             | BoxKind::Constrained { child, .. }
             | BoxKind::Align { child, .. }
             | BoxKind::IntrinsicWidth { child, .. }
-            | BoxKind::IntrinsicHeight { child } => child.validate(keys, depth + 1)?,
+            | BoxKind::IntrinsicHeight { child }
+            | BoxKind::Baseline { child, .. }
+            | BoxKind::IgnoreBaseline { child } => child.validate(keys, depth + 1)?,
             BoxKind::Flex(flex) => {
                 for child in &flex.children {
                     child.node.validate(keys, depth + 1)?;
@@ -540,12 +584,47 @@ impl BoxNode {
         Ok(())
     }
     fn perform_layout(&mut self, constraints: BoxConstraints) -> Result<LayoutBox, LayoutError> {
-        let leaf = matches!(self.kind, BoxKind::Leaf { .. } | BoxKind::Measured(_));
+        let leaf = matches!(
+            self.kind,
+            BoxKind::Leaf { .. } | BoxKind::BaselineLeaf { .. } | BoxKind::Measured(_)
+        );
         let mut children = Vec::new();
         let mut clip = Clip::None;
         let size = match &mut self.kind {
             BoxKind::Custom { layout, children } => {
                 return layout.perform_layout(self.id, constraints, children);
+            }
+            BoxKind::BaselineLeaf {
+                preferred,
+                baselines,
+            } => {
+                baselines.validate()?;
+                constraints.constrain(*preferred)?
+            }
+            BoxKind::Baseline {
+                distance,
+                baseline,
+                child,
+            } => {
+                baseline::validate_target(*distance)?;
+                let layout = child.perform_layout(constraints.loosen())?;
+                let (size, offset) = baseline::baseline_size(
+                    constraints,
+                    layout.size,
+                    layout.baseline(*baseline),
+                    *distance,
+                )?;
+                children.push(PlacedBox { offset, layout });
+                size
+            }
+            BoxKind::IgnoreBaseline { child } => {
+                let layout = child.perform_layout(constraints)?;
+                let size = layout.size;
+                children.push(PlacedBox {
+                    offset: Vec2::ZERO,
+                    layout,
+                });
+                size
             }
             BoxKind::Leaf { preferred } => constraints.constrain(*preferred)?,
             BoxKind::Measured(measure) => measure(constraints)?,
@@ -654,7 +733,15 @@ impl BoxNode {
         if !constraints.contains(size) {
             return Err(LayoutError::ChildViolatedConstraints(self.id));
         }
-        LayoutBox::new(self.id, size, children, clip, leaf)
+        let mut layout = LayoutBox::new(self.id, size, children, clip, leaf)?;
+        match &self.kind {
+            BoxKind::BaselineLeaf { baselines, .. } => layout.baselines = *baselines,
+            BoxKind::IgnoreBaseline { .. } => {}
+            BoxKind::Flex(flex) => layout.inherit_baselines(flex.axis == Axis::Horizontal)?,
+            BoxKind::Stack(_) => layout.inherit_baselines(true)?,
+            _ => layout.inherit_baselines(false)?,
+        }
+        Ok(layout)
     }
 }
 #[derive(Clone, Debug)]
@@ -667,6 +754,7 @@ pub struct LayoutBox {
     leaf: bool,
     paint_self: bool,
     hit_self: bool,
+    pub baselines: Baselines,
     pub id: Id,
     pub size: Vec2,
     pub children: Vec<PlacedBox>,
@@ -704,6 +792,7 @@ impl LayoutBox {
             leaf,
             paint_self: leaf,
             hit_self: leaf,
+            baselines: Baselines::NONE,
             id,
             size,
             children,

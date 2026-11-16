@@ -47,6 +47,24 @@ def patch(path, rect, scale, width=96):
     return subprocess.check_output(["convert", str(path), "-crop", f"{w}x{h}+{round(x-w/2)}+{round(y-h/2)}", "-colorspace", "gray", "-threshold", "75%", "-trim", "+repage", "-depth", "8", "pgm:-"], timeout=15)
 
 
+def probe_baselines(path, trace, scale=1.0):
+    """Compare rendered box offsets to the exact galley metrics used to paint."""
+    metrics = re.findall(r"baseline-demo small=([\d.-]+) large=([\d.-]+)", trace)
+    assert metrics, "missing actual font baseline diagnostics"
+    small_metric, large_metric = map(float, metrics[-1])
+    small, large, line = bounds(path, "#31537b"), bounds(path, "#67512f"), bounds(path, "#4ea4a8")
+    assert small and large and line, (small, large, line)
+    small_y = small[1] + small_metric * scale
+    large_y = large[1] + large_metric * scale
+    line_y = line[1] + line[3] / 2
+    assert small[1] > large[1], "smaller font was not shifted down"
+    assert abs(small_y - large_y) <= 2.0, (small_y, large_y)
+    assert abs(line_y - large_y) <= 2.0, (line_y, large_y)
+    return {"passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
+            "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
+            "tolerance_physical_pixels": 2.0}
+
+
 def probe_components(capture, tap, scale=1.0):
     """capture(name) returns a PNG path; tap(x,y) injects a physical click/touch."""
     initial = capture("components-initial.png")

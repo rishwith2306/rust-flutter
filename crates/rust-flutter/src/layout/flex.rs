@@ -32,19 +32,45 @@ impl Flex {
         })
     }
     pub(super) fn dry_layout(&self, c: BoxConstraints) -> Result<Vec2, LayoutError> {
+        Ok(self.dry_geometry(c, None)?.size)
+    }
+    pub(super) fn dry_geometry(
+        &self,
+        c: BoxConstraints,
+        query: Option<TextBaseline>,
+    ) -> Result<LayoutBox, LayoutError> {
         let sizing: Vec<_> = self.children.iter().map(|child| child.sizing).collect();
-        self.spec()
-            .layout(&sizing, c, |index, c| {
-                let node = &self.children[index].node;
-                LayoutBox::new(
-                    node.id,
-                    node.compute_dry_layout(c)?,
-                    vec![],
-                    Clip::None,
-                    true,
-                )
-            })
-            .map(|(size, _)| size)
+        let align = match (self.axis, self.cross_alignment) {
+            (Axis::Horizontal, CrossAxisAlignment::Baseline(kind)) => Some(kind),
+            _ => None,
+        };
+        let (size, children) = self.spec().layout(&sizing, c, |index, c| {
+            let node = &self.children[index].node;
+            let mut layout = LayoutBox::new(
+                node.id,
+                node.compute_dry_layout(c)?,
+                vec![],
+                Clip::None,
+                true,
+            )?;
+            for kind in [TextBaseline::Alphabetic, TextBaseline::Ideographic] {
+                if query == Some(kind) || align == Some(kind) {
+                    layout.baselines = layout
+                        .baselines
+                        .with(kind, node.compute_dry_baseline(c, kind)?);
+                }
+            }
+            Ok(layout)
+        })?;
+        let mut geometry = LayoutBox::new(
+            Id::new("dry flex geometry"),
+            size,
+            children,
+            Clip::None,
+            false,
+        )?;
+        geometry.inherit_baselines(self.axis == Axis::Horizontal)?;
+        Ok(geometry)
     }
 }
 impl FlexSpec {
@@ -129,6 +155,29 @@ impl FlexSpec {
                 layouts[index] = Some(layout);
             }
         }
+        let baseline_kind = match (axis, self.cross_alignment) {
+            (Axis::Horizontal, CrossAxisAlignment::Baseline(kind)) => Some(kind),
+            _ => None,
+        };
+        let mut group: Option<(f32, f32)> = None;
+        if let Some(kind) = baseline_kind {
+            for layout in layouts.iter().flatten() {
+                if let Some(ascent) = layout.baseline(kind) {
+                    let descent = layout.size.y - ascent;
+                    group = Some(
+                        group.map_or((ascent, descent), |(a, d)| (a.max(ascent), d.max(descent))),
+                    );
+                }
+            }
+        }
+        if let Some((ascent, descent)) = group {
+            if !(ascent + descent).is_finite() {
+                return Err(LayoutError::InvalidConfiguration(
+                    "baseline flex extent must be finite",
+                ));
+            }
+            cross = cross.max(ascent + descent);
+        }
         let desired = axis.size(
             if self.main_size == MainAxisSize::Max && max_main.is_finite() {
                 max_main
@@ -185,6 +234,12 @@ impl FlexSpec {
                 }
                 CrossAxisAlignment::Center => cross_free / 2.0,
                 CrossAxisAlignment::Stretch => 0.0,
+                CrossAxisAlignment::Baseline(_) => {
+                    match (group, baseline_kind.and_then(|kind| layout.baseline(kind))) {
+                        (Some((ascent, _)), Some(distance)) => ascent - distance,
+                        _ => 0.0,
+                    }
+                }
             };
             cursor += axis.main(layout.size) + self.spacing + between;
             let offset = axis.size(main, cross);
@@ -241,6 +296,7 @@ impl Flex {
                 }
             }
             let mut cross = 0.0_f32;
+            let mut group: Option<(f32, f32)> = None;
             for (i, child) in self.children.iter().enumerate() {
                 let main = match (main[i], child.sizing) {
                     (Some(size), _) => size,
@@ -249,7 +305,32 @@ impl Flex {
                     }
                     _ => child.node.compute_intrinsic(main_query, f32::INFINITY)?,
                 };
-                cross = cross.max(child.node.compute_intrinsic(d, main)?);
+                let child_cross = child.node.compute_intrinsic(d, main)?;
+                cross = cross.max(child_cross);
+                if let (Axis::Horizontal, CrossAxisAlignment::Baseline(kind)) =
+                    (self.axis, self.cross_alignment)
+                {
+                    let (min_main, max_main) = match child.sizing {
+                        FlexSizing::Flexible { fit, .. } if extent.is_finite() => {
+                            (if fit == FlexFit::Tight { main } else { 0.0 }, main)
+                        }
+                        _ => (0.0, f32::INFINITY),
+                    };
+                    let constraints = BoxConstraints::new(
+                        self.axis.size(min_main, 0.0),
+                        self.axis.size(max_main, f32::INFINITY),
+                    )?;
+                    if let Some(ascent) = child.node.compute_dry_baseline(constraints, kind)? {
+                        let descent = child_cross - ascent;
+                        group =
+                            Some(group.map_or((ascent, descent), |(a, d)| {
+                                (a.max(ascent), d.max(descent))
+                            }));
+                    }
+                }
+            }
+            if let Some((ascent, descent)) = group {
+                cross = cross.max(ascent + descent);
             }
             Ok(cross)
         }
