@@ -34,6 +34,7 @@ output = root / "target/smoke"
 output.mkdir(parents=True, exist_ok=True)
 package = "dev.rustflutter.gallery"
 surface_formats = []
+keyboard_states = []
 
 
 def device(*command, check=True, timeout=15):
@@ -64,27 +65,40 @@ def tap(x, y):
     device("shell", "input", "tap", str(round(x * args.scale)), str(round(y * args.scale + args.top_inset_px)))
 
 
-def wait_keyboard_hidden():
+def wait_keyboard(shown):
+    phase = "shown" if shown else "hidden"
     deadline = time.monotonic() + 30
+    dump = ""
     while time.monotonic() < deadline:
         dump = device("shell", "dumpsys", "input_method").stdout.decode()
-        if re.search(r"mInputShown=false", dump) and re.search(r"mImeWindowVis=0", dump):
-            return
+        requested = re.search(r"\bmInputShown=(true|false)\b", dump)
+        visibility = re.search(r"\bmImeWindowVis=(?:0x)?([0-9a-fA-F]+)\b", dump)
+        if requested and visibility:
+            # AOSP IME_VISIBLE is bit 0x2; IME_ACTIVE alone does not mean visible.
+            flags = int(visibility.group(1), 16)
+            status = {"phase": phase, "requested": requested.group(1) == "true",
+                      "visible": bool(flags & 0x2), "flags": flags}
+            if not keyboard_states or keyboard_states[-1] != status:
+                keyboard_states.append(status)
+            if status["requested"] == shown and status["visible"] == shown:
+                (output / f"android-keyboard-{phase}.txt").write_text(dump)
+                screenshot(f"android-keyboard-{phase}.png")
+                return
         time.sleep(0.3)
-    raise TimeoutError("keyboard did not hide")
+    (output / f"android-keyboard-{phase}-failed.txt").write_text(dump)
+    (output / "android-keyboard-window.txt").write_bytes(device("shell", "dumpsys", "window").stdout)
+    (output / "android-keyboard-logcat.txt").write_bytes(device("logcat", "-d", "-t", "1500").stdout)
+    screenshot(f"android-keyboard-{phase}-failed.png")
+    raise TimeoutError(f"keyboard did not become {phase}; observations: {keyboard_states}")
+
+
+def wait_keyboard_hidden():
+    wait_keyboard(False)
 
 
 def wait_keyboard_shown():
-    # ADB text events can arrive before the native host processes the focus tap.
-    # Require the app's asynchronous IME request before injecting keyboard events.
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        dump = device("shell", "dumpsys", "input_method").stdout.decode()
-        if re.search(r"mInputShown=true", dump):
-            return
-        time.sleep(0.3)
-    screenshot("android-keyboard-focus-failed.png")
-    raise TimeoutError("text field did not request the keyboard")
+    # A request can precede the IME window. Wait for visibility before typing/Back.
+    wait_keyboard(True)
 
 
 def start():
@@ -180,6 +194,7 @@ result = {"passed": True, "serial": args.serial,
           "sdk": device("shell", "getprop", "ro.build.version.sdk").stdout.decode().strip(),
           "abi": device("shell", "getprop", "ro.product.cpu.abi").stdout.decode().strip(),
           "native_surface_formats": surface_formats,
+          "keyboard_states": keyboard_states,
           "page_size": device("shell", "getconf", "PAGE_SIZE").stdout.decode().strip(),
           "scale": args.scale, "top_inset_px": args.top_inset_px,
           "state_after_restart": value,

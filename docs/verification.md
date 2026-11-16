@@ -73,8 +73,10 @@ ANDROID_HOME=/path/to/Android/Sdk python3 scripts/android-smoke.py \
 ```
 
 The ordinary smoke test uses the unchanged pure-native cargo-apk package. Its
-text-entry gate waits for the native host's keyboard request before injecting key
-events, avoiding text arriving before the field processes its focus tap. Its
+text-entry gate waits for both the keyboard request and the IME-visible bit
+before injecting keys or Back, avoiding a request/window-opening race. Hide
+readiness checks visibility independently of the IME-active bit. Request/visibility
+transitions, IME dumps and screenshots are retained as test evidence. Its
 startup gate waits for a successful presented frame with the expected density and
 safe top inset, using debug host diagnostics. A prior cold-start run injected the
 first touch before presentation; the snapshot file alone was insufficient
