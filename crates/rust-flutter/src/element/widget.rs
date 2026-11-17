@@ -107,6 +107,7 @@ pub(super) enum Kind {
     IntrinsicWidth(Option<f32>, Option<f32>),
     IntrinsicHeight,
     SafeArea(SafeAreaOptions),
+    TickerMode(bool),
     Constrained(BoxConstraints),
     Align {
         alignment: Alignment,
@@ -128,6 +129,7 @@ pub(super) enum Token {
     IntrinsicWidth,
     IntrinsicHeight,
     SafeArea,
+    TickerMode,
     Constrained,
     Align,
     Flex,
@@ -146,6 +148,7 @@ impl Kind {
             Self::IntrinsicWidth(..) => Token::IntrinsicWidth,
             Self::IntrinsicHeight => Token::IntrinsicHeight,
             Self::SafeArea(_) => Token::SafeArea,
+            Self::TickerMode(_) => Token::TickerMode,
             Self::Constrained(_) => Token::Constrained,
             Self::Align { .. } => Token::Align,
             Self::Flex(..) => Token::Flex,
@@ -164,6 +167,7 @@ impl Kind {
             Self::IntrinsicWidth(..) => "IntrinsicWidth",
             Self::IntrinsicHeight => "IntrinsicHeight",
             Self::SafeArea(_) => "SafeArea",
+            Self::TickerMode(_) => "TickerMode",
             Self::Constrained(_) => "Constrained",
             Self::Align { .. } => "Align",
             Self::Flex(..) => "Flex",
@@ -319,6 +323,9 @@ impl Widget {
         Self::new(Kind::Padding(insets), vec![child])
     }
     /// Pad around the inherited safe area and consume that padding below it.
+    pub fn ticker_mode(enabled: bool, child: Self) -> Self {
+        Self::new(Kind::TickerMode(enabled), vec![child])
+    }
     pub fn safe_area(child: Self) -> Self {
         Self::safe_area_with(SafeAreaOptions::default(), child)
     }

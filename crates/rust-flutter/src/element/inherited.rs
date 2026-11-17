@@ -71,6 +71,7 @@ fn chain(link: Option<Rc<Link>>) -> Vec<Rc<Link>> {
 }
 pub(super) struct Dependencies {
     id: ElementId,
+    pub(super) animations: super::ticker::AnimationOwner,
     queue: SyncWeak<Queue>,
     scope: RefCell<Scope>,
     build_reads: RefCell<Reads>,
@@ -82,6 +83,7 @@ impl Dependencies {
     pub fn new(id: ElementId, queue: &Arc<Queue>, scope: Scope) -> Rc<Self> {
         Rc::new(Self {
             id,
+            animations: super::ticker::AnimationOwner::new(&scope),
             queue: Arc::downgrade(queue),
             scope: RefCell::new(scope),
             build_reads: RefCell::new(HashMap::new()),
@@ -124,6 +126,7 @@ impl Dependencies {
         }
     }
     pub fn set_scope(&self, scope: &Scope) {
+        self.animations.refresh(scope);
         let differs = self
             .build_reads
             .borrow()

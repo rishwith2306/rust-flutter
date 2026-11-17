@@ -75,7 +75,8 @@ an existing run, so invalid targets/repeat options do not interrupt playback.
 requests while retaining active playback. Time still elapses. Unmuting requests
 a frame and the next owning pass catches up, possibly completing immediately.
 Explicit commands and set_value still work while muted. This is manual muting;
-there is no inherited TickerMode or State ticker-provider facade yet.
+[managed controllers and inherited TickerMode](ticker-mode.md) now provide scoped
+permission and element-owned teardown.
 
 ## Listeners, completion and lifetime
 
@@ -104,7 +105,8 @@ cancels its pending run and removes its weak driver registration without needing
 another frame. A builder holds its own source clone, so remove/dispose the
 owning component and subscriptions as appropriate. In a State implementation,
 create the controller from init_state's egui context and dispose it in dispose.
-Automatic State/provider binding remains future work.
+Alternatively, use `ctx.animation_controller` for automatic element ownership and
+scoped mode; see [managed lifetime](ticker-mode.md).
 
 ## Host integration and remaining scope
 
@@ -119,7 +121,7 @@ can skip intermediate samples. Nonfinite/backward tick times are ignored.
 This adds bounded point-to-point/repeat control, explicit muting, futures and
 observable integration. Unbounded/simulation controllers, springs/fling/velocity,
 mutable durations/bounds, nonlinear/custom curves, animation accessibility
-policies, State TickerProvider/TickerMode integration, derived animation adapters,
+policies, complete TickerProvider/force-frame/resync semantics, derived animation adapters,
 typed implicit/transition widgets and the full Flutter animation member catalog
 remain unfinished. Existing scalar Tween sampling stays available.
 

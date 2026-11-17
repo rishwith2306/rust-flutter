@@ -32,6 +32,7 @@ pub enum AnimationOutcome {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationError {
     Disposed,
+    Unmounted,
     DuringNotification,
     InvalidConfiguration(&'static str),
 }
@@ -39,6 +40,7 @@ impl std::fmt::Display for AnimationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Disposed => f.write_str("animation controller is disposed"),
+            Self::Unmounted => f.write_str("animation owner is unmounted"),
             Self::DuringNotification => f.write_str("cannot dispose during animation notification"),
             Self::InvalidConfiguration(message) => f.write_str(message),
         }
@@ -146,6 +148,7 @@ struct State {
     reverse: bool,
     motion: Option<Motion>,
     muted: bool,
+    scope_muted: bool,
     disposed: bool,
     last_time: f64,
 }
@@ -154,6 +157,7 @@ struct Inner {
     changes: ChangeNotifier,
     status_changes: ChangeNotifier,
     depth: Cell<usize>,
+    dispose_pending: Cell<bool>,
     ctx: egui::Context,
     viewport: egui::ViewportId,
     driver: Cell<Option<u64>>,
@@ -241,10 +245,13 @@ fn register(controller: &AnimationController) {
         );
     }
 }
-struct DispatchGuard<'a>(&'a Cell<usize>);
+struct DispatchGuard<'a>(&'a AnimationController);
 impl Drop for DispatchGuard<'_> {
     fn drop(&mut self) {
-        self.0.set(self.0.get() - 1);
+        self.0.0.depth.set(self.0.0.depth.get() - 1);
+        if self.0.0.depth.get() == 0 && self.0.0.dispose_pending.get() {
+            self.0.finish_dispose();
+        }
     }
 }
 impl AnimationController {
@@ -278,12 +285,14 @@ impl AnimationController {
                 reverse: false,
                 motion: None,
                 muted: false,
+                scope_muted: false,
                 disposed: false,
                 last_time: ctx.input(|i| i.time),
             }),
             changes: ChangeNotifier::new(),
             status_changes: ChangeNotifier::new(),
             depth: Cell::new(0),
+            dispose_pending: Cell::new(false),
             ctx: ctx.clone(),
             viewport: ctx.viewport_id(),
             driver: Cell::new(None),
@@ -304,10 +313,11 @@ impl AnimationController {
         self.0.state.borrow().motion.is_some()
     }
     pub fn is_disposed(&self) -> bool {
-        self.0.state.borrow().disposed
+        self.0.state.borrow().disposed || self.0.dispose_pending.get()
     }
     pub fn is_muted(&self) -> bool {
-        self.0.state.borrow().muted
+        let state = self.0.state.borrow();
+        state.muted || state.scope_muted
     }
     fn now(&self) -> f64 {
         self.0.ctx.input_for(self.0.viewport, |i| i.time)
@@ -326,7 +336,7 @@ impl AnimationController {
     }
     fn dispatch(&self, value: bool) {
         self.0.depth.set(self.0.depth.get() + 1);
-        let _guard = DispatchGuard(&self.0.depth);
+        let _guard = DispatchGuard(self);
         if value {
             let _ = self.0.changes.notify_listeners();
         }
@@ -336,11 +346,14 @@ impl AnimationController {
             state.reported = state.status;
             changed
         };
-        if changed {
+        if changed && !self.is_disposed() {
             let _ = self.0.status_changes.notify_listeners();
         }
     }
     pub fn subscribe_status(&self, listener: Listener) -> Result<Subscription, Disposed> {
+        if self.is_disposed() {
+            return Err(Disposed);
+        }
         self.0.status_changes.subscribe(listener)
     }
     pub fn set_muted(&self, muted: bool) -> Result<(), AnimationError> {
@@ -547,7 +560,12 @@ impl AnimationController {
         let now = self.now();
         let (notify, completed) = {
             let mut state = self.0.state.borrow_mut();
-            if state.disposed || state.muted || !now.is_finite() || now <= state.last_time {
+            if state.disposed
+                || state.muted
+                || state.scope_muted
+                || !now.is_finite()
+                || now <= state.last_time
+            {
                 drop(state);
                 self.repaint();
                 return;
@@ -640,6 +658,41 @@ impl AnimationController {
         if self.0.depth.get() != 0 {
             return Err(AnimationError::DuringNotification);
         }
+        self.finish_dispose();
+        Ok(())
+    }
+    pub(crate) fn set_scope_muted(&self, muted: bool) {
+        if self.is_disposed() {
+            return;
+        }
+        let changed = {
+            let mut state = self.0.state.borrow_mut();
+            let changed = state.scope_muted != muted;
+            state.scope_muted = muted;
+            changed
+        };
+        if changed {
+            self.repaint();
+        }
+    }
+    /// Ownership teardown may happen inside a listener; cancel immediately and
+    /// clear registrations after the outermost notification releases its borrows.
+    pub(crate) fn retire(&self) {
+        if self.is_disposed() {
+            return;
+        }
+        if self.0.depth.get() == 0 {
+            self.finish_dispose();
+        } else {
+            self.0.dispose_pending.set(true);
+            let motion = self.0.state.borrow_mut().motion.take();
+            if let Some(motion) = motion {
+                motion.run.finish(AnimationOutcome::Canceled);
+            }
+        }
+    }
+    fn finish_dispose(&self) {
+        self.0.dispose_pending.set(false);
         let motion = {
             let mut state = self.0.state.borrow_mut();
             state.disposed = true;
@@ -653,7 +706,6 @@ impl AnimationController {
         if let Some(motion) = motion {
             motion.run.finish(AnimationOutcome::Canceled);
         }
-        Ok(())
     }
 }
 fn lerp(from: f32, to: f32, t: f32) -> f32 {
@@ -661,6 +713,9 @@ fn lerp(from: f32, to: f32, t: f32) -> f32 {
 }
 impl Listenable for AnimationController {
     fn subscribe(&self, listener: Listener) -> Result<Subscription, Disposed> {
+        if self.is_disposed() {
+            return Err(Disposed);
+        }
         self.0.changes.subscribe(listener)
     }
     fn same_source(&self, other: &Self) -> bool {

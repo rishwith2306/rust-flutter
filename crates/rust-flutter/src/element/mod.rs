@@ -4,6 +4,8 @@ mod notifier_builder;
 mod render_object;
 use render_object::{MountedRender, Pipeline};
 pub use render_object::{RenderBox, RenderContext, RenderHandle, RenderObjectWidget};
+mod ticker;
+pub use ticker::TickerMode;
 mod safe_area;
 use safe_area::SafeAreaNode;
 pub use safe_area::SafeAreaOptions;
@@ -120,6 +122,7 @@ enum MountedKind {
     Component(Box<dyn Component>),
     Inherited(Box<dyn Provider>),
     SafeArea(SafeAreaNode),
+    TickerMode(ticker::TickerNode),
     RenderObject(Box<dyn MountedRender>),
 }
 struct Element {
@@ -138,6 +141,7 @@ impl Drop for Element {
         self.children.clear();
         self.dependencies.close();
         self.queue.close();
+        self.dependencies.animations.close();
     }
 }
 impl Element {
@@ -178,6 +182,9 @@ impl Element {
                 Kind::Inherited(description) => {
                     MountedKind::Inherited(description.mount(id, queue.clone()))
                 }
+                Kind::TickerMode(enabled) => {
+                    MountedKind::TickerMode(ticker::TickerNode::new(id, enabled, scope))
+                }
                 Kind::SafeArea(options) => {
                     MountedKind::SafeArea(SafeAreaNode::new(id, options, scope))
                 }
@@ -210,6 +217,7 @@ impl Element {
                 provider.update(description.into_any())
             }
             (MountedKind::SafeArea(node), Kind::SafeArea(options)) => node.options = options,
+            (MountedKind::TickerMode(node), Kind::TickerMode(enabled)) => node.enabled = enabled,
             (MountedKind::RenderObject(object), Kind::RenderObject(description)) => {
                 object.update(description.into_any())
             }
@@ -243,6 +251,9 @@ impl Element {
             described
         };
         if let MountedKind::SafeArea(node) = &mut self.kind {
+            node.refresh(scope);
+        }
+        if let MountedKind::TickerMode(node) = &mut self.kind {
             node.refresh(scope);
         }
         let child_scope = self.child_scope(scope);
@@ -303,6 +314,9 @@ impl Element {
         } else {
             false
         };
+        if let MountedKind::TickerMode(node) = &mut self.kind {
+            node.refresh(scope);
+        }
         self.dependencies.set_scope(scope);
         if self.last_build != epoch && self.queue.dirty.load(Ordering::Acquire) {
             if matches!(self.kind, MountedKind::Component(_)) {
@@ -330,7 +344,7 @@ impl Element {
     fn render_id(&self) -> egui::Id {
         if matches!(
             self.kind,
-            MountedKind::Component(_) | MountedKind::Inherited(_)
+            MountedKind::Component(_) | MountedKind::Inherited(_) | MountedKind::TickerMode(_)
         ) {
             self.children[0].render_id()
         } else {
@@ -349,7 +363,7 @@ impl Element {
     fn render_node(&self, paint: &mut HashMap<egui::Id, PaintEntry>) -> BoxNode {
         if matches!(
             self.kind,
-            MountedKind::Component(_) | MountedKind::Inherited(_)
+            MountedKind::Component(_) | MountedKind::Inherited(_) | MountedKind::TickerMode(_)
         ) {
             return self.children[0].render_node(paint);
         }
@@ -470,13 +484,20 @@ impl Element {
                     })
                     .collect(),
             }),
-            Kind::Component(_) | Kind::Inherited(_) | Kind::SafeArea(_) | Kind::RenderObject(_) => {
+            Kind::Component(_)
+            | Kind::Inherited(_)
+            | Kind::TickerMode(_)
+            | Kind::SafeArea(_)
+            | Kind::RenderObject(_) => {
                 unreachable!()
             }
         };
         BoxNode::new(key, kind)
     }
     fn child_scope(&self, parent: &Scope) -> Scope {
+        if let MountedKind::TickerMode(node) = &self.kind {
+            return node.child_scope(parent);
+        }
         if let MountedKind::SafeArea(node) = &self.kind {
             return node.child_scope(parent);
         }

@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 200 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 208 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -381,3 +381,27 @@ also pass. Android/macOS results for this revision are recorded by CI. These
 results establish native frame-driven progress and endpoints, not frame-rate,
 jank, system accessibility, inherited ticker-mode or complete Flutter animation
 compatibility; see [controller scope](animation-controllers.md).
+
+
+## Scoped ticker and owned animation lifetime verification
+
+The workspace passes 208 Rust tests, including eight new scoped-ticker tests.
+They cover nested mode AND, retained identity and elapsed-time catch-up,
+mode refresh without owner rebuild, explicit/scoped mute composition,
+unmanaged independence, multiple owned controllers and external clones,
+retained-context rejection after unmount, failed mount cleanup, value/status
+listener-triggered unmount with safe deferred cleanup, read-only mode and
+geometry/intrinsic/baseline forwarding. Existing controller tests still pass.
+Formatting, warnings-denied Clippy, generated documentation and both controller
+and managed-ticker Markdown examples pass locally.
+
+The strengthened Linux X11 native probe passes with a managed marker controller:
+settled widths are 24→48→24 physical pixels, then a second run is muted at width
+30 and remains exactly 30 beyond its two-second duration. Re-enabling catches up
+to 48 and reverse returns to a settled 24. The probe polls for stable endpoints,
+checks actual screenshots and retains intermediate-value, exact foreground color,
+covered-child and baseline assertions. Other existing native interaction,
+restoration, asset, layout, component, inherited-view and render-cache gates pass.
+Android/macOS checks for this revision are recorded by CI. This does not prove
+force-frame policy, context resync/adoption, every native host lifecycle or full
+Flutter ticker compatibility; see [scoped ticker scope](ticker-mode.md).

@@ -153,8 +153,12 @@ def probe_components(capture, tap, scale=1.0):
         while time.monotonic() < deadline:
             path = capture(name)
             measured = bounds(path, "#834eb3")
-            if measured and abs(measured[2] - expected * scale) <= 2:
-                return path, measured
+            if measured and abs(measured[2] - expected * scale) <= 1:
+                time.sleep(0.25)
+                settled_path = capture(name)
+                settled = bounds(settled_path, "#834eb3")
+                if settled == measured:
+                    return settled_path, settled
             time.sleep(0.15)
         raise AssertionError(f"animation did not reach {expected} logical points: {measured}")
 
@@ -168,4 +172,23 @@ def probe_components(capture, tap, scale=1.0):
     contracted, smaller = await_width("components-animation-contracted.png", 24)
     time.sleep(0.15)
     assert not bounds(contracted, "#e3bd42"), "animation broke foreground painting"
-    return {"animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2]}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    ticker = bounds(contracted, "#3e6c72")
+    assert ticker, "ticker mode control is missing"
+    tap(*center(smaller))
+    time.sleep(0.35)
+    tap(*center(ticker))
+    time.sleep(0.3)
+    paused = capture("components-animation-muted.png")
+    paused_marker = bounds(paused, "#834eb3")
+    assert paused_marker and 24 * scale + 2 < paused_marker[2] < 48 * scale - 2, paused_marker
+    time.sleep(2.2)
+    frozen = capture("components-animation-still-muted.png")
+    frozen_marker = bounds(frozen, "#834eb3")
+    assert frozen_marker == paused_marker, (paused_marker, frozen_marker)
+    tap(*center(bounds(frozen, "#3e6c72")))
+    resumed, resumed_marker = await_width("components-animation-unmuted.png", 48)
+    tap(*center(resumed_marker))
+    contracted, final_marker = await_width("components-animation-restored.png", 24)
+    time.sleep(0.15)
+
+    return {"animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
