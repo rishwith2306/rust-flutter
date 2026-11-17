@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add pure checked friction, bounded contact and spring simulations with explicit tolerances and all damping regimes; controller/scroll integration remains pending.
+
 - Shared Rust desktop and Android application model with an egui/wgpu renderer.
 - Navigation, signals, background tasks, themes, localization and JSON snapshots.
 - Embedded assets, density variants and a bounded decoded-image cache.

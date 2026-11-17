@@ -47,6 +47,7 @@ pub mod layout;
 pub mod localization;
 pub mod navigation;
 pub mod notifier;
+pub mod physics;
 pub mod runtime;
 pub mod storage;
 pub mod text;

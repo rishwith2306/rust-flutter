@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 321 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 335 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -611,9 +611,33 @@ release records a stopped estimate with zero effective velocity and 56.134081 ms
 sample age, consistent with the 40 ms stop policy. All counter, glyph, animation,
 layout, asset and restoration checks remain required and pass. This verifies
 release delivery and valid metadata, not precise physical fling measurements.
-Android/macOS results for this shipment are recorded by its exact-revision CI.
+Revision `fabc359` passed all four jobs in
+[run 44110913174](https://github.com/rishwith2306/rust-flutter/actions/runs/44110913174):
+Linux rendered interactions, macOS build/tests, ARM Android compilation and
+ordinary Android interactions plus three same-process activity recreations.
+The Linux CI artifact independently records the release feedback and a stopped
+estimate aged 52.227862 ms. This does not establish native fling accuracy or
+macOS window/input/VoiceOver runtime behavior.
 
 This adds release data, not scrolling or inertial simulations. The egui adapter
 still timestamps at frame time; raw device history, platform-specific strategies,
 axis/local-coordinate details and full Flutter gesture compatibility remain
 unfinished. See [velocity scope and API migration](gesture-velocity.md).
+
+
+## Pure friction and spring simulations
+
+335 workspace tests pass locally, including 14 new physics tests. Analytic
+friction/harmonic/critical solutions and differential-equation residuals cover
+both motion directions and underdamped/critical/overdamped springs. Additional
+checks cover near-critical continuity, tiny/huge elapsed times, pure query order,
+object-safe dispatch, exact initial conditions, contact bounds, strict tolerance,
+optional snapping and invalid/unrepresentable inputs. The guide's executable
+Rust example passes. Workspace Clippy with warnings denied, Rustdoc, formatting
+and both renderer provenance/selection verifiers pass locally.
+
+These are CPU mathematical checks. No new native scrolling/physics runtime
+claim is established: controller driving, scroll view integration, platform
+overscroll policies and the remaining simulation family are unfinished. Existing
+rendered gesture evidence belongs to the separately recorded velocity revision.
+See [physics models and limits](physics.md).
