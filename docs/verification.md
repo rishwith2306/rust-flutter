@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 286 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 287 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -508,13 +508,13 @@ interaction and the existing exact-pixel gates.
 
 ## Retained detector, hit paths and shared root binding
 
-The workspace passes 286 Rust tests. Nineteen new integration tests cover
+The workspace passes 287 Rust tests. Twenty new integration tests cover
 deepest/frontmost path order, offsets and bounds, translucent/opaque/deferred
 behavior, whole-path arena registration, captured movement, independent pointers,
 target replacement/unmount, latest callbacks without gesture reset, stale queued
 target identities, pointer reuse inside an up callback, disposal and weak
 lifetime, invalid input/timestamp errors, idempotent reentrant cancellation,
-egui multipass deduplication, parent clip, focus loss and disabled roots. A private
+egui multipass deduplication, parent clip (including excluded far edges), focus loss and disabled roots. A private
 test checks target-ID exhaustion without partial registration. Formatting,
 warnings-denied Clippy, generated documentation, both renderer checks and the
 binding Markdown example pass locally.

@@ -684,3 +684,30 @@ fn retained_egui_input_respects_parent_clip_focus_and_disabled_root() {
     assert_eq!(*log.borrow(), vec!["marker cancel", "marker cancel"]);
     assert_eq!(b.router().route_count(), 0);
 }
+#[test]
+fn retained_egui_input_excludes_parent_clip_max_edges() {
+    for point in [pos2(10.0, 9.0), pos2(9.0, 10.0)] {
+        let ctx = egui::Context::default();
+        let binding = GestureBinding::new();
+        let log = Log::default();
+        let root = GestureDetector::new(&binding, config(&log, "marker", false))
+            .unwrap()
+            .into_widget(Widget::leaf(vec2(30.0, 24.0), |_| {}));
+        let mut tree = ElementTree::new(&ctx, root).unwrap();
+        gui_frame(
+            &ctx,
+            &mut tree,
+            &binding,
+            vec![mouse(point, true)],
+            0.0,
+            [true, false, true],
+        );
+        assert_eq!(
+            binding.active_pointers(),
+            0,
+            "clipped edge {point:?} captured input"
+        );
+        assert_eq!(binding.router().route_count(), 0);
+        assert!(log.borrow().is_empty());
+    }
+}

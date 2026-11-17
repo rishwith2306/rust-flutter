@@ -624,7 +624,11 @@ impl GestureBinding {
                     ..
                 } => {
                     let p = pos - origin.to_vec2();
-                    if ui.clip_rect().contains(pos)
+                    let clip = ui.clip_rect();
+                    if pos.x >= clip.min.x
+                        && pos.y >= clip.min.y
+                        && pos.x < clip.max.x
+                        && pos.y < clip.max.y
                         && p.x >= 0.0
                         && p.y >= 0.0
                         && p.x < geometry.size.x
