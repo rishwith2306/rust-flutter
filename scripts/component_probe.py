@@ -67,10 +67,10 @@ def probe_baselines(path, trace, scale=1.0):
     arena_drags = trace.count("gesture-arena drag accepted")
     assert arena_taps >= 4 and arena_drags >= 1, (arena_taps, arena_drags)
     assert "gesture-arena tap rejected" in trace, "drag did not reject the tap candidate"
-    binding_taps = trace.count("gesture-binding tap targets=4 pointers=1")
-    shared_frames = trace.count("gesture-frame roots=3 targets=4")
+    binding_taps = trace.count("gesture-binding tap targets=6 pointers=1")
+    shared_frames = trace.count("gesture-frame roots=3 targets=6")
     assert shared_frames >= 4, shared_frames
-    binding_pans = trace.count("gesture-binding pan targets=4 pointers=1")
+    binding_pans = trace.count("gesture-binding pan targets=6 pointers=1")
     assert binding_taps >= 4 and binding_pans >= 1, (binding_taps, binding_pans)
     ends = re.findall(r"pan-end vx=([\d.eE+-]+) vy=([\d.eE+-]+) raw_x=([\d.eE+-]+) raw_y=([\d.eE+-]+) confidence=([\d.eE+-]+) samples=(\d+) age_ms=([\d.eE+-]+) status=(Fitted|Unavailable|Stopped) fling=(true|false)", trace)
     assert ends, "missing rich pan-end details"
@@ -356,4 +356,44 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
         final_keys = await_keyboard("components-scroll-key-reset.png", expected_blue=True)
         exact_fill(final_keys, scroll_view, "#284b72", scale)
         keyboard_verified = True
-    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    def await_bar(name, predicate):
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            path = capture(name)
+            if predicate(path):
+                return path
+            time.sleep(0.1)
+        raise AssertionError(f"scrollbar did not reach expected rendered state: {name}")
+    bar_initial = capture("components-scrollbar-initial.png")
+    thumb = bounds(bar_initial, "#b9c7d8")
+    track = bounds(bar_initial, "#4e5866")
+    assert thumb and track, "missing scrollbar thumb/track"
+    assert abs(thumb[2] - 8 * scale) <= 2 and abs(thumb[3] - (56 / 3) * scale) <= 2, thumb
+    for rect in (thumb, track):
+        assert rect[0] >= scroll_view[0] and rect[1] >= scroll_view[1]
+        assert rect[0] + rect[2] <= scroll_view[0] + scroll_view[2] + 1
+        assert rect[1] + rect[3] <= scroll_view[1] + scroll_view[3] + 1
+    tx, ty = center(thumb)
+    drag(tx, ty, tx, ty + 40 * scale)
+    bar_dragged = await_bar("components-scrollbar-dragged.png", lambda path: bounds(path, "#b87657") == scroll_view)
+    end_thumb = bounds(bar_dragged, "#b9c7d8")
+    assert end_thumb and abs((end_thumb[1] - thumb[1]) - (56 * 2 / 3) * scale) <= 2, (thumb, end_thumb)
+    tap(*center(reset_scroll))
+    await_bar("components-scrollbar-drag-reset.png", lambda path: bounds(path, "#284b72") == scroll_view and bounds(path, "#b9c7d8") == thumb)
+    tap(tx, scroll_view[1] + 50 * scale)
+    def page_matches(path):
+        green = bounds(path, "#6f8e42")
+        blue = bounds(path, "#284b72")
+        return green and blue and abs(green[3] - 48 * scale) <= 2 and abs(blue[3] - 12 * scale) <= 2
+    await_bar("components-scrollbar-page.png", page_matches)
+    tap(*center(reset_scroll))
+    await_bar("components-scrollbar-page-reset.png", lambda path: bounds(path, "#284b72") == scroll_view and bounds(path, "#b9c7d8") == thumb)
+    bar_wheel_verified = False
+    if wheel is not None:
+        wheel(*center(thumb), 4)
+        await_bar("components-scrollbar-wheel.png", lambda path: not bounds(path, "#284b72") and (bounds(path, "#6f8e42") or bounds(path, "#b87657")))
+        tap(*center(reset_scroll))
+        bar_wheel_verified = True
+    bar_reset = await_bar("components-scrollbar-reset.png", lambda path: bounds(path, "#284b72") == scroll_view and bounds(path, "#b9c7d8") == thumb)
+    exact_fill(bar_reset, scroll_view, "#284b72", scale)
+    return {"scrollbar": {"passed": True, "thumb_drag": True, "track_page": True, "wheel_over_thumb": bar_wheel_verified, "initial_thumb": thumb}, "scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

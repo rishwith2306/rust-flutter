@@ -943,3 +943,34 @@ RGB888/input/restoration, clipping, wheel, glyph, baseline and animation gates
 remain green. Recreation keeps PID 3210 across three cycles and four Rust hosts;
 the ordinary APK probe runs in a separate gallery process, PID 4078. macOS
 runtime input and all previously listed framework gaps remain outstanding.
+
+
+## Retained proportional scrollbars
+
+The retained scrollbar implementation passes 454 workspace tests, including
+19 new scrollbar tests. Coverage includes proportional/minimum geometry,
+resize/style changes, horizontal/reverse mapping, positive scaled layers,
+thumb/content gesture competition and capture, track paging, wheel fallthrough,
+noninteractive/disabled behavior, command supersession, rebuild/unmount during
+drag start and reentrant layout queries. Private scroll-position command stamps
+let a thumb release only its own drag, preserving callback-created application
+motion. Workspace Clippy with warnings denied, rustdoc, formatting, the
+executable scrollbar guide, both renderer checks and local x86_64 Android
+Clippy pass.
+
+The final Linux X11/Xvfb native probe passes thumb dragging to the final coral
+stripe, track paging by 80% of the viewport, real wheel input over the thumb,
+and exact content/thumb reset. `desktop-result.json` records scrollbar passed,
+thumb_drag=true, track_page=true and wheel_over_thumb=true. The original
+60-point clip, keyboard/wheel scrolling, cross-axis rejection, RGB888, glyph,
+baseline, animation and restoration checks remain required and pass. The shared
+frame reports three roots and six targets, adding thumb/track targets without
+removing the original viewport target. The dragged screenshot was visually
+inspected and shows the thumb at the track's bottom with coral within the clip.
+
+Android probes include the same new scrollbar pixel gates, but their presence
+and a cross-compilation do not establish Android runtime evidence for this
+shipment. Exact-revision CI artifacts must be inspected separately. macOS
+runtime, physical devices, platform scrollbar styling/hover/fade policies,
+expanded touch hit areas and semantics remain unverified or unfinished. See
+[scrollbar usage and limits](scrollbars.md).

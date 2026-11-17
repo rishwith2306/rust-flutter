@@ -117,9 +117,13 @@ baseline, asset and restoration gates remain required.
 and Tab/blank-tap focus, with an opt-out. Full Focus/Actions/Shortcuts APIs and
 nested keyboard bubbling remain unfinished.
 
+[Retained scrollbars](scrollbars.md) now overlay proportional indicators with
+captured thumb drags and track paging. Themed/platform behavior, touch hit
+expansion and scrollbar semantics remain unfinished.
+
 [Wheel and point-scroll signals](scroll-signals.md) now route through the shared
 binding with unit conversion and basic edge handoff. Full trackpad pan/zoom
-phases, scrollbars,
+phases,
 accessibility scrolling, keep-alive/restoration, ensureVisible, nested scrolling,
 lazy lists/grids/slivers, overscroll and platform feel remain unfinished. Reviewed
 [SingleChildScrollView](https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html)

@@ -1,16 +1,19 @@
 //! UI-local scroll positions, metrics and controller attachments.
 //! Eager retained single-child viewports support captured primary-pointer pans.
-//! Wheel/point-scroll signals use the shared binding. Lazy slivers and platform
+//! Wheel/point-scroll signals and interactive scrollbars use the shared binding.
+//! Focused viewports support keyboard scrolling. Lazy slivers and platform
 //! scroll physics remain unfinished.
 mod controller;
 mod keyboard;
 mod position;
+mod scrollbar;
 mod viewport;
 use crate::animation::AnimationError;
 pub use controller::{ScrollAttachment, ScrollController, WeakScrollController};
 pub use position::{
     ScrollActivity, ScrollDimensions, ScrollMetrics, ScrollPosition, WeakScrollPosition,
 };
+pub use scrollbar::{Scrollbar, ScrollbarStyle};
 pub use viewport::SingleChildScrollView;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,6 +23,7 @@ pub enum ScrollError {
     InvalidOffset,
     InvalidDimensions,
     InvalidDuration,
+    InvalidScrollbarStyle,
     NoDimensions,
     NotDragging,
     Superseded,

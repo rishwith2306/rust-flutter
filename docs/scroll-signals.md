@@ -121,7 +121,9 @@ backend and retained scroll areas is not a verified arbitration path. Distinct
 bindings in one viewport also do not share a global signal resolver. Use one
 shared binding for the retained scene. Full backend arbitration, trackpad
 pan/zoom phases, device-specific settings, residual redistribution, nested scroll
-activities, scrollbars, accessibility scrolling and platform feel remain pending.
+activities, accessibility scrolling and platform feel remain pending.
+[Retained scrollbars](scrollbars.md) now preserve wheel fallthrough over their
+thumb/track targets within this shared-binding path.
 
 Reviewed references: [Flutter signal resolver](https://api.flutter.dev/flutter/gestures/PointerSignalResolver-class.html),
 [PointerScrollEvent](https://api.flutter.dev/flutter/gestures/PointerScrollEvent-class.html),

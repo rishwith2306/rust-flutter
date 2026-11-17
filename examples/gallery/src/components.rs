@@ -623,10 +623,14 @@ fn scroll_example(
             }))
         })
         .collect();
-    rust_flutter::scrolling::SingleChildScrollView::new(position, binding)
+    let view = rust_flutter::scrolling::SingleChildScrollView::new(position, binding)
         .expect("valid scroll view")
         .into_widget(Widget::flex(column, stripes))
-        .expect("valid scroll child")
+        .expect("valid scroll child");
+    rust_flutter::scrolling::Scrollbar::new(position, binding)
+        .expect("valid scrollbar")
+        .into_widget(view)
+        .expect("valid scrollbar child")
 }
 pub(super) struct ComponentDemo {
     tree: ElementTree,

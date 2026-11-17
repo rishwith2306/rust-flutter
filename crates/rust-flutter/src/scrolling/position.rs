@@ -316,6 +316,9 @@ impl ScrollPosition {
         Ok(())
     }
     pub fn begin_drag(&self) -> Result<(), ScrollError> {
+        self.begin_drag_with_stamp().map(|_| ())
+    }
+    pub(super) fn begin_drag_with_stamp(&self) -> Result<Rc<()>, ScrollError> {
         self.check()?;
         if self.dimensions().is_none() {
             return Err(ScrollError::NoDimensions);
@@ -327,7 +330,7 @@ impl ScrollPosition {
             return Err(ScrollError::Superseded);
         }
         self.set_activity(ScrollActivity::Drag);
-        Ok(())
+        Ok(command)
     }
     /// Positive delta moves toward the maximum content offset. Returns the
     /// unapplied part in logical points, widened to avoid finite f32 overflow.
@@ -343,12 +346,26 @@ impl ScrollPosition {
         let old = self.pixels();
         let new =
             (f64::from(old) + f64::from(delta)).clamp(f64::from(d.min), f64::from(d.max)) as f32;
-        self.command();
+        self.drag_to_with_stamp(new)?;
+        Ok(f64::from(delta) - (f64::from(new) - f64::from(old)))
+    }
+    // Return the command identity even when a synchronous listener supersedes
+    // it. An input owner must not adopt or cancel the listener's newer activity.
+    pub(super) fn drag_to_with_stamp(&self, target: f32) -> Result<Rc<()>, ScrollError> {
+        self.check()?;
+        if !target.is_finite() {
+            return Err(ScrollError::InvalidOffset);
+        }
+        if self.activity() != ScrollActivity::Drag {
+            return Err(ScrollError::NotDragging);
+        }
+        let d = self.dimensions().ok_or(ScrollError::NoDimensions)?;
+        let command = self.command();
         self.0
             .drive
-            .set_value(new)
+            .set_value(target.clamp(d.min, d.max))
             .map_err(ScrollError::Animation)?;
-        Ok(f64::from(delta) - (f64::from(new) - f64::from(old)))
+        Ok(command)
     }
     pub fn cancel_activity(&self) -> Result<(), ScrollError> {
         self.check()?;
