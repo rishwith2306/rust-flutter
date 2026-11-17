@@ -88,9 +88,10 @@ Uniform positive layer scale is sampled during paint and divides global deltas/
 velocity before applying content motion. Shared frames paint before dispatch;
 the older single-root adapter uses previously painted scale. Arbitrary transforms
 and changing scale during capture are not a complete local-coordinate protocol.
-Pan thresholds/classification remain the current radial/global-coordinate policy,
-so cross-axis motion can claim a pan. Axis recognizers, edge handoff, nested-scroll
-coordination and platform-specific motion policies remain pending.
+[Axis drag recognition](axis-drags.md) now uses the selected global component
+for threshold, updates and fling classification. Cross-axis movement stays
+pending for competing recognizers. Same-axis edge handoff, coordinated nested
+scrolling and platform-specific motion policies remain pending.
 
 The caller owns the position, attachment and binding. Unmount releases viewport
 ownership, subscriptions and pending metrics; it does not dispose an externally

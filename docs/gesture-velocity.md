@@ -97,7 +97,7 @@ history, including when the same pointer ID or timestamp epoch is reused.
 The egui adapters timestamp normalized events at frame time. Same-frame samples
 coalesce, and sparse/janky frames can correctly produce unavailable or stopped
 estimates. Precise raw device timestamps/history, alternate platform strategies,
-axis-specific details, local transform conversion and full gesture/scroll physics
+full local-coordinate details, transform conversion and complete gesture/scroll physics
 compatibility remain unfinished. Hosts with precise normalized samples can supply
 their timestamps through the public router/binding directly.
 
@@ -114,3 +114,6 @@ Reviewed references: [Flutter velocity tracker](https://api.flutter.dev/flutter/
 [pan fling classification](https://api.flutter.dev/flutter/gestures/PanGestureRecognizer/isFlingGesture.html),
 [drag end details](https://api.flutter.dev/flutter/gestures/DragEndDetails-class.html).
 No complete member-level compatibility has been established.
+
+[Axis drags](axis-drags.md) now project classification onto the selected component
+while retaining raw two-dimensional estimates in end details.

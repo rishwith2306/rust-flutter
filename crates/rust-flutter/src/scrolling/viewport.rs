@@ -115,6 +115,11 @@ impl SingleChildScrollView {
             })),
             pan: Some((
                 PanConfig {
+                    axis: Some(if axis == Axis::Vertical {
+                        DragAxis::Vertical
+                    } else {
+                        DragAxis::Horizontal
+                    }),
                     start_behavior: DragStartBehavior::Down,
                     ..Default::default()
                 },

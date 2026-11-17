@@ -18,10 +18,12 @@ pub use arena::{
     GestureDisposition, PointerId, WeakGestureArenaManager,
 };
 pub use recognizers::{
-    DragEndDetails, DragStartBehavior, DragUpdateDetails, PanCallbacks, PanConfig,
-    PanGestureRecognizer, PointerButtons, PointerDeviceKind, PointerEvent, PointerPhase,
-    RecognizerError, TapCallbacks, TapConfig, TapDetails, TapGestureRecognizer,
-    WeakPanGestureRecognizer, WeakTapGestureRecognizer,
+    DragAxis, DragEndDetails, DragStartBehavior, DragUpdateDetails,
+    HorizontalDragGestureRecognizer, PanCallbacks, PanConfig, PanGestureRecognizer, PointerButtons,
+    PointerDeviceKind, PointerEvent, PointerPhase, RecognizerError, TapCallbacks, TapConfig,
+    TapDetails, TapGestureRecognizer, VerticalDragGestureRecognizer,
+    WeakHorizontalDragGestureRecognizer, WeakPanGestureRecognizer, WeakTapGestureRecognizer,
+    WeakVerticalDragGestureRecognizer,
 };
 pub use router::{PointerRoute, PointerRouter, PointerRouterError, WeakPointerRouter};
 pub use velocity::{

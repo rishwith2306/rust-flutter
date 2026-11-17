@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 406 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 420 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -805,3 +805,43 @@ separately. Generic signals share the binding queue but do not join the arena;
 full backend/viewport-global arbitration, trackpad phases/device settings,
 residual redistribution and full scrolling/accessibility/member parity remain
 unfinished. See [signal semantics and limits](scroll-signals.md).
+
+
+### Scroll signal CI follow-up
+
+Revision `4807074` passed all four jobs in
+[run 44124653229](https://github.com/rishwith2306/rust-flutter/actions/runs/44124653229):
+Linux native wheel/viewport interactions, macOS build/tests, ARM Android compilation
+and ordinary Android touch interactions plus three same-process recreations.
+Downloaded Android artifacts independently record passed 158-physical-pixel
+viewport touch/clip/reset checks and recreation. Their native_wheel field is
+false: Android physical wheel and macOS trackpad hardware remain unverified.
+
+## Axis drag recognition
+
+420 workspace tests pass, including 14 new axis-drag tests. They cover strict
+component slop and net reversal, cross-only movement, delta projection/raw event
+preservation, both start behaviors and unrestricted pan compatibility, selected
+fling speed/distance gates and clamping with raw two-dimensional estimate retention,
+negative velocity, orthogonal/diagonal competition, named weak lifetime and
+reentrant disposal, live binding configuration replacement and nested orthogonal
+scroll viewports. The executable axis guide passes. Workspace/local x86_64
+Android Clippy with warnings denied, Rustdoc, formatting and both renderer
+provenance/selection checks pass.
+
+The Linux Xvfb native probe passes the added horizontal-drag check over a vertical
+viewport: its exact initial clipped blue pixels stay unchanged. The subsequent
+vertical drag, controller reset, real wheel/reset, clipping, spring/implicit
+motion, marker gestures, glyph/layout/assets and restoration gates remain green.
+The shared scene records three roots/four targets, 33 processed frames, six
+marker taps and one marker pan. Headless orthogonal recognizer/viewport tests
+establish arena competition; the native cross-axis check establishes unchanged
+pixels, not a device-specific angle/threshold fidelity claim. Android/macOS CI
+for this revision is recorded separately.
+
+PanConfig.axis and primary fields extend the experimental configuration/details
+structs. The default remains unrestricted pan. Axis drags operate in global
+logical coordinates and retain the existing wait-for-threshold policy after an
+early arena win. Arbitrary local transforms, full start/detail families, device
+settings, trackpad pan/zoom, multitouch, teams and the broader gesture/member
+catalog remain unfinished. See [axis semantics and API migration](axis-drags.md).

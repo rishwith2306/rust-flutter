@@ -62,8 +62,36 @@ pub enum DragStartBehavior {
     /// Start at down; deliver accumulated displacement as the first update.
     Down,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Global logical axis used for threshold, delta and fling projection.
+pub enum DragAxis {
+    Horizontal,
+    Vertical,
+}
+impl DragAxis {
+    pub fn primary(self, delta: Vec2) -> f32 {
+        match self {
+            Self::Horizontal => delta.x,
+            Self::Vertical => delta.y,
+        }
+    }
+    pub fn project(self, delta: Vec2) -> Vec2 {
+        match self {
+            Self::Horizontal => Vec2::new(delta.x, 0.0),
+            Self::Vertical => Vec2::new(0.0, delta.y),
+        }
+    }
+    fn distance(self, a: Pos2, b: Pos2) -> f64 {
+        match self {
+            Self::Horizontal => (f64::from(a.x) - f64::from(b.x)).abs(),
+            Self::Vertical => (f64::from(a.y) - f64::from(b.y)).abs(),
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PanConfig {
+    /// None keeps unrestricted radial pan recognition.
+    pub axis: Option<DragAxis>,
     pub slop: f32,
     pub start_behavior: DragStartBehavior,
     pub velocity: VelocityTrackerConfig,
@@ -72,6 +100,7 @@ pub struct PanConfig {
 impl Default for PanConfig {
     fn default() -> Self {
         Self {
+            axis: None,
             slop: 18.0,
             start_behavior: DragStartBehavior::Start,
             velocity: VelocityTrackerConfig::default(),
@@ -88,6 +117,8 @@ pub struct TapDetails {
 pub struct DragUpdateDetails {
     pub event: PointerEvent,
     pub delta: Vec2,
+    /// Signed axis delta; None for unrestricted pan.
+    pub primary_delta: Option<f32>,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DragEndDetails {
@@ -96,7 +127,17 @@ pub struct DragEndDetails {
     /// fitted motion even when it does not pass the fling thresholds.
     pub velocity: Velocity,
     pub is_fling: bool,
+    /// Signed effective axis velocity, zero for non-flings; None for pan.
+    pub primary_velocity: Option<f32>,
+    /// Raw, unprojected two-dimensional release estimate.
     pub estimate: Option<VelocityEstimate>,
+}
+fn update_details(config: &PanConfig, event: PointerEvent, delta: Vec2) -> DragUpdateDetails {
+    DragUpdateDetails {
+        event,
+        delta: config.axis.map_or(delta, |axis| axis.project(delta)),
+        primary_delta: config.axis.map(|axis| axis.primary(delta)),
+    }
 }
 /// Down is immediate candidate feedback, not an arena victory. Cancel follows a
 /// candidate that cannot complete; tap requires both an up and an arena win.
@@ -442,9 +483,9 @@ impl Core {
                     );
                     if self.matches(generation)
                         && config.start_behavior == DragStartBehavior::Down
-                        && delta != Vec2::ZERO
+                        && update_details(config, last, delta).delta != Vec2::ZERO
                     {
-                        invoke(&cb.on_update, DragUpdateDetails { event: last, delta });
+                        invoke(&cb.on_update, update_details(config, last, delta));
                     }
                     self.finish_pan(generation);
                 }
@@ -471,7 +512,15 @@ impl Core {
             if let Policy::Pan(config, cb) = &self.policy {
                 let fling = estimate
                     .as_ref()
-                    .and_then(|e| config.fling.classify(e).ok())
+                    .and_then(|e| {
+                        let mut selected = *e;
+                        if let Some(axis) = config.axis {
+                            selected.velocity =
+                                Velocity::new(axis.project(e.velocity.pixels_per_second())).ok()?;
+                            selected.offset = axis.project(e.offset);
+                        }
+                        config.fling.classify(&selected).ok()
+                    })
                     .unwrap_or(Fling {
                         velocity: Velocity::ZERO,
                         is_fling: false,
@@ -482,6 +531,9 @@ impl Core {
                         event: last,
                         velocity: fling.velocity,
                         is_fling: fling.is_fling,
+                        primary_velocity: config
+                            .axis
+                            .map(|axis| axis.primary(fling.velocity.pixels_per_second())),
                         estimate,
                     },
                 );
@@ -550,7 +602,10 @@ impl Core {
                         })
                 }
                 Policy::Pan(config, _) => {
-                    s.threshold |= moved > f64::from(config.slop);
+                    let selected = config
+                        .axis
+                        .map_or(moved, |axis| axis.distance(event.position, s.down.position));
+                    s.threshold |= selected > f64::from(config.slop);
                     s.up && !s.threshold
                 }
             };
@@ -579,10 +634,11 @@ impl Core {
                     }
                 }
             }
-            Policy::Pan(_, cb) => {
+            Policy::Pan(config, cb) => {
                 if started {
-                    if delta != Vec2::ZERO {
-                        invoke(&cb.on_update, DragUpdateDetails { event, delta });
+                    let details = update_details(config, event, delta);
+                    if details.delta != Vec2::ZERO {
+                        invoke(&cb.on_update, details);
                     }
                     self.finish_pan(generation);
                 } else if threshold {
@@ -645,6 +701,33 @@ macro_rules! recognizer_handle {
 }
 recognizer_handle!(TapGestureRecognizer, WeakTapGestureRecognizer);
 recognizer_handle!(PanGestureRecognizer, WeakPanGestureRecognizer);
+recognizer_handle!(
+    VerticalDragGestureRecognizer,
+    WeakVerticalDragGestureRecognizer
+);
+recognizer_handle!(
+    HorizontalDragGestureRecognizer,
+    WeakHorizontalDragGestureRecognizer
+);
+macro_rules! axis_constructor {
+    ($name:ident, $axis:expr) => {
+        impl $name {
+            /// Use the named axis, overriding PanConfig.axis. Other settings and
+            /// lifecycle rules match PanGestureRecognizer.
+            pub fn new(
+                arena: &GestureArenaManager,
+                router: &PointerRouter<PointerEvent>,
+                mut config: PanConfig,
+                callbacks: PanCallbacks,
+            ) -> Result<Self, RecognizerError> {
+                config.axis = Some($axis);
+                PanGestureRecognizer::new(arena, router, config, callbacks).map(|pan| Self(pan.0))
+            }
+        }
+    };
+}
+axis_constructor!(VerticalDragGestureRecognizer, DragAxis::Vertical);
+axis_constructor!(HorizontalDragGestureRecognizer, DragAxis::Horizontal);
 impl TapGestureRecognizer {
     pub fn new(
         arena: &GestureArenaManager,

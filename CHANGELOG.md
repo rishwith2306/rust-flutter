@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add axis drag recognition and named horizontal/vertical recognizers with primary update/release metadata, axis-projected fling classification and orthogonal viewport competition; keep unrestricted pan as the default.
+
 - Route immediate wheel/point-scroll signals through shared hit paths and the reentrant binding queue, with first-willing resolution, viewport unit conversion and basic edge handoff; add real Linux wheel/reset probes.
 
 - Add retained eager SingleChildScrollView layout/clipping, horizontal/reverse offsets, captured pan input and deferred metrics; preserve children while sequence keys cancel changed gesture owners; add native scroll/reset probes.

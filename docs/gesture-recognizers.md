@@ -119,7 +119,7 @@ protocol errors/rollback, callback panics and reentrant input/reuse. A private
 test verifies sequence-ID exhaustion rollback.
 
 Global multi-viewport binding, general backend control arbitration, secondary/tertiary taps, deadlines, double/long
-taps, axis drags, device settings, alternate velocity strategies and fling/scroll simulations, drag teams, multitouch
+taps, full device settings, alternate velocity strategies and platform scroll simulations, drag teams, multitouch
 strategies, local transforms, scale/rotation, pointer signals and pan/zoom events,
 scrolling physics and semantics remain unfinished. The immediate tap-down timing
 and radial pan threshold are explicit current policies. Full member-level
@@ -128,3 +128,7 @@ compatibility has not been established.
 Reviewed references: [TapGestureRecognizer](https://api.flutter.dev/flutter/gestures/TapGestureRecognizer-class.html),
 [PanGestureRecognizer](https://api.flutter.dev/flutter/gestures/PanGestureRecognizer-class.html),
 [OneSequenceGestureRecognizer](https://api.flutter.dev/flutter/gestures/OneSequenceGestureRecognizer-class.html).
+
+Axis-specific recognition and primary detail fields are described in
+[horizontal and vertical drags](axis-drags.md). PanConfig.axis defaults to None
+for the unrestricted behavior documented here.
