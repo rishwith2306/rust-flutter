@@ -747,3 +747,22 @@ are released on unmount; externally owned positions retain their own lifetime.
 Wheel/trackpad routing, axis-specific and nested input, scrollbars, semantics,
 restoration, platform overscroll, lazy slivers and full member compatibility
 remain unfinished. See [viewport geometry and scope](scroll-viewports.md).
+
+
+### Linux display startup follow-up
+
+The viewport revision `203d873` passed macOS build/tests, ARM compilation and
+Android native viewport/interactions/recreation in
+[run 44120328306](https://github.com/rishwith2306/rust-flutter/actions/runs/44120328306).
+Linux failed at initial gallery launch with XOpenDisplayFailed, before any
+rendered viewport assertion. Its only artifact was gallery.log; the old script
+left Xvfb stderr in an unrecorded pipe, so the full cause is not established.
+
+The harness now starts Xvfb with `-noreset`: short-lived xdotool clients can no
+longer trigger a last-client server reset while the gallery connects. Xvfb's
+own help documents this option. The harness also validates a live display
+number, checks server exit during waits and records xvfb.log for failure
+artifacts. This removes a plausible reset race; it is not proof of the whole
+cause of the earlier failure. The local full native probe passes with this
+harness, retaining every existing rendered/input/restoration assertion. A new
+revision's CI will check the updated startup path.

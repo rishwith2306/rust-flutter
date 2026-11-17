@@ -15,10 +15,11 @@ from component_probe import probe_baselines, probe_components
 root = Path(__file__).resolve().parents[1]
 output = root / "target" / "smoke"
 output.mkdir(parents=True, exist_ok=True)
+xvfb_log = (output / "xvfb.log").open("w")
 read_fd, write_fd = os.pipe()
 server = subprocess.Popen(
-    ["Xvfb", "-displayfd", str(write_fd), "-screen", "0", "1024x768x24"],
-    pass_fds=(write_fd,), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+    ["Xvfb", "-noreset", "-displayfd", str(write_fd), "-screen", "0", "1024x768x24"],
+    pass_fds=(write_fd,), stdout=xvfb_log, stderr=xvfb_log,
 )
 os.close(write_fd)
 app = None
@@ -27,6 +28,8 @@ app = None
 def wait_for(predicate, description, timeout=20):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
+        if server.poll() is not None:
+            raise RuntimeError(f"Xvfb exited ({server.returncode}); see {output / 'xvfb.log'}")
         if app is not None and app.poll() is not None:
             raise RuntimeError(f"gallery exited ({app.returncode}); see {output / 'gallery.log'}")
         value = predicate()
@@ -41,6 +44,8 @@ try:
         raise RuntimeError("Xvfb failed to allocate a display")
     with os.fdopen(read_fd) as pipe:
         display = pipe.readline().strip()
+    if not display.isdecimal() or server.poll() is not None:
+        raise RuntimeError(f"Xvfb did not provide a live display number; see {output / 'xvfb.log'}")
     with tempfile.TemporaryDirectory(prefix="rust-flutter-smoke-") as runtime:
         env = {**os.environ, "DISPLAY": f":{display}", "XDG_RUNTIME_DIR": runtime,
                "XDG_DATA_HOME": str(Path(runtime) / "data")}
@@ -165,5 +170,7 @@ finally:
     if app is not None and app.poll() is None:
         app.terminate()
         app.wait(timeout=10)
-    server.terminate()
+    if server.poll() is None:
+        server.terminate()
     server.wait(timeout=10)
+    xvfb_log.close()
