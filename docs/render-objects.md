@@ -141,3 +141,8 @@ queries do not fall back to the mutable layout method.
 Actual and pure baseline metrics, row alignment and baseline wrappers are described
 in [baseline layout](baselines.md). Unknown pure baselines are distinct from known
 absence, and custom geometry can report both supported coordinate systems.
+
+External font/device inputs can expose `RenderBox::layout_revision`. The tree
+samples it during synchronization and invalidates ancestor caches when it changes.
+See [paragraph invalidation](paragraphs.md#retention-and-invalidation) for the
+conservative per-pass font policy used by the built-in Paragraph.

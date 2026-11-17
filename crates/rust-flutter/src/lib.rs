@@ -47,6 +47,7 @@ pub mod navigation;
 pub mod notifier;
 pub mod runtime;
 pub mod storage;
+pub mod text;
 pub use runtime::{AppContext, AppEvent, EventResponse, LifecycleEvent, Runtime};
 pub mod services;
 pub mod state;

@@ -82,6 +82,12 @@ pub trait RenderObjectWidget: Sized + 'static {
 /// Custom leaf or container layout, paint and mounted lifetime hooks. Child
 /// geometry is validated by BoxChildren; paint runs before placed children.
 pub trait RenderBox: 'static {
+    /// Revision of external layout inputs. Sampled during tree synchronization;
+    /// changes invalidate ancestor layout caches as well as this object's cache.
+    fn layout_revision(&self) -> u64 {
+        0
+    }
+
     fn dry_baseline(
         &self,
         _constraints: BoxConstraints,
@@ -144,6 +150,7 @@ struct Instance<W: RenderObjectWidget> {
     context: RenderContext,
     children: Vec<egui::Id>,
     needs_update: bool,
+    layout_revision: Option<u64>,
 }
 struct Mounted<W: RenderObjectWidget> {
     instance: Rc<RefCell<Instance<W>>>,
@@ -224,6 +231,7 @@ impl<W: RenderObjectWidget> RenderDescription for RenderWidget<W> {
             context,
             children: vec![],
             needs_update: true,
+            layout_revision: None,
         }));
         let painting = instance.clone();
         let paint: Paint = Rc::new(RefCell::new(move |ui: &mut egui::Ui| {
@@ -256,6 +264,10 @@ impl<W: RenderObjectWidget> MountedRender for Mounted<W> {
             let _phase = context.build.dependencies.enter(Phase::Build);
             let Instance { widget, object, .. } = &mut *instance;
             widget.update_render_object(object, &context);
+        }
+        let revision = instance.object.layout_revision();
+        if instance.layout_revision.replace(revision) != Some(revision) {
+            context.build.queue.pipeline.invalidate();
         }
         if instance.children != children {
             let old = std::mem::replace(&mut instance.children, children);

@@ -3,7 +3,7 @@ use rust_flutter::{
     egui,
     element::*,
     layout::{
-        Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
+        Axis, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
         IntrinsicDimension, LayoutError, TextBaseline,
     },
     notifier::ValueNotifier,
@@ -269,17 +269,32 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
             .and_then(|row| row.glyphs.first().map(|glyph| row.pos.y + glyph.pos.y))
             .expect("ASCII demo has a baseline");
         baselines.push(distance);
-        FlexItem::fixed(Widget::baseline_leaf(
-            galley.size(),
-            Baselines {
-                alphabetic: Some(distance),
-                ideographic: None,
+        let paragraph = rust_flutter::text::Paragraph::new(
+            text,
+            egui::text::TextFormat {
+                font_id: egui::FontId::proportional(size),
+                color: egui::Color32::WHITE,
+                ..Default::default()
             },
-            move |ui| {
-                ui.painter().rect_filled(ui.max_rect(), 0.0, color);
-                ui.painter()
-                    .galley(ui.max_rect().min, galley.clone(), egui::Color32::WHITE);
-            },
+        )
+        .into_widget();
+        FlexItem::fixed(Widget::stack(
+            StackStyle::default(),
+            vec![
+                StackItem::positioned(
+                    Widget::leaf(egui::Vec2::ZERO, move |ui| {
+                        ui.painter().rect_filled(ui.max_rect(), 0.0, color);
+                    }),
+                    rust_flutter::layout::Positioned {
+                        left: Some(0.0),
+                        right: Some(0.0),
+                        top: Some(0.0),
+                        bottom: Some(0.0),
+                        ..Default::default()
+                    },
+                ),
+                StackItem::new(paragraph),
+            ],
         ))
     })
     .collect();

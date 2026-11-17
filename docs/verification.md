@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 163 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 173 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -293,3 +293,25 @@ resize. The local API 37 / x86_64 run places both text baselines at y≈1405 and
 the reference line at y=1404.5, within the two-pixel tolerance. Existing exact-color/glyph interactions and dry/actual size checks remain
 passing. This does not establish complete shaping, font fallback, ideographic
 metrics or accessibility behavior; see [baseline scope](baselines.md).
+
+
+## Retained paragraph verification
+
+The workspace now passes 173 Rust tests, including ten paragraph tests. New
+coverage includes UTF-8 formatted runs, wrapping/line limits and ellipsis,
+constraints and overflow clips, intrinsic word/nonbreaking-segment sizing,
+dry/actual baseline agreement, empty first lines, pixel-rounded alignment,
+query/paint separation, recoverable invalid formats, density changes and font
+replacement beneath a cached ancestor without widget remounts. The paragraph
+Markdown example compiles and runs separately with rustdoc. Formatting, all-target
+Clippy with warnings denied, documentation and renderer provenance/source checks
+pass locally.
+
+The Linux X11 smoke test passes after replacing the gallery's hand-measured text
+leaves with retained Paragraph widgets. Both font baselines and the reference
+line remain at physical y=429 after resize (two-pixel tolerance). Existing input,
+restoration, asset, exact RGB, flex, keyed component, inherited-view and custom
+render-object cache assertions also pass. Android and macOS results for this
+change are recorded by the commit's CI run; no local Android paragraph runtime
+claim is made here. Full shaping, bidi, fallback, selection and accessibility
+remain outside this evidence; see [paragraph scope](paragraphs.md).
