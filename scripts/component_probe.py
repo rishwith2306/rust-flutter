@@ -88,6 +88,11 @@ def probe_baselines(path, trace, scale=1.0):
             assert values[:2] == [0.0, 0.0], values[:2]
         else:
             assert status == "Fitted" and math.hypot(values[2], values[3]) > 50.0, (status, values)
+    spring_samples = re.findall(r"spring width=([\d.eE+-]+) active=(true|false)", trace)
+    assert spring_samples, "missing controller-driven spring samples"
+    assert all(math.isfinite(float(width)) and 12.0 <= float(width) <= 24.0 for width, _ in spring_samples), spring_samples
+    assert any(12.0 < float(width) < 24.0 and active == "true" for width, active in spring_samples), "missing intermediate spring motion"
+    assert any(float(width) == 24.0 and active == "false" for width, active in spring_samples), "spring did not settle at expanded endpoint"
     implicit_completions = trace.count("implicit-animation end")
     assert implicit_completions >= 4, f"missing implicit completion callbacks: {implicit_completions}"
     foreground = bounds(path, "#834eb3")
@@ -95,7 +100,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
@@ -174,6 +179,16 @@ def probe_components(capture, tap, scale=1.0, drag=None):
     tap(*center(bounds(reset, "#8f5f22")))
     burst = settle("components-observable-burst.png")
     assert patch(burst, bounds(burst, "#a14b32"), scale, 220) == observable_three, "three synchronous notifier changes did not match three individual clicks"
+    def spring_bounds(path, expected=None):
+        rect = bounds(path, "#c88537")
+        assert rect, "missing spring-driven marker"
+        if expected is not None:
+            assert abs(rect[2] - expected * scale) <= 1, (rect, expected)
+        x, y = center(rect)
+        pixel = subprocess.check_output(["convert", str(path), "-alpha", "off", "-crop", f"1x1+{int(x)}+{int(y)}", "-depth", "8", "rgb:-"], timeout=15)
+        assert pixel == bytes.fromhex("c88537"), pixel.hex()
+        return rect
+    initial_spring = spring_bounds(burst, 12)
     marker = bounds(burst, "#834eb3")
     assert marker and abs(marker[2] - 24 * scale) <= 2, marker
     def await_width(name, expected):
@@ -193,12 +208,14 @@ def probe_components(capture, tap, scale=1.0, drag=None):
     tap(*center(marker))
     expanded, larger = await_width("components-animation-expanded.png", 48)
     exact_fill(expanded, larger, "#834eb3", scale)
+    expanded_spring = spring_bounds(expanded, 24)
     # Wait for the endpoint before reversing so a nearly-complete screenshot
     # cannot shorten the reverse trip through a partially finished first run.
     time.sleep(0.15)
     tap(*center(larger))
     contracted, smaller = await_width("components-animation-contracted.png", 24)
     time.sleep(0.15)
+    contracted_spring = spring_bounds(contracted, 12)
     assert not bounds(contracted, "#e3bd42"), "animation broke foreground painting"
     ticker = bounds(contracted, "#3e6c72")
     assert ticker, "ticker mode control is missing"
@@ -207,14 +224,17 @@ def probe_components(capture, tap, scale=1.0, drag=None):
     tap(*center(ticker))
     time.sleep(0.3)
     paused = capture("components-animation-muted.png")
+    paused_spring = spring_bounds(paused)
     paused_marker = bounds(paused, "#834eb3")
     assert paused_marker and 24 * scale + 2 < paused_marker[2] < 48 * scale - 2, paused_marker
     time.sleep(2.2)
     frozen = capture("components-animation-still-muted.png")
     frozen_marker = bounds(frozen, "#834eb3")
     assert frozen_marker == paused_marker, (paused_marker, frozen_marker)
+    assert spring_bounds(frozen) == paused_spring, "muted spring geometry changed"
     tap(*center(bounds(frozen, "#3e6c72")))
     resumed, resumed_marker = await_width("components-animation-unmuted.png", 48)
+    spring_bounds(resumed, 24)
     tap(*center(resumed_marker))
     contracted, final_marker = await_width("components-animation-restored.png", 24)
     time.sleep(0.15)
@@ -241,4 +261,5 @@ def probe_components(capture, tap, scale=1.0, drag=None):
 
 
 
-    return {"gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    spring_bounds(after_drag_restored, 12)
+    return {"spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

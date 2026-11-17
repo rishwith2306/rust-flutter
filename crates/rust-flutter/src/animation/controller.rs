@@ -3,6 +3,8 @@ use super::Curve;
 use crate::notifier::{
     ChangeNotifier, Disposed, Listenable, Listener, Subscription, ValueListenable,
 };
+use crate::physics::{PhysicsError, Simulation as PhysicsSimulation, SimulationSample};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
@@ -28,9 +30,13 @@ pub enum AnimationStatus {
 pub enum AnimationOutcome {
     Completed,
     Canceled,
+    Failed(AnimationError),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationError {
+    Simulation(PhysicsError),
+    SimulationPanicked,
+    Superseded,
     Disposed,
     Unmounted,
     DuringNotification,
@@ -39,6 +45,11 @@ pub enum AnimationError {
 impl std::fmt::Display for AnimationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Simulation(error) => error.fmt(f),
+            Self::SimulationPanicked => f.write_str("animation simulation panicked"),
+            Self::Superseded => {
+                f.write_str("animation command superseded during simulation sampling")
+            }
             Self::Disposed => f.write_str("animation controller is disposed"),
             Self::Unmounted => f.write_str("animation owner is unmounted"),
             Self::DuringNotification => f.write_str("cannot dispose during animation notification"),
@@ -81,6 +92,7 @@ struct Completion {
 }
 /// Cloneable UI-local completion future. Replacement, disposal and canceled stop
 /// resolve Canceled; successful completion and stop(false) resolve Completed.
+/// A later custom-model error or panic resolves Failed with its cause.
 #[derive(Clone)]
 pub struct AnimationRun(Rc<RefCell<Completion>>);
 impl AnimationRun {
@@ -117,8 +129,12 @@ impl Future for AnimationRun {
         Poll::Pending
     }
 }
-#[derive(Clone, Copy)]
-enum Simulation {
+#[derive(Clone)]
+enum Playback {
+    Custom {
+        model: Rc<dyn PhysicsSimulation>,
+        reverse: bool,
+    },
     To {
         from: f32,
         target: f32,
@@ -137,10 +153,11 @@ enum Simulation {
 }
 struct Motion {
     start: f64,
-    simulation: Simulation,
+    simulation: Playback,
     run: AnimationRun,
 }
 struct State {
+    command: Rc<()>,
     config: AnimationConfig,
     value: f32,
     status: AnimationStatus,
@@ -157,6 +174,7 @@ struct Inner {
     changes: ChangeNotifier,
     status_changes: ChangeNotifier,
     depth: Cell<usize>,
+    sampling: Cell<usize>,
     dispose_pending: Cell<bool>,
     ctx: egui::Context,
     viewport: egui::ViewportId,
@@ -278,6 +296,7 @@ impl AnimationController {
         };
         let controller = Self(Rc::new(Inner {
             state: RefCell::new(State {
+                command: Rc::new(()),
                 config,
                 value,
                 status,
@@ -292,6 +311,7 @@ impl AnimationController {
             changes: ChangeNotifier::new(),
             status_changes: ChangeNotifier::new(),
             depth: Cell::new(0),
+            sampling: Cell::new(0),
             dispose_pending: Cell::new(false),
             ctx: ctx.clone(),
             viewport: ctx.viewport_id(),
@@ -365,7 +385,11 @@ impl AnimationController {
     /// Stops without changing value/status or notifying value/status listeners.
     pub fn stop(&self, canceled: bool) -> Result<(), AnimationError> {
         self.check()?;
-        let motion = self.0.state.borrow_mut().motion.take();
+        let motion = {
+            let mut state = self.0.state.borrow_mut();
+            state.command = Rc::new(());
+            state.motion.take()
+        };
         if let Some(motion) = motion {
             motion.run.finish(if canceled {
                 AnimationOutcome::Canceled
@@ -385,6 +409,7 @@ impl AnimationController {
         }
         let motion = {
             let mut state = self.0.state.borrow_mut();
+            state.command = Rc::new(());
             let motion = state.motion.take();
             state.value = value.clamp(state.config.lower_bound, state.config.upper_bound);
             state.status = if state.value == state.config.lower_bound {
@@ -450,6 +475,7 @@ impl AnimationController {
         let run = AnimationRun::pending();
         let (old, instant) = {
             let mut state = self.0.state.borrow_mut();
+            state.command = Rc::new(());
             let old = state.motion.take();
             let target = target.clamp(state.config.lower_bound, state.config.upper_bound);
             let seconds = duration.map_or_else(
@@ -481,7 +507,7 @@ impl AnimationController {
             } else {
                 state.motion = Some(Motion {
                     start: now,
-                    simulation: Simulation::To {
+                    simulation: Playback::To {
                         from: state.value,
                         target,
                         seconds,
@@ -504,6 +530,85 @@ impl AnimationController {
         if instant {
             self.0.ctx.request_repaint_of(self.0.viewport);
         }
+        self.repaint();
+        Ok(run)
+    }
+    /// Drive a checked physics simulation, clamping samples to controller bounds.
+    /// The model's done flag controls completion even while a value is clamped.
+    pub fn animate_with(
+        &self,
+        model: Rc<dyn PhysicsSimulation>,
+    ) -> Result<AnimationRun, AnimationError> {
+        self.start_model(model, false)
+    }
+    pub fn animate_back_with(
+        &self,
+        model: Rc<dyn PhysicsSimulation>,
+    ) -> Result<AnimationRun, AnimationError> {
+        self.start_model(model, true)
+    }
+    fn sample_model(
+        &self,
+        model: &Rc<dyn PhysicsSimulation>,
+        elapsed: Duration,
+    ) -> Result<SimulationSample, AnimationError> {
+        self.0.sampling.set(self.0.sampling.get() + 1);
+        let _guard = SamplingGuard(&self.0.sampling);
+        let sample = catch_unwind(AssertUnwindSafe(|| model.sample(elapsed)))
+            .map_err(|_| AnimationError::SimulationPanicked)?
+            .map_err(AnimationError::Simulation)?;
+        if !sample.position.is_finite() || !sample.velocity.is_finite() {
+            return Err(AnimationError::Simulation(PhysicsError::NonFinite));
+        }
+        Ok(sample)
+    }
+    fn start_model(
+        &self,
+        model: Rc<dyn PhysicsSimulation>,
+        reverse: bool,
+    ) -> Result<AnimationRun, AnimationError> {
+        self.check()?;
+        let now = self.now();
+        if !now.is_finite() {
+            return Err(AnimationError::InvalidConfiguration(
+                "simulation start time must be finite",
+            ));
+        }
+        let command = self.0.state.borrow().command.clone();
+        let initial = self.sample_model(&model, Duration::ZERO)?;
+        self.check()?;
+        let run = AnimationRun::pending();
+        let old = {
+            let mut state = self.0.state.borrow_mut();
+            if !Rc::ptr_eq(&command, &state.command) {
+                return Err(AnimationError::Superseded);
+            }
+            state.command = Rc::new(());
+            let old = state.motion.take();
+            state.value = initial.position.clamp(
+                f64::from(state.config.lower_bound),
+                f64::from(state.config.upper_bound),
+            ) as f32;
+            state.reverse = reverse;
+            state.status = direction_status(reverse, initial.done);
+            state.last_time = now;
+            if !initial.done {
+                state.motion = Some(Motion {
+                    start: now,
+                    simulation: Playback::Custom { model, reverse },
+                    run: run.clone(),
+                });
+            }
+            old
+        };
+        if let Some(old) = old {
+            old.run.finish(AnimationOutcome::Canceled);
+        }
+        if initial.done {
+            run.finish(AnimationOutcome::Completed);
+        }
+        self.dispatch(true);
+        self.0.ctx.request_repaint_of(self.0.viewport);
         self.repaint();
         Ok(run)
     }
@@ -531,10 +636,11 @@ impl AnimationController {
             let phase = ((f64::from(state.value) - f64::from(min))
                 / (f64::from(max) - f64::from(min)))
             .clamp(0.0, 1.0);
+            state.command = Rc::new(());
             let old = state.motion.take();
             state.motion = Some(Motion {
                 start: now,
-                simulation: Simulation::Repeat {
+                simulation: Playback::Repeat {
                     min,
                     max,
                     seconds: period.as_secs_f64(),
@@ -558,11 +664,13 @@ impl AnimationController {
     }
     fn tick(&self) {
         let now = self.now();
-        let (notify, completed) = {
-            let mut state = self.0.state.borrow_mut();
+        let snapshot = {
+            let state = self.0.state.borrow();
             if state.disposed
+                || self.0.dispose_pending.get()
                 || state.muted
                 || state.scope_muted
+                || self.0.sampling.get() != 0
                 || !now.is_finite()
                 || now <= state.last_time
             {
@@ -570,85 +678,127 @@ impl AnimationController {
                 self.repaint();
                 return;
             }
-            let Some(motion) = &state.motion else {
-                return;
-            };
-            let elapsed = (now - motion.start).max(0.0);
-            let (value, status, done) = match motion.simulation {
-                Simulation::To {
-                    from,
-                    target,
-                    seconds,
-                    curve,
-                    reverse,
-                } => {
-                    let t = (elapsed / seconds).clamp(0.0, 1.0);
-                    let value = lerp(from, target, curve.transform(t as f32));
-                    (
-                        if t >= 1.0 { target } else { value },
-                        match (reverse, t >= 1.0) {
-                            (false, false) => AnimationStatus::Forward,
-                            (true, false) => AnimationStatus::Reverse,
-                            (false, true) => AnimationStatus::Completed,
-                            (true, true) => AnimationStatus::Dismissed,
-                        },
-                        t >= 1.0,
-                    )
-                }
-                Simulation::Repeat {
-                    min,
-                    max,
-                    seconds,
-                    phase,
-                    reverse,
-                    count,
-                } => {
-                    let t = phase + elapsed / seconds;
-                    let done = count.is_some_and(|count| t >= count as f64);
-                    let backwards = reverse
-                        && if done {
-                            (count.unwrap() - 1) % 2 == 1
-                        } else {
-                            t.rem_euclid(2.0) >= 1.0
-                        };
-                    let part = if done { 1.0 } else { t.fract() };
-                    (
-                        lerp(
-                            min,
-                            max,
-                            if backwards {
-                                (1.0 - part) as f32
-                            } else {
-                                part as f32
-                            },
-                        ),
-                        match (backwards, done) {
-                            (false, false) => AnimationStatus::Forward,
-                            (true, false) => AnimationStatus::Reverse,
-                            (false, true) => AnimationStatus::Completed,
-                            (true, true) => AnimationStatus::Dismissed,
-                        },
-                        done,
-                    )
-                }
-            };
-            let notify = state.value != value;
-            state.value = value;
-            state.status = status;
-            state.reverse = matches!(
-                status,
-                AnimationStatus::Reverse | AnimationStatus::Dismissed
-            );
-            state.last_time = now;
-            let completed = if done {
-                state.motion.take().map(|m| m.run)
-            } else {
-                None
-            };
-            (notify, completed)
+            state.motion.as_ref().map(|motion| {
+                (
+                    motion.start,
+                    motion.simulation.clone(),
+                    motion.run.clone(),
+                    state.config.lower_bound,
+                    state.config.upper_bound,
+                )
+            })
         };
-        if let Some(run) = completed {
-            run.finish(AnimationOutcome::Completed);
+        let Some((start, simulation, active, lower, upper)) = snapshot else {
+            return;
+        };
+        let elapsed = (now - start).max(0.0);
+        let sampled = match simulation {
+            Playback::Custom { model, reverse } => Duration::try_from_secs_f64(elapsed)
+                .map_err(|_| {
+                    AnimationError::InvalidConfiguration("simulation elapsed time is out of range")
+                })
+                .and_then(|elapsed| self.sample_model(&model, elapsed))
+                .map(|sample| {
+                    (
+                        sample.position.clamp(f64::from(lower), f64::from(upper)) as f32,
+                        direction_status(reverse, sample.done),
+                        sample.done,
+                    )
+                }),
+            Playback::To {
+                from,
+                target,
+                seconds,
+                curve,
+                reverse,
+            } => {
+                let t = (elapsed / seconds).clamp(0.0, 1.0);
+                let value = lerp(from, target, curve.transform(t as f32));
+                Ok((
+                    if t >= 1.0 { target } else { value },
+                    match (reverse, t >= 1.0) {
+                        (false, false) => AnimationStatus::Forward,
+                        (true, false) => AnimationStatus::Reverse,
+                        (false, true) => AnimationStatus::Completed,
+                        (true, true) => AnimationStatus::Dismissed,
+                    },
+                    t >= 1.0,
+                ))
+            }
+            Playback::Repeat {
+                min,
+                max,
+                seconds,
+                phase,
+                reverse,
+                count,
+            } => {
+                let t = phase + elapsed / seconds;
+                let done = count.is_some_and(|count| t >= count as f64);
+                let backwards = reverse
+                    && if done {
+                        (count.unwrap() - 1) % 2 == 1
+                    } else {
+                        t.rem_euclid(2.0) >= 1.0
+                    };
+                let part = if done { 1.0 } else { t.fract() };
+                Ok((
+                    lerp(
+                        min,
+                        max,
+                        if backwards {
+                            (1.0 - part) as f32
+                        } else {
+                            part as f32
+                        },
+                    ),
+                    match (backwards, done) {
+                        (false, false) => AnimationStatus::Forward,
+                        (true, false) => AnimationStatus::Reverse,
+                        (false, true) => AnimationStatus::Completed,
+                        (true, true) => AnimationStatus::Dismissed,
+                    },
+                    done,
+                ))
+            }
+        };
+
+        let (notify, completed, outcome) = {
+            let mut state = self.0.state.borrow_mut();
+            // A simulation can run application commands, nested passes, or dispose
+            // its owner. Never overwrite a newer run with an obsolete sample.
+            if state.disposed
+                || self.0.dispose_pending.get()
+                || state.muted
+                || state.scope_muted
+                || !state
+                    .motion
+                    .as_ref()
+                    .is_some_and(|m| Rc::ptr_eq(&m.run.0, &active.0))
+            {
+                drop(state);
+                self.repaint();
+                return;
+            }
+            state.last_time = now;
+            match sampled {
+                Ok((value, status, done)) => {
+                    let notify = state.value != value;
+                    state.value = value;
+                    state.status = status;
+                    state.reverse = matches!(
+                        status,
+                        AnimationStatus::Reverse | AnimationStatus::Dismissed
+                    );
+                    let completed = if done { state.motion.take() } else { None };
+                    (notify, completed, AnimationOutcome::Completed)
+                }
+                Err(error) => (false, state.motion.take(), AnimationOutcome::Failed(error)),
+            }
+        };
+        // Drop user-owned simulations and wake tasks outside the state borrow.
+        if let Some(motion) = completed {
+            motion.run.finish(outcome);
         }
         self.dispatch(notify);
         self.repaint();
@@ -685,7 +835,11 @@ impl AnimationController {
             self.finish_dispose();
         } else {
             self.0.dispose_pending.set(true);
-            let motion = self.0.state.borrow_mut().motion.take();
+            let motion = {
+                let mut state = self.0.state.borrow_mut();
+                state.command = Rc::new(());
+                state.motion.take()
+            };
             if let Some(motion) = motion {
                 motion.run.finish(AnimationOutcome::Canceled);
             }
@@ -695,6 +849,7 @@ impl AnimationController {
         self.0.dispose_pending.set(false);
         let motion = {
             let mut state = self.0.state.borrow_mut();
+            state.command = Rc::new(());
             state.disposed = true;
             state.motion.take()
         };
@@ -726,6 +881,21 @@ impl ValueListenable for AnimationController {
     type Value = f32;
     fn value(&self) -> f32 {
         self.value()
+    }
+}
+
+struct SamplingGuard<'a>(&'a Cell<usize>);
+impl Drop for SamplingGuard<'_> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() - 1);
+    }
+}
+fn direction_status(reverse: bool, done: bool) -> AnimationStatus {
+    match (reverse, done) {
+        (false, false) => AnimationStatus::Forward,
+        (true, false) => AnimationStatus::Reverse,
+        (false, true) => AnimationStatus::Completed,
+        (true, true) => AnimationStatus::Dismissed,
     }
 }
 

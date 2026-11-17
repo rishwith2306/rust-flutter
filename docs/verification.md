@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 335 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 351 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -641,3 +641,40 @@ claim is established: controller driving, scroll view integration, platform
 overscroll policies and the remaining simulation family are unfinished. Existing
 rendered gesture evidence belongs to the separately recorded velocity revision.
 See [physics models and limits](physics.md).
+
+
+### Physics foundation CI follow-up
+
+Revision `5694911` passed all four jobs in
+[run 44112454142](https://github.com/rishwith2306/rust-flutter/actions/runs/44112454142).
+The downloaded Android ordinary-interaction and recreation result artifacts both
+record success. Linux rendered checks, macOS build/tests and ARM compilation also
+pass. This remains build/math/ordinary-gallery evidence, not a native scroll
+simulation or macOS window/VoiceOver runtime claim.
+
+## Controller simulation driving
+
+351 workspace tests pass, including 16 new custom-simulation tests. They cover
+analytic spring progress/directional completion, finite clamping without early
+completion, initially done models, failed/panicking initial validation rollback,
+late error/nonfinite/panic outcomes, future wake/resolution, duplicate times,
+muting/catch-up, commands/disposal during sampling, superseded starts, nested
+custom replacement, destructor reentrancy, final-drop cancellation and listener
+replacement. The executable simulation guide passes. Workspace and local
+x86_64 Android Clippy with warnings denied, Rustdoc, formatting and both renderer
+provenance/selection verifiers pass.
+
+The Linux Xvfb native probe passes the new managed spring marker: exact orange
+fill, 12→24→12 physical-pixel widths at density 1, unchanged muted geometry
+(width 23), and 527 build samples containing intermediate active motion and a
+settled endpoint. Existing purple implicit motion, shared-root gestures, release
+feedback, counter glyphs, layout, foreground/baselines, assets and restoration
+remain green. These establish the tested native spring path; Android/macOS
+results for this revision are recorded separately by CI.
+
+Sampling errors now resolve AnimationOutcome::Failed, extending exhaustive
+matches. Models run outside controller borrows; obsolete samples cannot overwrite
+a replacement. Bounds remain finite f32, and custom simulations use f64 samples.
+Unbounded/velocity APIs, scroll integration, platform motion policy and the full
+Flutter animation/scroll catalog remain unfinished. See
+[simulation controller semantics and limits](simulation-animations.md).

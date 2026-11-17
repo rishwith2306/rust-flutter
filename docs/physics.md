@@ -5,7 +5,8 @@ use logical points, velocity uses logical points per second, and sampling takes
 elapsed `Duration`. A sample contains position, velocity and a `done` advisory.
 Queries are stateless: sampling a later time does not change earlier results.
 The trait is object safe. These models do not schedule frames, attach themselves
-to AnimationController, or implement ScrollPosition/ScrollPhysics.
+to a widget, or implement ScrollPosition/ScrollPhysics.
+[AnimationController can now drive these models](simulation-animations.md).
 
 ```rust
 use rust_flutter::physics::*;
@@ -95,6 +96,6 @@ and [Tolerance](https://api.flutter.dev/flutter/physics/Tolerance-class.html).
 These are partial Rust counterparts, not a complete member audit. Constant
 deceleration, through/time-at-position friction constructors, duration/bounce spring
 configuration, gravity/clamped composition, scroll simulations/physics,
-controller simulation driving, overscroll, slivers and native runtime validation
+overscroll, slivers and native scroll runtime validation
 remain unfinished. Existing pan release data can feed these pure models; wiring
 it to a retained scroll viewport is separate work.

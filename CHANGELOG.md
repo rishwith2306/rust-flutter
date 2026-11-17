@@ -2,7 +2,9 @@
 
 ## Unreleased — 0.1.0 development
 
-- Add pure checked friction, bounded contact and spring simulations with explicit tolerances and all damping regimes; controller/scroll integration remains pending.
+- Drive checked physics simulations through bounded animation controllers with forward/backward status, muting/cancellation, reentrant sampling and explicit Failed outcomes; add a native spring marker and probes.
+
+- Add pure checked friction, bounded contact and spring simulations with explicit tolerances and all damping regimes; scroll integration remains pending.
 
 - Shared Rust desktop and Android application model with an egui/wgpu renderer.
 - Navigation, signals, background tasks, themes, localization and JSON snapshots.

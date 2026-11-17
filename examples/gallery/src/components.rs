@@ -415,9 +415,88 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
             eprintln!("rust-flutter gallery implicit-animation end");
         })
         .into_widget();
+        let mut row = FlexStyle::new(Axis::Horizontal);
+        row.main_size = rust_flutter::layout::MainAxisSize::Min;
+        row.spacing = 8.0;
         GestureDetector::new(&widget.binding, config)
             .expect("valid marker detector")
-            .into_widget(marker)
+            .into_widget(Widget::flex(
+                row,
+                vec![
+                    FlexItem::fixed(marker),
+                    FlexItem::fixed(Widget::stateful(SpringMarker {
+                        expanded: self.expanded,
+                    })),
+                ],
+            ))
+    }
+}
+struct SpringMarker {
+    expanded: bool,
+}
+struct SpringMarkerState {
+    controller: Option<rust_flutter::animation::AnimationController>,
+}
+impl StatefulWidget for SpringMarker {
+    type State = SpringMarkerState;
+    fn create_state(&self) -> Self::State {
+        SpringMarkerState { controller: None }
+    }
+}
+impl State<SpringMarker> for SpringMarkerState {
+    fn init_state(&mut self, _: &SpringMarker, ctx: &StateContext<Self>) {
+        self.controller = Some(
+            ctx.animation_controller(rust_flutter::animation::AnimationConfig {
+                lower_bound: 12.0,
+                upper_bound: 24.0,
+                value: Some(12.0),
+                ..Default::default()
+            })
+            .expect("valid spring marker bounds"),
+        );
+    }
+    fn did_update_widget(
+        &mut self,
+        old: &SpringMarker,
+        new: &SpringMarker,
+        _: &StateContext<Self>,
+    ) {
+        if old.expanded != new.expanded {
+            let controller = self.controller.as_ref().unwrap();
+            let motion = rust_flutter::physics::SpringSimulation::with_options(
+                rust_flutter::physics::SpringDescription {
+                    mass: 1.0,
+                    stiffness: 64.0,
+                    damping: 16.0,
+                },
+                f64::from(controller.value()),
+                if new.expanded { 24.0 } else { 12.0 },
+                0.0,
+                rust_flutter::physics::Tolerance::default(),
+                true,
+            )
+            .expect("valid spring marker motion");
+            controller
+                .animate_with(Rc::new(motion))
+                .expect("mounted spring marker");
+        }
+    }
+    fn build(&mut self, _: &SpringMarker, _: &StateContext<Self>) -> Widget {
+        let controller = self.controller.as_ref().unwrap().clone();
+        #[cfg(debug_assertions)]
+        let weak = controller.downgrade();
+        Widget::value_listenable_builder(controller, move |_, width| {
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "rust-flutter gallery spring width={} active={}",
+                width,
+                weak.upgrade().is_some_and(|c| c.is_animating())
+            );
+            Widget::leaf(egui::vec2(width, 12.0), |ui| {
+                ui.painter()
+                    .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(200, 133, 55));
+            })
+        })
     }
 }
 struct TickerDemo {

@@ -96,7 +96,7 @@ Every start method returns an AnimationRun. Its `outcome()` can be inspected,
 or its clone can be awaited by a UI-local executor. All clones share completion.
 Completion and cancellation wake registered tasks after releasing state borrows.
 Unlike Flutter's TickerFuture/orCancel split, this original Rust future always
-resolves to AnimationOutcome::Completed or Canceled. It does not supply an async
+resolves to AnimationOutcome::Completed, Canceled, or Failed for a custom-model error. It does not supply an async
 executor and is not Send; worker threads cannot own UI controllers/futures.
 
 `dispose` stops/cancels playback and clears both listener lists. Further commands
@@ -121,7 +121,8 @@ monotonic time, not a guaranteed fixed frame rate; suspended or delayed frames
 can skip intermediate samples. Nonfinite/backward tick times are ignored.
 
 This adds bounded point-to-point/repeat control, explicit muting, futures and
-observable integration. Unbounded/simulation controllers, springs/fling/velocity,
+observable integration. [Checked simulations](simulation-animations.md) now drive bounded controllers.
+Unbounded controllers, fling/velocity convenience APIs,
 mutable durations/bounds, nonlinear/custom curves, animation accessibility
 policies, complete TickerProvider/force-frame/resync semantics, derived animation adapters,
 the full implicit/transition widget families and the full Flutter animation member catalog
