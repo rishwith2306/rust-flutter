@@ -89,10 +89,11 @@ jobs:
           cargo apk build -p rust-flutter-gallery --lib --target x86_64-linux-android
       - name: Enable KVM for the isolated emulator
         run: sudo chmod a+rw /dev/kvm
-      - name: IME and resume readiness regression checks
+      - name: Android input and readiness regression checks
         run: |
           python3 scripts/test-android-ime.py
           python3 scripts/test-android-ready.py
+          python3 scripts/test-android-wheel.py
       - name: Image tools for exact rendered-color and glyph checks
         run: sudo apt-get update && sudo apt-get install -y imagemagick
       - name: Activity lifecycle and ordinary-package rendered interactions

@@ -21,5 +21,5 @@ subprocess.run([str(adb), "-s", args.serial, "install", "--no-incremental", "-r"
                 str(root / "target/debug/apk/rust-flutter-gallery.apk")], check=True, timeout=60)
 subprocess.run([sys.executable, str(root / "scripts/android-smoke.py"), "--serial", args.serial,
                 "--scale", str(metrics["scale"]), "--top-inset-px", str(metrics["top_inset_px"]),
-                "--reset-gallery-data"], check=True, timeout=300)
+                "--reset-gallery-data", "--wheel-instrumentation"], check=True, timeout=300)
 print("PASS: lifecycle and ordinary-package RGB888/input/restoration probes")

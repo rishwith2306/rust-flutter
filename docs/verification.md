@@ -845,3 +845,28 @@ logical coordinates and retain the existing wait-for-threshold policy after an
 early arena win. Arbitrary local transforms, full start/detail families, device
 settings, trackpad pan/zoom, multitouch, teams and the broader gesture/member
 catalog remain unfinished. See [axis semantics and API migration](axis-drags.md).
+
+
+### Axis drag CI follow-up
+
+Revision `d895026` passed all four jobs in
+[run 44128545191](https://github.com/rishwith2306/rust-flutter/actions/runs/44128545191),
+including Linux native cross-axis/vertical/wheel checks, macOS build/tests,
+ARM Android compilation and ordinary Android touch interactions/recreation.
+This is not physical macOS trackpad or Android mouse hardware evidence.
+
+## Android wheel probe implementation
+
+The runtime pipeline now installs a self-targeted WheelInstrumentation runner in
+its separate test APK, restores the original pure-native gallery, and enables
+OS mouse-scroll injection during the ordinary screenshot probe. It validates
+separate/stable PIDs and accepted SOURCE_MOUSE/ACTION_SCROLL packets, then requires
+rendered scroll movement and exact reset pixels. It adds no gallery Activity or
+model-manipulation hook. Java compilation, API-35/D8/min-24 conversion and AAPT
+packaging pass locally, along with six new wheel-result parser tests, eight
+readiness tests and four IME tests. Rust source is unchanged from the 420-test
+axis revision.
+
+The new emulator path is pending its first exact-revision CI run. Implementation
+and local compilation do not establish native Android wheel success. See
+[OS wheel probe semantics and scope](android-wheel-input.md).

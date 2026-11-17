@@ -2,5 +2,7 @@
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="35" />
     <instrumentation android:name="dev.rustflutter.tests.RecreateInstrumentation"
         android:targetPackage="dev.rustflutter.gallery" android:functionalTest="true" />
-    <application android:label="Rust Flutter lifecycle tests" />
+    <instrumentation android:name="dev.rustflutter.tests.WheelInstrumentation"
+        android:targetPackage="dev.rustflutter.tests" android:functionalTest="true" />
+    <application android:label="Rust Flutter runtime tests" />
 </manifest>

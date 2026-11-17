@@ -3,6 +3,8 @@
 Resets only dev.rustflutter.gallery's test data. Requires a preinstalled gallery APK.
 Coordinates use the gallery's logical layout and the supplied emulator density/inset.
 Requires ImageMagick convert for rendered component text comparisons.
+--wheel-instrumentation also requires the installed runtime test APK and the
+isolated RustFlutterSmoke AVD; it checks the ordinary gallery package.
 This is a profile-specific smoke test, not a general widget/device test harness.
 """
 import argparse
@@ -16,12 +18,14 @@ import time
 from component_probe import probe_baselines, probe_components, native_formats
 from android_ime import ime_state
 from android_ready import focused_presentation, paused_since
+from android_wheel import wheel_result
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--serial", required=True)
 parser.add_argument("--scale", type=float, required=True)
 parser.add_argument("--top-inset-px", type=int, required=True)
 parser.add_argument("--reset-gallery-data", action="store_true", required=True)
+parser.add_argument("--wheel-instrumentation", action="store_true", help="verify OS mouse-wheel input using the installed self-targeted test runner on RustFlutterSmoke")
 args = parser.parse_args()
 if not args.serial.startswith("emulator-"):
     parser.error("use an isolated emulator; this test resets gallery data")
@@ -38,6 +42,7 @@ package = "dev.rustflutter.gallery"
 surface_formats = []
 keyboard_states = []
 keyboard_metrics = {}
+wheel_injections = []
 
 
 def device(*command, check=True, timeout=15):
@@ -45,6 +50,28 @@ def device(*command, check=True, timeout=15):
     if check and result.returncode:
         raise RuntimeError(f"adb {command} failed: {result.stdout.decode(errors='replace')} {result.stderr.decode(errors='replace')}")
     return result
+
+
+if args.wheel_instrumentation:
+    if device("emu", "avd", "name").stdout.decode().splitlines()[0] != "RustFlutterSmoke":
+        parser.error("wheel instrumentation requires the isolated RustFlutterSmoke AVD")
+    if not device("shell", "pm", "path", "dev.rustflutter.tests").stdout.decode().strip().startswith("package:"):
+        parser.error("install the runtime test APK via android-recreation.py first")
+
+
+def wheel(x, y, steps):
+    before_pid = device("shell", "pidof", package).stdout.decode().strip()
+    result = device("shell", "am", "instrument", "-w", "-r", "-e", "x", str(x),
+        "-e", "y", str(y), "-e", "steps", str(steps),
+        "dev.rustflutter.tests/dev.rustflutter.tests.WheelInstrumentation", check=False, timeout=30)
+    text = result.stdout.decode(errors="replace") + result.stderr.decode(errors="replace")
+    (output / f"android-wheel-{len(wheel_injections)+1}-instrumentation.txt").write_text(text)
+    after_pid = device("shell", "pidof", package).stdout.decode().strip()
+    try:
+        summary = wheel_result(text, result.returncode, before_pid, after_pid, steps)
+    except ValueError as error:
+        raise AssertionError(f"OS wheel injection failed: {error}\n{text}") from error
+    wheel_injections.append(summary)
 
 
 def state():
@@ -246,7 +273,8 @@ wait_state(route="components")
 time.sleep(1)
 components = probe_components(lambda name: screenshot("android-" + name),
     lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))), args.scale,
-    drag=lambda x,y,end_x,end_y: device("shell", "input", "swipe", str(round(x)), str(round(y)), str(round(end_x)), str(round(end_y)), "400"))
+    drag=lambda x,y,end_x,end_y: device("shell", "input", "swipe", str(round(x)), str(round(y)), str(round(end_x)), str(round(end_y)), "400"),
+    wheel=wheel if args.wheel_instrumentation else None)
 device("shell", "input", "keyevent", "4")
 wait_state(route="home")
 pid = device("shell", "pidof", package).stdout.decode().strip()
@@ -273,6 +301,7 @@ result = {"passed": True, "serial": args.serial,
           "asset_page_opened": True,
           "layout_state_after_touch": layout_value,
           "components": components,
+          "wheel_injections": wheel_injections,
           "render_objects": render_objects,
           "baseline_alignment": baselines,
           "scope": "rendered touch controls, injected keyboard text, route back, background/resume, process-restart restoration, bundled assets and constraint layout interaction"}
