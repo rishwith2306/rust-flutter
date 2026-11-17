@@ -24,7 +24,7 @@ remains. Verification is recorded separately in `verification.md`.
 | Text and typography | Retained Paragraph, inherited Text/DefaultTextStyle, nested spans, explicit linear text scale, wrapping, line limits/ellipsis, dry/intrinsic sizing and alphabetic baseline, backed by egui fonts | Partial; complex shaping, bidi, RTL, font fallback, selection, semantics and complete Text/RichText compatibility remain |
 | Forms and input | Text fields, checkbox/slider via egui | Partial; form validation model, autofill, mobile IME audit |
 | Focus, shortcuts and keyboard | egui focus and input | Backend; cross-platform traversal and shortcut audit |
-| Pointer and gestures | Backend click/drag/touch plus public reentrant gesture arena, generation-safe entries and a native primary-pointer tap/drag validation adapter | Partial; general widget input binding, recognizer catalog/teams, multitouch routing, drag detail/velocity and physics remain |
+| Pointer and gestures | Backend click/drag/touch plus public reentrant gesture arena, generation-safe entries, explicit per-pointer/global routing with owned subscriptions and a native primary-pointer tap/drag validation adapter | Partial; general widget input binding, recognizer catalog/teams, multitouch routing, drag detail/velocity and physics remain |
 | Scrolling | Vertical helper; egui scroll areas | Partial; virtual lists, slivers, nested scrolling, overscroll physics |
 | Navigation | Generic route stack and back-request hook | Partial; native back validation, deep links, route restoration, transitions, declarative routing |
 | Theme | Light/dark and accent | Partial; explicit scoped linear text scale works; system/nonlinear scale, semantic theme tokens and adaptive theme remain |

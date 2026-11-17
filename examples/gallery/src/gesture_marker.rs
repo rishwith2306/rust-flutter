@@ -1,7 +1,7 @@
-//! Gallery-only primary-pointer adapter for exercising the public arena kernel.
+//! Gallery-only primary-pointer adapter exercising the public arena and router.
 //! General widget hit-path routing and a recognizer catalog remain framework work.
 use rust_flutter::{egui, gestures::*};
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 const POINTER: PointerId = PointerId(0);
 struct Candidate {
     #[cfg_attr(not(debug_assertions), allow(dead_code))]
@@ -36,7 +36,9 @@ impl Sequence {
 }
 pub(super) struct PointerMarker {
     arena: GestureArenaManager,
-    active: Option<Sequence>,
+    router: PointerRouter<egui::Pos2>,
+    route: Option<PointerRoute<egui::Pos2>>,
+    active: Option<Rc<RefCell<Sequence>>>,
     last_frame: Option<u64>,
     tap: Rc<dyn Fn()>,
     drag: Rc<dyn Fn()>,
@@ -45,6 +47,8 @@ impl PointerMarker {
     pub fn new(tap: impl Fn() + 'static, drag: impl Fn() + 'static) -> Self {
         Self {
             arena: GestureArenaManager::new(),
+            router: PointerRouter::new(),
+            route: None,
             active: None,
             last_frame: None,
             tap: Rc::new(tap),
@@ -52,6 +56,7 @@ impl PointerMarker {
         }
     }
     pub fn cancel(&mut self) {
+        self.route = None;
         self.active = None;
         self.arena.cancel(POINTER);
         self.arena.flush();
@@ -100,21 +105,30 @@ impl PointerMarker {
                                 }),
                             )
                             .expect("open drag arena");
-                        self.active = Some(Sequence {
+                        let sequence = Rc::new(RefCell::new(Sequence {
                             start: pos,
                             tap,
                             drag,
                             dragged: false,
-                        });
+                        }));
+                        let weak = Rc::downgrade(&sequence);
+                        self.route = Some(
+                            self.router
+                                .add_route(POINTER, move |_, &pos| {
+                                    if let Some(sequence) = weak.upgrade() {
+                                        sequence.borrow_mut().moved(pos);
+                                    }
+                                })
+                                .expect("live pointer router"),
+                        );
+                        self.active = Some(sequence);
                         self.arena
                             .close(POINTER)
                             .expect("registered down candidates");
                     }
                 }
                 egui::Event::PointerMoved(pos) => {
-                    if let Some(sequence) = &mut self.active {
-                        sequence.moved(pos);
-                    }
+                    self.router.route(POINTER, &pos);
                 }
                 egui::Event::PointerButton {
                     pos,
@@ -122,8 +136,10 @@ impl PointerMarker {
                     pressed: false,
                     ..
                 } => {
-                    if let Some(mut sequence) = self.active.take() {
-                        sequence.moved(pos);
+                    if let Some(sequence) = self.active.take() {
+                        self.router.route(POINTER, &pos);
+                        self.route = None;
+                        let sequence = sequence.borrow();
                         if !sequence.dragged {
                             sequence.tap.resolve(GestureDisposition::Accepted);
                         }

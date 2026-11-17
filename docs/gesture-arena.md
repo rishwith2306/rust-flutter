@@ -2,7 +2,8 @@
 
 `gestures::GestureArenaManager` arbitrates recognizers competing for a pointer
 sequence. It is a UI-local mechanism, independent of rendering and input devices.
-Hosts/recognizers provide pointer routing and movement/timing decisions. This
+Hosts/recognizers provide input binding and movement/timing decisions; the
+[explicit pointer router](pointer-routing.md) supplies subscription dispatch. This
 adds the arena kernel; it does not yet supply a general GestureDetector widget
 or automatically connect every egui control to the same arena.
 
