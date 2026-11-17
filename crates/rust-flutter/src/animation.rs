@@ -1,11 +1,13 @@
-//! Frame-clock driven scalar animations. Call `value` while building each frame.
+//! Frame-driven controllers, implicit builders and scalar tween sampling.
 mod controller;
+mod implicit;
 pub use controller::{
     AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,
     AnimationStatus, RepeatOptions, WeakAnimationController,
 };
+pub use implicit::{TweenAnimationBuilder, TweenAnimationState, TweenValue};
 use std::time::Duration;
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Curve {
     #[default]
     Linear,

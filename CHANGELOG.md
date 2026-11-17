@@ -9,6 +9,7 @@
 - Foreground render-object paint phases and retained solid/border DecoratedBox.
 - Frame-driven animation controllers with forward/reverse/repeat, observable builders, cancellation futures and manual muting.
 - Nested TickerMode and element-managed animation lifetime, including safe cancellation during listener-triggered unmount.
+- Typed implicit TweenAnimationBuilder with continuous retargeting and post-pass completion callbacks.
 - Retained paragraphs with styled spans, wrapping, line limits/ellipsis, intrinsic sizing and real alphabetic baselines.
 - Inherited Text/DefaultTextStyle, nested span styles, explicit linear text scaling and line-limit overrides.
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.

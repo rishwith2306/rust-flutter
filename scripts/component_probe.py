@@ -62,12 +62,14 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(line_y - large_y) <= 2.0, (line_y, large_y)
     animation_values = [float(value) for value in re.findall(r"animation value=([\d.eE+-]+)", trace)]
     assert any(0.0 < value < 1.0 for value in animation_values), "missing intermediate frame-driven animation"
+    implicit_completions = trace.count("implicit-animation end")
+    assert implicit_completions >= 4, f"missing implicit completion callbacks: {implicit_completions}"
     foreground = bounds(path, "#834eb3")
     assert foreground, "missing foreground decoration"
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}

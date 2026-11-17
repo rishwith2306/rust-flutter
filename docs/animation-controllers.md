@@ -5,7 +5,9 @@ It advances automatically at the start of its owning egui viewport's passes and
 requests more frames while active and unmuted. Applications do not need to call a
 sampling/tick function each frame. It implements Listenable and
 ValueListenable<Value = f32>, so existing observable widget builders can animate
-layout or paint configuration while preserving retained element identity.
+layout or paint configuration while preserving retained element identity. For
+target-driven animation without an app-managed controller, see the
+[implicit value builder](implicit-animation.md).
 
 ```rust
 use rust_flutter::{egui, animation::{AnimationConfig, AnimationController, AnimationOutcome},
@@ -122,7 +124,7 @@ This adds bounded point-to-point/repeat control, explicit muting, futures and
 observable integration. Unbounded/simulation controllers, springs/fling/velocity,
 mutable durations/bounds, nonlinear/custom curves, animation accessibility
 policies, complete TickerProvider/force-frame/resync semantics, derived animation adapters,
-typed implicit/transition widgets and the full Flutter animation member catalog
+the full implicit/transition widget families and the full Flutter animation member catalog
 remain unfinished. Existing scalar Tween sampling stays available.
 
 ## Verification

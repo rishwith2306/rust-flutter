@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 208 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 223 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -405,3 +405,27 @@ restoration, asset, layout, component, inherited-view and render-cache gates pas
 Android/macOS checks for this revision are recorded by CI. This does not prove
 force-frame policy, context resync/adoption, every native host lifecycle or full
 Flutter ticker compatibility; see [scoped ticker scope](ticker-mode.md).
+
+
+## Implicit value animation verification
+
+The workspace passes 223 Rust tests: thirteen new implicit-animation integration
+tests and two private completion-driver tests. They cover initial progression,
+continuous retargeting/ignored replacement begin, unchanged targets and builder
+replacement, active curve/duration changes, modes and retained child state,
+zero-duration post-pass completion, completion snapshots, completion-driven
+unmount/retarget, suppression after unmount, custom value types, rounded curve
+endpoint handling, typed geometry/color/decoration interpolation, endpoint
+validation, panic isolation, cross-widget next-pass delivery and weak callback
+registration cleanup/reuse. Formatting, warnings-denied Clippy, generated docs
+and the implicit-animation Markdown example pass locally.
+
+The native Linux X11 gallery now uses TweenAnimationBuilder instead of an
+app-managed marker controller. Injected clicks reach settled widths 24→48→24,
+then mode muting holds an intermediate width at 30 beyond the duration, unmuting
+catches up to 48 and a final target change returns to 24. The trace contains four
+actual post-pass completion callbacks. Existing intermediate-value, exact color,
+covered-child, baseline, interaction/restoration/assets, layout, component,
+inherited-view and render-cache gates pass. Android/macOS results for this
+revision are recorded by CI. These tests do not establish full implicit-widget,
+performance or member-level Flutter compatibility; see [implicit scope](implicit-animation.md).
