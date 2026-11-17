@@ -269,15 +269,20 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
             .and_then(|row| row.glyphs.first().map(|glyph| row.pos.y + glyph.pos.y))
             .expect("ASCII demo has a baseline");
         baselines.push(distance);
-        let paragraph = rust_flutter::text::Paragraph::new(
-            text,
-            egui::text::TextFormat {
-                font_id: egui::FontId::proportional(size),
-                color: egui::Color32::WHITE,
+        use rust_flutter::text::{InlineSpan, Text, TextStyle};
+        let mut label = Text::rich(InlineSpan::group(vec![
+            InlineSpan::new("Ag "),
+            InlineSpan::new(if size == 16.0 { "small" } else { "large" }).styled(TextStyle {
+                // Span inheritance fills unspecified properties even with this flag.
+                inherit: false,
+                italics: Some(false),
                 ..Default::default()
-            },
-        )
-        .into_widget();
+            }),
+        ]));
+        if size != 16.0 {
+            label.style.font_size = Some(size);
+        }
+        let paragraph = label.into_widget();
         FlexItem::fixed(Widget::stack(
             StackStyle::default(),
             vec![
@@ -306,7 +311,15 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
     let mut style = FlexStyle::new(Axis::Horizontal);
     style.cross_alignment = CrossAxisAlignment::Baseline(TextBaseline::Alphabetic);
     style.spacing = 16.0;
-    Widget::flex(style, children)
+    rust_flutter::text::DefaultTextStyle {
+        style: rust_flutter::text::TextStyle {
+            font_size: Some(16.0),
+            color: Some(egui::Color32::WHITE),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+    .provide(Widget::flex(style, children))
 }
 pub(super) struct ComponentDemo {
     tree: ElementTree,

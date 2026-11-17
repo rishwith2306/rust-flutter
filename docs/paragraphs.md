@@ -40,8 +40,9 @@ let _ = ctx.end_pass();
 Formatting includes font family/size, color, background, letter spacing, explicit
 line height, italics, underline and strikethrough through `egui::text::TextFormat`.
 Install custom font families with `Context::set_fonts`. Each span is fully
-resolved; nested style inheritance, ambient DefaultTextStyle and a font asset
-loader are not yet supplied. `TextFormat`'s default color is gray, so set a color
+resolved. For nested style inheritance and scoped defaults, use the higher-level
+[Text and DefaultTextStyle](text-styles.md) APIs. A font asset loader remains
+unimplemented. `TextFormat`'s default color is gray, so set a color
 explicitly for a themed application.
 
 ## Sizing and overflow
@@ -107,7 +108,7 @@ resulting font boxes and reference baseline in actual screenshots.
 
 This is an experimental paragraph primitive. Full shaping, bidi, RTL traversal,
 fallback/language coverage, selection/caret geometry, editable text, semantics,
-inline widgets, nested TextSpan inheritance, struts, locale-aware line breaking,
+inline widgets, complete span compatibility, struts, locale-aware line breaking,
 nonlinear accessibility text scaling, and complete Flutter Text/RichText member
 compatibility remain unfinished.
 

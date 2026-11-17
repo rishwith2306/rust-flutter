@@ -21,13 +21,13 @@ remains. Verification is recorded separately in `verification.md`.
 | Widget/Element/RenderObject lifecycle | Type/key-based element reconciliation, stateful/stateless components, init/property-update/dispose hooks, queued updates, selective dirty component builds and stable render IDs | Partial; inherited lookup/predicates and dependency hooks now work; custom persistent render boxes and coarse layout invalidation now work; GlobalKey reparenting, deactivate/reactivate, reassembly and the complete dirty RenderObject pipeline remain |
 | Layout basics | Owned BoxNode geometry: validated constraints, fixed/loose/tight flex, alignment, padding, sized constraints, stack/positioned, direction, overflow, clip bounds and leaf UI adapter | Partial; dry/intrinsic box protocols and sizing wrappers now work; reported-baseline layout now works; full render-object pipeline and further widget inventory remain |
 | Responsive/adaptive UI | Logical-point breakpoints, safe-area conversion, sampled view/keyboard metrics, selective ambient view dependencies and retained SafeArea | Partial; notch/system-bar insets verified on one emulator; wider device validation and adaptive controls remain |
-| Text and typography | Retained Paragraph/plain and styled spans, wrapping, line limits/ellipsis, dry/intrinsic sizing and alphabetic baseline, backed by egui fonts | Partial; complex shaping, bidi, RTL, font fallback, selection, semantics and complete Text/RichText compatibility remain |
+| Text and typography | Retained Paragraph, inherited Text/DefaultTextStyle, nested spans, explicit linear text scale, wrapping, line limits/ellipsis, dry/intrinsic sizing and alphabetic baseline, backed by egui fonts | Partial; complex shaping, bidi, RTL, font fallback, selection, semantics and complete Text/RichText compatibility remain |
 | Forms and input | Text fields, checkbox/slider via egui | Partial; form validation model, autofill, mobile IME audit |
 | Focus, shortcuts and keyboard | egui focus and input | Backend; cross-platform traversal and shortcut audit |
 | Pointer and gestures | Backend click/drag/touch; pointer test | Partial; gesture arena, multi-touch recognizers and physics |
 | Scrolling | Vertical helper; egui scroll areas | Partial; virtual lists, slivers, nested scrolling, overscroll physics |
 | Navigation | Generic route stack and back-request hook | Partial; native back validation, deep links, route restoration, transitions, declarative routing |
-| Theme | Light/dark and accent | Partial; semantic theme tokens, text scale, adaptive theme |
+| Theme | Light/dark and accent | Partial; explicit scoped linear text scale works; system/nonlinear scale, semantic theme tokens and adaptive theme remain |
 | Material controls | No local Material implementation | Missing Material design system and component catalog |
 | Cupertino controls | No local Cupertino implementation | Missing Cupertino design system and component catalog |
 | Animation | Scalar tweens with curves | Partial; controllers, implicit animation, springs, transitions, Hero |

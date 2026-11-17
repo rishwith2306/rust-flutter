@@ -1,5 +1,6 @@
 //! Retained, formatted paragraphs backed by the active egui font collection.
 //! Measure and show after the first egui pass has initialized fonts.
+mod style;
 use crate::{
     element::{RenderBox, RenderContext, RenderObjectWidget, Widget},
     layout::{
@@ -12,6 +13,7 @@ use egui::{
     text::{Galley, LayoutJob, TextFormat},
 };
 use std::sync::Arc;
+pub use style::{DefaultTextStyle, InlineSpan, LineHeight, LineLimit, Text, TextScale, TextStyle};
 
 /// Fully resolved formatting for a contiguous UTF-8 span. No implicit style
 /// inheritance: configure fonts through the host Context and each TextFormat.

@@ -119,7 +119,7 @@ prove device lifecycle, macOS integration or full accessibility behavior.
 
 See [observable state](docs/notifiers.md), [inherited models](docs/inherited-models.md), [inherited values](docs/inherited.md), [stateful components](docs/components.md), [constraint layout](docs/layout.md), [asset bundles](docs/assets.md), [application services](docs/application-services.md),
 [view geometry and keyboard metrics](docs/display.md), [custom render objects](docs/render-objects.md), [dry and intrinsic sizing](docs/size-queries.md), [baseline layout](docs/baselines.md),
-[retained paragraphs and styled spans](docs/paragraphs.md), [verification results](docs/verification.md), [architecture](docs/architecture.md), [feature audit](docs/flutter-parity.md),
+[retained paragraphs and styled spans](docs/paragraphs.md), [inherited typography](docs/text-styles.md), [verification results](docs/verification.md), [architecture](docs/architecture.md), [feature audit](docs/flutter-parity.md),
 and [contributing](CONTRIBUTING.md) before extending the framework.
 
 ## Contributing and releases

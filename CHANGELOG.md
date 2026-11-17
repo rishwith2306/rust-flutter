@@ -7,6 +7,7 @@
 - Embedded assets, density variants and a bounded decoded-image cache.
 - Constraint layout, retained keyed components and typed inherited values.
 - Retained paragraphs with styled spans, wrapping, line limits/ellipsis, intrinsic sizing and real alphabetic baselines.
+- Inherited Text/DefaultTextStyle, nested span styles, explicit linear text scaling and line-limit overrides.
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.
 - ChangeNotifier/ValueNotifier, merged sources, scoped listeners, inherited notifier and builder adapters.
 - Native Android lifecycle handling and smoke-test tooling.

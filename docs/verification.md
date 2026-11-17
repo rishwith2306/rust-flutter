@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 173 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 182 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -315,3 +315,24 @@ render-object cache assertions also pass. Android and macOS results for this
 change are recorded by the commit's CI run; no local Android paragraph runtime
 claim is made here. Full shaping, bidi, fallback, selection and accessibility
 remain outside this evidence; see [paragraph scope](paragraphs.md).
+
+
+## Inherited typography verification
+
+The workspace now passes 182 Rust tests, including nine new text-style tests.
+They verify partial property overlay/replacement, nested span inheritance and
+sibling isolation, clearing inherited effects, line-limit removal/overrides,
+positive linear scaling, stable Text/Paragraph element IDs after live inherited
+font/color updates, nested provider shadowing and equality gates, fallback and
+empty content, recoverable invalid inherited geometry and scaling overflow.
+Actual galley checks cover UTF-8 section ranges, colors, sizes and baselines.
+Formatting, Clippy with warnings denied, generated documentation, both paragraph
+and text-style Markdown examples, and renderer provenance/selection checks pass.
+
+The Linux X11 smoke test passes using high-level Text with scoped defaults and
+nested spans in the existing mixed-size fixture. Both rendered font baselines
+and the reference line remain at physical y=429 after resize. Existing native
+input/restoration/assets, exact-color/glyph, flex, component, inherited-view and
+custom-render cache checks also pass. Cross-platform checks for this change are
+recorded by its CI run. These tests do not demonstrate system accessibility
+scaling or full Flutter typography; see [inherited text scope](text-styles.md).
