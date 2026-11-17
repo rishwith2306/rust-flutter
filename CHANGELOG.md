@@ -7,6 +7,7 @@
 - Embedded assets, density variants and a bounded decoded-image cache.
 - Constraint layout, retained keyed components and typed inherited values.
 - Foreground render-object paint phases and retained solid/border DecoratedBox.
+- Frame-driven animation controllers with forward/reverse/repeat, observable builders, cancellation futures and manual muting.
 - Retained paragraphs with styled spans, wrapping, line limits/ellipsis, intrinsic sizing and real alphabetic baselines.
 - Inherited Text/DefaultTextStyle, nested span styles, explicit linear text scaling and line-limit overrides.
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.

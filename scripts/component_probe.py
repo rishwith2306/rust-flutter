@@ -60,12 +60,14 @@ def probe_baselines(path, trace, scale=1.0):
     assert small[1] > large[1], "smaller font was not shifted down"
     assert abs(small_y - large_y) <= 2.0, (small_y, large_y)
     assert abs(line_y - large_y) <= 2.0, (line_y, large_y)
+    animation_values = [float(value) for value in re.findall(r"animation value=([\d.eE+-]+)", trace)]
+    assert any(0.0 < value < 1.0 for value in animation_values), "missing intermediate frame-driven animation"
     foreground = bounds(path, "#834eb3")
     assert foreground, "missing foreground decoration"
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
@@ -144,4 +146,26 @@ def probe_components(capture, tap, scale=1.0):
     tap(*center(bounds(reset, "#8f5f22")))
     burst = settle("components-observable-burst.png")
     assert patch(burst, bounds(burst, "#a14b32"), scale, 220) == observable_three, "three synchronous notifier changes did not match three individual clicks"
-    return {"passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    marker = bounds(burst, "#834eb3")
+    assert marker and abs(marker[2] - 24 * scale) <= 2, marker
+    def await_width(name, expected):
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            path = capture(name)
+            measured = bounds(path, "#834eb3")
+            if measured and abs(measured[2] - expected * scale) <= 2:
+                return path, measured
+            time.sleep(0.15)
+        raise AssertionError(f"animation did not reach {expected} logical points: {measured}")
+
+    tap(*center(marker))
+    expanded, larger = await_width("components-animation-expanded.png", 48)
+    exact_fill(expanded, larger, "#834eb3", scale)
+    # Wait for the endpoint before reversing so a nearly-complete screenshot
+    # cannot shorten the reverse trip through a partially finished first run.
+    time.sleep(0.15)
+    tap(*center(larger))
+    contracted, smaller = await_width("components-animation-contracted.png", 24)
+    time.sleep(0.15)
+    assert not bounds(contracted, "#e3bd42"), "animation broke foreground painting"
+    return {"animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2]}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

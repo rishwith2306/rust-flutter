@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 188 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 200 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -357,3 +357,27 @@ assets, exact RGB/glyph, layout, inherited-view and render-cache checks pass.
 Android/macOS results for this revision are recorded by CI. This verifies solid
 foreground order, not full decoration, clipping or compositing compatibility;
 see [decoration scope](decorations.md).
+
+
+## Frame-driven animation controller verification
+
+The workspace passes 200 Rust tests. Eleven new integration tests and one
+private registration-lifetime test cover automatic frame advancement,
+forward/reverse duration and distance, directional status retention, point-to-point
+curves, repeat phase/alternation/count/endpoints, indefinite repeat, muting and
+elapsed-time catch-up, clamping/instant runs, invalid-command rollback, finite
+interpolation across extreme bounds, completion futures/waker deduplication,
+replacement/cancellation/disposal/drop, reentrant listeners, disposal guards,
+context/viewport isolation, weak registration cleanup/reuse and retained builder
+geometry updates. Formatting, warnings-denied all-target Clippy, generated
+documentation and the controller Markdown example pass locally.
+
+The Linux X11 native smoke test passes injected animation clicks: the purple
+foreground region expands from 24 to 48 physical pixels and contracts to 24.
+Intermediate controller values are recorded by actual retained widget builds,
+and exact color/covered-child/baseline assertions still pass. Other input,
+restoration, assets, layout, component, inherited-view and render-cache gates
+also pass. Android/macOS results for this revision are recorded by CI. These
+results establish native frame-driven progress and endpoints, not frame-rate,
+jank, system accessibility, inherited ticker-mode or complete Flutter animation
+compatibility; see [controller scope](animation-controllers.md).

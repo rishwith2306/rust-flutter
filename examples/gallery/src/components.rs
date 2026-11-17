@@ -248,7 +248,10 @@ impl State<ViewReport> for ViewReportState {
     }
 }
 
-fn baseline_example(ctx: &egui::Context) -> Widget {
+fn baseline_example(
+    ctx: &egui::Context,
+    animation: &rust_flutter::animation::AnimationController,
+) -> Widget {
     let mut baselines = Vec::new();
     let mut children: Vec<FlexItem> = [
         (16.0, "Ag small", egui::Color32::from_rgb(49, 83, 123)),
@@ -291,18 +294,44 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
         )
     })
     .collect();
-    children.push(FlexItem::fixed(
-        rust_flutter::decoration::DecoratedBox {
-            decoration: rust_flutter::decoration::BoxDecoration::solid(egui::Color32::from_rgb(
-                131, 78, 179,
-            )),
-            position: rust_flutter::decoration::DecorationPosition::Foreground,
-        }
-        .into_widget(Widget::leaf(egui::vec2(24.0, 24.0), |ui| {
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(227, 189, 66));
-        })),
-    ));
+    let control = animation.clone();
+    children.push(FlexItem::fixed(Widget::value_listenable_builder(
+        animation.clone(),
+        move |_, value| {
+            let control = control.clone();
+            #[cfg(debug_assertions)]
+            eprintln!("rust-flutter gallery animation value={value}");
+            rust_flutter::decoration::DecoratedBox {
+                decoration: rust_flutter::decoration::BoxDecoration::solid(
+                    egui::Color32::from_rgb(131, 78, 179),
+                ),
+                position: rust_flutter::decoration::DecorationPosition::Foreground,
+            }
+            .into_widget(Widget::leaf(
+                egui::vec2(24.0 + 24.0 * value, 24.0),
+                move |ui| {
+                    ui.painter().rect_filled(
+                        ui.max_rect(),
+                        0.0,
+                        egui::Color32::from_rgb(227, 189, 66),
+                    );
+                    if ui
+                        .interact(ui.max_rect(), ui.id().with("animate"), egui::Sense::click())
+                        .clicked()
+                    {
+                        let result = if control.value() >= 0.5 {
+                            control.reverse()
+                        } else {
+                            control.forward()
+                        };
+                        if let Err(error) = result {
+                            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+                        }
+                    }
+                },
+            ))
+        },
+    )));
     #[cfg(debug_assertions)]
     eprintln!(
         "rust-flutter gallery baseline-demo small={} large={}",
@@ -334,6 +363,7 @@ pub(super) struct ComponentDemo {
     last_view_query: Option<egui::Vec2>,
     baseline_tree: ElementTree,
     baseline_scale: f32,
+    animation: rust_flutter::animation::AnimationController,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -371,13 +401,22 @@ impl ComponentDemo {
             }),
         )
         .expect("valid observable demo");
+        let animation = rust_flutter::animation::AnimationController::new(
+            ctx,
+            rust_flutter::animation::AnimationConfig {
+                duration: std::time::Duration::from_millis(800),
+                ..Default::default()
+            },
+        )
+        .expect("valid animation demo");
         Self {
             observable,
             observable_tree,
             last_view_query: None,
-            baseline_tree: ElementTree::new(ctx, baseline_example(ctx))
+            baseline_tree: ElementTree::new(ctx, baseline_example(ctx, &animation))
                 .expect("valid baseline demo"),
             baseline_scale: ctx.pixels_per_point(),
+            animation,
             view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
                 .expect("valid view report"),
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
@@ -533,7 +572,10 @@ impl ComponentDemo {
         }
         if self.baseline_scale != ui.ctx().pixels_per_point() {
             self.baseline_scale = ui.ctx().pixels_per_point();
-            if let Err(error) = self.baseline_tree.update(baseline_example(ui.ctx())) {
+            if let Err(error) = self
+                .baseline_tree
+                .update(baseline_example(ui.ctx(), &self.animation))
+            {
                 ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
             }
         }

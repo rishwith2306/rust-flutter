@@ -1,4 +1,9 @@
 //! Frame-clock driven scalar animations. Call `value` while building each frame.
+mod controller;
+pub use controller::{
+    AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,
+    AnimationStatus, RepeatOptions, WeakAnimationController,
+};
 use std::time::Duration;
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Curve {
