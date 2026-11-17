@@ -77,8 +77,9 @@ style changes, both axes/reverse, scaled layers, thumb/content competition,
 capture, track pages, wheel fallthrough, noninteractive/disabled behavior,
 rebuild/unmount, command supersession and reentrant layout queries. Native probes
 require a rendered thumb/track, thumb-driven final content, a page-sized move,
-wheel-over-thumb movement and exact reset of both content and thumb. Platform
-results are recorded separately in [verification](verification.md).
+wheel-over-thumb movement and exact reset of both content and thumb. Linux X11 and API 35 / x86_64 Android emulator artifacts pass these gates at
+revision `48a8209`; see the [exact CI runtime record](verification.md#scrollbar-ci-runtime-result).
+Physical devices and macOS runtime remain unverified.
 
 Reviewed the official [RawScrollbar API](https://api.flutter.dev/flutter/widgets/RawScrollbar-class.html)
 and its [gesture/painting implementation](https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/widgets/scrollbar.dart).

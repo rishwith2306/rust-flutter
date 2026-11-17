@@ -67,9 +67,24 @@ See `assets.md` for limits and packaging differences from Flutter.
 `Localizations` wraps Fluent resources, CLDR locale negotiation and per-message
 fallback. These are concrete application services; see `application-services.md`.
 
-`Tween` samples a scalar with an explicit monotonic time and a duration. The UI
-adapter uses egui's frame time and requests frames until completion. Springs,
-sequences and implicit property animations remain future work.
+`AnimationController` drives bounded scalar values from its owning viewport's
+frame passes, with cancellation futures, repeat/reverse, scoped ticker muting
+and element-owned teardown. Checked friction and spring simulations can drive
+the same controller. Typed `TweenAnimationBuilder` supports implicit value
+changes while preserving its child. The full derived-animation, transition,
+sequence and platform motion catalogs remain unfinished; see
+[animation controllers](animation-controllers.md), [simulation playback](simulation-animations.md)
+and [implicit animations](implicit-animation.md).
+
+Retained scrolling separates externally owned `ScrollPosition` state from
+viewport layout and input. A viewport lays out an eager child, publishes measured
+dimensions outside render-object borrows and subscribes to offset changes.
+One shared `GestureBinding` routes hit paths, pointer arenas and wheel signals
+across painted roots. Keyboard shortcuts use viewport focus; scrollbar thumb
+drags carry command identities so synchronous application callbacks can supersede
+them safely. See [viewports](scroll-viewports.md) and [scrollbars](scrollbars.md).
+Lazy child construction, slivers, coordinated nested scrolling and full platform
+scroll physics remain unfinished.
 
 `Services` stores implementations by Rust type. Store `Arc<dyn Trait>` to abstract
 an OS API. Missing services return `None`. This is dependency injection within the

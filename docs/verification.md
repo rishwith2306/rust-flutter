@@ -46,6 +46,7 @@ Runtime claims below remain scoped to their stated environment.
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
 | Android OS mouse wheel | Passed on API 35 / x86_64 emulator | Four separate-process OS mouse-scroll packets, unchanged gallery PID, native movement and exact rendered reset; physical hardware remains unverified |
+| Retained scrollbar interaction | Passed on Linux X11 and API 35 / x86_64 Android emulator | Thumb drag, 80% track page, OS wheel input over thumb and exact content/thumb reset; platform themes and physical-device behavior remain unverified |
 | Retained viewport keyboard scrolling | Passed on Linux X11 and API 35 / x86_64 Android emulator | Native End/Home, page and arrow input produces expected rendered content and exact reset; macOS runtime and physical Android keyboards remain unverified |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
 | macOS compilation | Passed on GitHub macos-latest / Apple Silicon | Stable Rust 1.100.0: workspace tests, Clippy, docs, asset rebuild and generated-app compilation |
@@ -974,3 +975,33 @@ shipment. Exact-revision CI artifacts must be inspected separately. macOS
 runtime, physical devices, platform scrollbar styling/hover/fade policies,
 expanded touch hit areas and semantics remain unverified or unfinished. See
 [scrollbar usage and limits](scrollbars.md).
+
+
+### Scrollbar CI runtime result
+
+Published code revision `48a8209dfe23a799d8856f2fe0d46c16661bbd44` passes all
+four jobs in [run 44181861257](https://github.com/rishwith2306/rust-flutter/actions/runs/44181861257):
+Linux native interaction, macOS build/tests, ARM Android compilation and Android
+runtime. Downloaded Linux and Android result files both record scrollbar passed,
+thumb_drag=true, track_page=true and wheel_over_thumb=true. Existing viewport
+keyboard, wheel, touch, cross-axis rejection, clip and exact reset checks pass.
+
+On API 35 / x86_64 Android, scale 2.625, the initial thumb is measured at
+21×49 physical pixels within the 158-pixel-high viewport. The trace reaches
+offset 120 through thumb dragging, then resets to zero. A track tap produces
+0→48→0; four OS mouse-scroll packets over the thumb produce 0→20→40→60→80→0.
+Independent screenshot checks require the final coral stripe after thumb
+dragging, the 48-point page split, and exact original thumb bounds and blue
+content after reset. The dragged screenshot was visually inspected and shows
+the thumb at the bottom of its track, content inside the original clip and the
+software keyboard hidden.
+
+The wheel fixture injects four packets at viewport center and another four at
+thumb center. Both sequences preserve gallery PID 4216; separate instrumentation
+PIDs 4976 and 5152 confirm the runner is outside the ordinary APK process.
+Three recreation cycles keep PID 2822 with four Rust hosts. Existing
+IME/inset, RGB888, glyph, baseline, restoration and animation gates pass; the
+shared gesture frame records three roots and six targets. This verifies the
+isolated emulator/OS-injection path. Physical Android input, macOS runtime,
+platform styling/hover/fade/touch policies and scrollbar semantics remain
+unverified or unfinished.
