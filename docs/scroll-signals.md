@@ -110,8 +110,9 @@ roots and nested at-edge handoff. The Linux native probe sends real X11 wheel
 input to the gallery and requires changed content, then a controller reset back
 to the exact original pixels. Android still runs its touch/clip/reset path;
 the Android host now emits the scroll packet's current pointer position before
-its wheel event. Native Android wheel and actual macOS trackpad hardware have not
-been validated.
+its wheel event. OS-injected Android mouse scroll now passes on the API-35 emulator; see
+[Android input evidence](android-wheel-input.md). Physical Android mouse and
+macOS trackpad hardware remain unverified.
 
 Retained targets share this resolver. Ordinary egui ScrollArea controls remain
 independent: clearing available raw/smoothed delta after a claim does not undo an

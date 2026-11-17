@@ -65,8 +65,14 @@ does not by itself establish Android wheel behavior.
 This is OS-injected emulator mouse input, not a physical mouse, touchpad or
 device-fidelity certification. macOS trackpad hardware, Android vendor-specific
 mouse behavior, pan/zoom phases, accessibility scrolling and full Flutter parity
-remain unfinished. The first runtime result for this probe is tracked in
-[verification](verification.md).
+remain unfinished. Revision `32b9e4c` passed all four jobs in
+[run 44170821937](https://github.com/rishwith2306/rust-flutter/actions/runs/44170821937).
+On API 35 / x86_64 at scale 2.625, all four OS packets were accepted. The
+gallery PID stayed 4233 while the runner used PID 5009. Native traces record
+offsets 0→20→40→60→80, followed by reset to 0. Screenshots and result artifacts
+confirm the 158-physical-pixel viewport, exact reset fill, clipping, touch/cross-axis
+checks and wheel success. This establishes the tested emulator path. Additional
+scoped results are in [verification](verification.md).
 
 Reviewed Android references:
 [UiAutomation.injectInputEvent](https://developer.android.com/reference/android/app/UiAutomation#injectInputEvent(android.view.InputEvent,%20boolean))

@@ -45,6 +45,7 @@ Runtime claims below remain scoped to their stated environment.
 | Android basic interaction | Passed within smoke scope | GLES rendering, counter touch, injected text `Ada`, private JSON snapshot writes and route back |
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
+| Android OS mouse wheel | Passed on API 35 / x86_64 emulator | Four separate-process OS mouse-scroll packets, unchanged gallery PID, native movement and exact rendered reset; physical hardware remains unverified |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
 | macOS compilation | Passed on GitHub macos-latest / Apple Silicon | Stable Rust 1.100.0: workspace tests, Clippy, docs, asset rebuild and generated-app compilation |
 | macOS runtime | Not verified | No window/input/Metal/VoiceOver runtime claim is established. |
@@ -867,6 +868,28 @@ packaging pass locally, along with six new wheel-result parser tests, eight
 readiness tests and four IME tests. Rust source is unchanged from the 420-test
 axis revision.
 
-The new emulator path is pending its first exact-revision CI run. Implementation
-and local compilation do not establish native Android wheel success. See
+The first exact-revision native result is recorded below. Local compilation
+alone does not establish runtime input behavior. See
 [OS wheel probe semantics and scope](android-wheel-input.md).
+
+
+### Android OS wheel runtime result
+
+Revision `32b9e4c` passed all four jobs in
+[run 44170821937](https://github.com/rishwith2306/rust-flutter/actions/runs/44170821937),
+including the new ordinary-package wheel probe. The downloaded API-35/x86_64
+artifacts record scale 2.625, a passed 158-physical-pixel clipped viewport,
+cross-axis/touch checks, native_wheel=true and exact controller reset. Four
+SOURCE_MOUSE/ACTION_SCROLL packets at physical (540,1594), vertical axis -1,
+were accepted with terminal instrumentation code -1. The gallery PID remained
+4233; the separate runner PID was 5009. The native trace records
+0→20→40→60→80→0 for wheel movement/reset after the separate touch sequence.
+The saved wheel screenshot visibly shows olive/coral content within the same
+viewport, and the reset screenshot passes the exact original-blue comparison.
+
+Activity recreation, ordinary touch/text/routes/restoration, RGB888, layout,
+spring/gesture/glyph gates also pass. Linux native checks, macOS builds/tests,
+ARM Android compilation and 420 Rust tests remain green. This verifies injected
+OS mouse input on the stated emulator/ordinary APK path. It does not certify
+physical Android mouse hardware, macOS trackpad runtime, device-specific feel,
+accessibility scrolling or full Flutter parity.
