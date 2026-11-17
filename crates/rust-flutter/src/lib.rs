@@ -49,6 +49,7 @@ pub mod navigation;
 pub mod notifier;
 pub mod physics;
 pub mod runtime;
+pub mod scrolling;
 pub mod storage;
 pub mod text;
 pub use runtime::{AppContext, AppEvent, EventResponse, LifecycleEvent, Runtime};

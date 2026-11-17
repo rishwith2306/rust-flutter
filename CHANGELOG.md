@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add observable scroll positions, validated dimensions, drag/programmatic/fluid-release motion and owned multi-client controller attachments; retained viewport/input integration remains pending.
+
 - Drive checked physics simulations through bounded animation controllers with forward/backward status, muting/cancellation, reentrant sampling and explicit Failed outcomes; add a native spring marker and probes.
 
 - Add pure checked friction, bounded contact and spring simulations with explicit tolerances and all damping regimes; scroll integration remains pending.

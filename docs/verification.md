@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 351 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 371 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -678,3 +678,31 @@ a replacement. Bounds remain finite f32, and custom simulations use f64 samples.
 Unbounded/velocity APIs, scroll integration, platform motion policy and the full
 Flutter animation/scroll catalog remain unfinished. See
 [simulation controller semantics and limits](simulation-animations.md).
+
+
+### Controller simulation CI follow-up
+
+Revision `92596e0` passed all four jobs in
+[run 44114380123](https://github.com/rishwith2306/rust-flutter/actions/runs/44114380123),
+including the native spring marker probes on Linux and the Android emulator,
+macOS build/tests, ARM Android compilation and three same-process activity
+recreations. This is not macOS window/Metal/VoiceOver runtime evidence.
+
+## Scroll position and controller foundation
+
+371 workspace tests pass, including 20 new scroll position/controller tests.
+They cover finite dimension/offset validation and correction, separate pixel/
+metric/activity notifications, bounds/unapplied drag distance, frame-driven
+programmatic and bounded-fluid release motion, interruption/completion,
+attachment ownership/duplicates, multi-client validation/clamping, reentrant
+removal and command supersession, disposal guards and final-drop cancellation.
+A retained ValueListenable builder changes measured geometry through automatic
+scroll-position animation while preserving all element IDs.
+
+Workspace and local x86_64 Android Clippy with warnings denied, Rustdoc,
+formatting, the executable scroll-position guide and both renderer source/
+selection checks pass. These are CPU state/motion and headless retained-layout
+checks. No new native scroll-input/rendering claim is established. Retained
+viewport layout/clipping, pointer/wheel adapters, platform scroll physics,
+overscroll, restoration, lazy slivers and full member compatibility remain
+unfinished. See [position semantics and ownership](scroll-positions.md).
