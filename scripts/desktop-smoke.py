@@ -164,6 +164,7 @@ try:
             trace=(output / "gallery.log").read_text()
             baselines = probe_baselines(baseline_image, trace)
             render_layouts=re.findall(r"render-view layout=(\d+) size=([\d.]+)x([\d.]+)",trace)
+            assert baselines["layout_builder"]["scroll_widths"] == [984.0, 884.0], baselines["layout_builder"]
             assert trace.count("render-view create") == 1, trace
             assert trace.count("render-view update") == 2, trace
             assert len(render_layouts) == 2 and [v[0] for v in render_layouts] == ["1", "2"], render_layouts

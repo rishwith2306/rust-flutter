@@ -1005,3 +1005,35 @@ shared gesture frame records three roots and six targets. This verifies the
 isolated emulator/OS-injection path. Physical Android input, macOS runtime,
 platform styling/hover/fade/touch policies and scrollbar semantics remain
 unverified or unfinished.
+
+
+## Layout-time retained child construction
+
+The layout-builder implementation passes 465 workspace tests, including eleven
+new behavior tests. They cover same-call first construction/paint, constraint
+reuse and changes, baseline forwarding, configuration and inherited updates,
+keyed child state, nested builders, a 600-sibling batch, repeated custom
+measurements, ancestor render-borrow safety, explicit rebuild/unmount and
+validation/convergence errors. A failed convergence limit discards unresolved
+build commands so a later dry query cannot accidentally execute them. The tree
+remains mounted for a corrected wet-layout retry.
+
+Workspace Clippy with warnings denied, formatting, rustdoc, the executable
+layout-builder guide, both renderer checks and local x86_64 Android Clippy pass.
+The final Linux X11/Xvfb native probe constructs the gallery's scroll stripes
+through the layout builder. It records constrained content widths 984→884
+logical points after native window resize, with unbounded content height;
+`desktop-result.json` records layout_builder passed and those exact widths.
+All existing scroll pan/keyboard/wheel, thumb drag/track page/wheel-over-thumb,
+clip/reset, RGB888, glyph, baseline, animation and restoration gates pass.
+
+The wrapper retains normal element ancestry, keys and inherited scopes. It
+resolves batched construction between layout attempts before painting, outside
+render-object borrows. Intermediate measurements coalesce to the final request;
+callback timing/order differs from Flutter's full in-place layout callback
+protocol. Dry/intrinsic queries are explicitly unsupported. This is a foundation
+for responsive composition and later lazy lists, not a sliver implementation or
+full member-parity claim. Android probes now require the same layout-time scroll
+construction diagnostic, but runtime support for this revision remains pending
+exact CI evidence. macOS runtime remains unverified. See
+[layout builder semantics](layout-builders.md).

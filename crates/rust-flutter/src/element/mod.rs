@@ -1,5 +1,7 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
 mod inherited;
+mod layout_builder;
+pub use layout_builder::LayoutBuilder;
 mod notifier_builder;
 mod render_object;
 use render_object::{MountedRender, Pipeline};
@@ -246,7 +248,10 @@ impl Element {
                 component.dependencies_changed();
             }
             let _phase = self.dependencies.enter(Phase::Build);
-            vec![component.build()]
+            let Some(child) = component.build() else {
+                return Ok(());
+            };
+            vec![child]
         } else {
             if let MountedKind::Inherited(provider) = &mut self.kind {
                 provider.apply_pending()?;
@@ -685,8 +690,20 @@ impl ElementTree {
     /// Flush pending builds and compute current box geometry. State errors unmount
     /// the tree; layout errors keep component state mounted for a later retry.
     pub fn layout(&mut self, constraints: BoxConstraints) -> Result<LayoutBox, ElementError> {
-        self.prepare_render()?;
-        Ok(self.render.as_mut().unwrap().layout(constraints)?)
+        // Resolve layout-driven builds after unwinding all render-object
+        // borrows, then lay out the reconciled children before anything paints.
+        // Requests coalesce by component, including repeated speculative child
+        // measurements in one custom layout. Siblings resolve in one batch.
+        for transaction in 0..256 {
+            self.prepare_render()?;
+            let result = self.render.as_mut().unwrap().layout(constraints);
+            if !self.pipeline.resolve_layout_builds(transaction < 255) {
+                return Ok(result?);
+            }
+        }
+        Err(ElementError::Layout(LayoutError::InvalidConfiguration(
+            "layout builders did not stabilize after 256 transactions",
+        )))
     }
     pub fn show(
         &mut self,

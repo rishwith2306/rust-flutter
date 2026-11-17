@@ -1,8 +1,8 @@
 //! Persistent, typed box render objects and visual invalidation.
 use super::{
-    BuildContext,
+    BuildContext, ElementId,
     inherited::Phase,
-    state::{Queue, Unmounted},
+    state::{Command, Queue, Unmounted},
     widget::Paint,
 };
 use crate::layout::{
@@ -15,18 +15,20 @@ use std::{
     ops::Deref,
     rc::Rc,
     sync::{
-        Arc,
+        Arc, Mutex, Weak,
         atomic::{AtomicU64, Ordering},
     },
 };
 
 pub(super) struct Pipeline {
     revision: AtomicU64,
+    layout_builds: Mutex<Vec<LayoutBuild>>,
 }
 impl Pipeline {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             revision: AtomicU64::new(0),
+            layout_builds: Mutex::new(vec![]),
         })
     }
     pub fn invalidate(&self) {
@@ -34,6 +36,52 @@ impl Pipeline {
     }
     fn revision(&self) -> u64 {
         self.revision.load(Ordering::Acquire)
+    }
+}
+struct LayoutBuild {
+    id: ElementId,
+    queue: Weak<Queue>,
+    command: Command,
+}
+impl Pipeline {
+    pub(super) fn request_layout_build(&self, id: ElementId, queue: Weak<Queue>, command: Command) {
+        let next = LayoutBuild { id, queue, command };
+        let old = {
+            let mut requests = self.layout_builds.lock().unwrap();
+            if let Some(slot) = requests.iter_mut().find(|r| r.id == id) {
+                Some(std::mem::replace(slot, next))
+            } else {
+                requests.push(next);
+                None
+            }
+        };
+        drop(old);
+        self.invalidate();
+    }
+    pub(super) fn cancel_layout_build(&self, id: ElementId) {
+        let removed = {
+            let mut requests = self.layout_builds.lock().unwrap();
+            requests
+                .iter()
+                .position(|r| r.id == id)
+                .map(|index| requests.remove(index))
+        };
+        if removed.is_some() {
+            self.invalidate();
+        }
+        drop(removed);
+    }
+    // Never execute or drop command captures with the registry locked. Requests
+    // hold weak queues, so an abandoned transaction cannot retain its own tree.
+    pub(super) fn resolve_layout_builds(&self, enqueue: bool) -> bool {
+        let requests = std::mem::take(&mut *self.layout_builds.lock().unwrap());
+        let pending = !requests.is_empty();
+        for request in requests {
+            if enqueue && let Some(queue) = request.queue.upgrade() {
+                let _ = queue.enqueue(Some(request.command));
+            }
+        }
+        pending
     }
 }
 /// Sendable invalidation handle; the render object itself stays on the UI thread.

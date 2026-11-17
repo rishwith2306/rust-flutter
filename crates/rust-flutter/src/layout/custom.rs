@@ -86,6 +86,26 @@ impl BoxChildren<'_> {
         self.measured[index] = Some(layout);
         Ok(size)
     }
+    // Only the element layout transaction uses placeholders. Its pending build
+    // registry prevents this speculative geometry from reaching paint/hit input.
+    pub(crate) fn defer_for_build(&mut self, index: usize, size: Vec2) -> Result<(), LayoutError> {
+        let node = self
+            .nodes
+            .get(index)
+            .ok_or(LayoutError::InvalidConfiguration(
+                "deferred child index is out of bounds",
+            ))?;
+        if self.order.contains(&index) {
+            return Err(LayoutError::InvalidConfiguration(
+                "cannot defer a placed child",
+            ));
+        }
+        let mut geometry = LayoutBox::new(node.id, size, vec![], Clip::None, true)?;
+        geometry.paint_self = false;
+        geometry.hit_self = false;
+        self.measured[index] = Some(geometry);
+        self.place(index, Vec2::ZERO)
+    }
     pub fn place(&mut self, index: usize, offset: Vec2) -> Result<(), LayoutError> {
         if !offset.is_finite() {
             return Err(LayoutError::InvalidConfiguration(

@@ -611,21 +611,35 @@ fn scroll_example(
     position: &rust_flutter::scrolling::ScrollPosition,
     binding: &GestureBinding,
 ) -> Widget {
-    let mut column = FlexStyle::new(Axis::Vertical);
-    column.main_size = rust_flutter::layout::MainAxisSize::Min;
-    column.cross_alignment = CrossAxisAlignment::Stretch;
-    let stripes = [(40, 75, 114), (111, 142, 66), (184, 118, 87)]
-        .into_iter()
-        .map(|(r, g, b)| {
-            FlexItem::fixed(Widget::leaf(egui::vec2(100.0, 60.0), move |ui| {
-                ui.painter()
-                    .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(r, g, b));
-            }))
-        })
-        .collect();
+    let content = Widget::layout_builder(|_, constraints| {
+        println!(
+            "rust-flutter gallery layout-builder scroll width={} max_height={}",
+            constraints.max().x,
+            constraints.max().y
+        );
+        let mut column = FlexStyle::new(Axis::Vertical);
+        column.main_size = rust_flutter::layout::MainAxisSize::Min;
+        column.cross_alignment = CrossAxisAlignment::Stretch;
+        let stripes = [(40, 75, 114), (111, 142, 66), (184, 118, 87)]
+            .into_iter()
+            .map(|(r, g, b)| {
+                FlexItem::fixed(Widget::leaf(
+                    egui::vec2(constraints.max().x, 60.0),
+                    move |ui| {
+                        ui.painter().rect_filled(
+                            ui.max_rect(),
+                            0.0,
+                            egui::Color32::from_rgb(r, g, b),
+                        );
+                    },
+                ))
+            })
+            .collect();
+        Widget::flex(column, stripes)
+    });
     let view = rust_flutter::scrolling::SingleChildScrollView::new(position, binding)
         .expect("valid scroll view")
-        .into_widget(Widget::flex(column, stripes))
+        .into_widget(content)
         .expect("valid scroll child");
     rust_flutter::scrolling::Scrollbar::new(position, binding)
         .expect("valid scrollbar")

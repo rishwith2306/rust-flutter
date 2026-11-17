@@ -10,7 +10,7 @@ use std::{
     },
 };
 
-type Command = Box<dyn FnOnce(&mut dyn Any) + Send>;
+pub(super) type Command = Box<dyn FnOnce(&mut dyn Any) + Send>;
 pub(super) struct Queue {
     pub pipeline: Arc<super::render_object::Pipeline>,
     pub dirty: AtomicBool,
@@ -34,7 +34,7 @@ impl Queue {
     pub fn request_rebuild(&self) -> Result<(), Unmounted> {
         self.enqueue(None)
     }
-    fn enqueue(&self, command: Option<Command>) -> Result<(), Unmounted> {
+    pub(super) fn enqueue(&self, command: Option<Command>) -> Result<(), Unmounted> {
         let mut commands = self.commands.lock().unwrap();
         if !self.mounted() {
             return Err(Unmounted);
@@ -182,7 +182,9 @@ pub(super) trait Description {
 pub(super) trait Component {
     fn dependencies_changed(&mut self);
     fn update(&mut self, description: Box<dyn Any>);
-    fn build(&mut self) -> Widget;
+    /// None preserves the existing child while a layout-time build is deferred.
+    /// Every component must provide a child on its initial build.
+    fn build(&mut self) -> Option<Widget>;
     fn apply_pending(&mut self);
     fn state(&self) -> Option<&dyn Any>;
 }
@@ -237,8 +239,8 @@ impl<W: StatefulWidget> Component for StatefulInstance<W> {
         self.state
             .did_update_widget(&old, &self.widget, &self.context);
     }
-    fn build(&mut self) -> Widget {
-        self.state.build(&self.widget, &self.context)
+    fn build(&mut self) -> Option<Widget> {
+        Some(self.state.build(&self.widget, &self.context))
     }
     fn apply_pending(&mut self) {
         self.context.queue.drain(&mut self.state);
@@ -282,8 +284,8 @@ impl<W: StatelessWidget> Component for StatelessInstance<W> {
             .downcast::<W>()
             .expect("matching stateless type");
     }
-    fn build(&mut self) -> Widget {
-        self.widget.build(&self.context)
+    fn build(&mut self) -> Option<Widget> {
+        Some(self.widget.build(&self.context))
     }
     fn apply_pending(&mut self) {}
     fn state(&self) -> Option<&dyn Any> {

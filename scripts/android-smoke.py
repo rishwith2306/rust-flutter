@@ -288,6 +288,7 @@ assert len(render_layouts) == 1 and render_layouts[0][0] == "1", render_layouts
 render_queries = re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)", render_trace)
 assert len(render_queries) == 1 and render_queries[0][-1] == "true", render_queries
 baselines = probe_baselines(output / "android-components-initial.png", render_trace, args.scale)
+assert len(baselines["layout_builder"]["scroll_widths"]) == 1 and abs(baselines["layout_builder"]["scroll_widths"][0] - float(render_layouts[0][1])) <= 0.001, baselines["layout_builder"]
 render_objects = {"created": 1, "updated": 1, "layouts": render_layouts, "dry_queries": render_queries}
 result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),

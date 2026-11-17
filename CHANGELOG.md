@@ -2,6 +2,7 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add layout-time widget builders with keyed/inherited child retention, batched layout transactions, pure-query errors and bounded convergence; exercise scroll content construction through native probes.
 - Add retained proportional scrollbars with axis/reverse geometry, captured thumb drags, track paging and wheel fallthrough; protect drag ownership from callback-created commands.
 - Add focused retained viewport keyboard scrolling, Tab/blank-tap focus, child focus preservation and an opt-out; native probes now require key-driven movement and reset pixels.
 - Add separate-process Android OS mouse-wheel injection and strict result validation to the ordinary APK runtime probe; rendered wheel/reset evidence is required before reporting success.
