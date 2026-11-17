@@ -54,6 +54,7 @@ impl ElementId {
         self.0
     }
 }
+type PaintEntry = (Paint, Option<Paint>);
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 #[derive(Debug, PartialEq)]
 pub enum ElementError {
@@ -345,7 +346,7 @@ impl Element {
             object.synchronize(ids);
         }
     }
-    fn render_node(&self, paint: &mut HashMap<egui::Id, Paint>) -> BoxNode {
+    fn render_node(&self, paint: &mut HashMap<egui::Id, PaintEntry>) -> BoxNode {
         if matches!(
             self.kind,
             MountedKind::Component(_) | MountedKind::Inherited(_)
@@ -353,7 +354,10 @@ impl Element {
             return self.children[0].render_node(paint);
         }
         if let MountedKind::RenderObject(object) = &self.kind {
-            paint.insert(egui::Id::new(self.id), object.paint());
+            paint.insert(
+                egui::Id::new(self.id),
+                (object.paint(), Some(object.paint_foreground())),
+            );
             return BoxNode::new(
                 self.id,
                 BoxKind::Custom {
@@ -388,7 +392,7 @@ impl Element {
                 measure,
                 paint: callback,
             } => {
-                paint.insert(id, callback.clone());
+                paint.insert(id, (callback.clone(), None));
                 if let Some(measure) = measure {
                     let measure = measure.clone();
                     BoxKind::Measured(Box::new(move |constraints| {
@@ -514,7 +518,7 @@ pub struct ElementTree {
     ctx: egui::Context,
     epoch: u64,
     render: Option<BoxNode>,
-    paint: HashMap<egui::Id, Paint>,
+    paint: HashMap<egui::Id, PaintEntry>,
     view: AmbientModel<crate::display::ViewMetrics>,
     pipeline: Arc<Pipeline>,
 }
@@ -669,10 +673,20 @@ impl ElementTree {
             return Err(ElementError::ContextChanged);
         }
         let geometry = self.layout(constraints)?;
-        Ok(layout::show_layout(ui, &geometry, |id, ui| {
-            if let Some(paint) = self.paint.get(&id) {
-                (paint.borrow_mut())(ui);
-            }
-        }))
+        Ok(layout::show_layout_with_phases(
+            ui,
+            &geometry,
+            |id, phase, ui| {
+                if let Some((background, foreground)) = self.paint.get(&id) {
+                    let paint = match phase {
+                        layout::PaintPhase::Background => Some(background),
+                        layout::PaintPhase::Foreground => foreground.as_ref(),
+                    };
+                    if let Some(paint) = paint {
+                        (paint.borrow_mut())(ui);
+                    }
+                }
+            },
+        ))
     }
 }

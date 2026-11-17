@@ -65,8 +65,9 @@ permitted for overflow.
 `BoxGeometry` selects size, clipping, and participation in geometry self-hit tests.
 Children paint in placement order and hit test in reverse order, followed by the
 parent if `hit_test_self` is true. Ancestor bounds gate geometry hits even when
-painting overflows them. Custom boxes paint **before** children; arbitrary
-interleaved child painting, foreground passes, transforms, specialized hit-test
+painting overflows them. Custom boxes paint before children and may also implement `paint_foreground`
+after all descendants. See [decorations and phase ordering](decorations.md). Arbitrary
+interleaved child painting, transforms, specialized hit-test
 paths and semantics remain work to implement. egui controls placed in a box's UI
 retain their ordinary input handling.
 

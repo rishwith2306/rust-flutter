@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 182 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 188 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -336,3 +336,24 @@ input/restoration/assets, exact-color/glyph, flex, component, inherited-view and
 custom-render cache checks also pass. Cross-platform checks for this change are
 recorded by its CI run. These tests do not demonstrate system accessibility
 scaling or full Flutter typography; see [inherited text scope](text-styles.md).
+
+
+## Decoration and foreground paint verification
+
+The workspace passes 188 Rust tests, including six new decoration tests. New
+coverage includes background/foreground ordering around opaque child painting,
+nested RenderBox phase ordering and shared Ui identity/geometry/clip, legacy
+single-callback behavior, sizing/intrinsic/baseline forwarding, invalid border
+and child-count recovery, retained property updates, rounded shape metadata and
+inside stroke policy. Formatting, all-target Clippy with warnings denied,
+generated documentation and the decoration Markdown example pass locally.
+
+The Linux X11 smoke test passes the added native foreground probe. A 24×24
+logical-point foreground region renders exact RGB #834eb3 at (203,403) after
+resize, while its opaque #e3bd42 child is absent from the screenshot. Existing
+font boxes are now decorated backgrounds; both text baselines and the reference
+line remain at physical y=429. Existing native interactions, restoration,
+assets, exact RGB/glyph, layout, inherited-view and render-cache checks pass.
+Android/macOS results for this revision are recorded by CI. This verifies solid
+foreground order, not full decoration, clipping or compositing compatibility;
+see [decoration scope](decorations.md).

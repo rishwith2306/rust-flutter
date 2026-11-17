@@ -37,6 +37,7 @@ mod android_host;
 mod android_insets;
 pub mod animation;
 pub mod assets;
+pub mod decoration;
 pub mod display;
 pub mod element;
 #[cfg(any(target_os = "android", test))]

@@ -1,4 +1,11 @@
 use super::*;
+/// Parent paint runs before or after all placed descendants, respectively.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PaintPhase {
+    Background,
+    Foreground,
+}
+
 /// Reserve root geometry and paint participating boxes inside stable child UIs.
 /// Custom boxes paint before their children; ordinary leaves paint as before.
 /// The callback should fit widgets/paint to `ui.max_rect()`; clip inheritance follows
@@ -7,6 +14,19 @@ pub fn show_layout(
     ui: &mut egui::Ui,
     layout: &LayoutBox,
     mut render: impl FnMut(Id, &mut egui::Ui),
+) -> egui::Response {
+    show_layout_with_phases(ui, layout, |id, phase, ui| {
+        if phase == PaintPhase::Background {
+            render(id, ui);
+        }
+    })
+}
+/// Paint a geometry tree in depth-first background/children/foreground order.
+/// Both phases share the same stable child Ui, rectangle and inherited clip.
+pub fn show_layout_with_phases(
+    ui: &mut egui::Ui,
+    layout: &LayoutBox,
+    mut render: impl FnMut(Id, PaintPhase, &mut egui::Ui),
 ) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(layout.size, egui::Sense::hover());
     let scope = ui.id().with(layout.id);
@@ -19,7 +39,7 @@ fn visit(
     layout: &LayoutBox,
     origin: Pos2,
     inherited_clip: Rect,
-    render: &mut impl FnMut(Id, &mut egui::Ui),
+    render: &mut impl FnMut(Id, PaintPhase, &mut egui::Ui),
 ) {
     let rect = Rect::from_min_size(origin, layout.size);
     let clip = if layout.clip == Clip::HardEdge {
@@ -27,7 +47,7 @@ fn visit(
     } else {
         inherited_clip
     };
-    if layout.paint_self {
+    let mut painting_ui = if layout.paint_self {
         let mut child = ui.new_child(
             egui::UiBuilder::new()
                 .id(scope.with(layout.id))
@@ -35,8 +55,11 @@ fn visit(
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
         child.set_clip_rect(clip);
-        render(layout.id, &mut child);
-    }
+        render(layout.id, PaintPhase::Background, &mut child);
+        Some(child)
+    } else {
+        None
+    };
     for child in &layout.children {
         visit(
             ui,
@@ -46,5 +69,8 @@ fn visit(
             clip,
             render,
         );
+    }
+    if let Some(child) = painting_ui.as_mut() {
+        render(layout.id, PaintPhase::Foreground, child);
     }
 }

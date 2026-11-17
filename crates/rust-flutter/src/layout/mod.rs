@@ -11,7 +11,7 @@ mod stack;
 mod ui;
 use egui::{Id, Pos2, Rect, Vec2};
 use std::{collections::HashSet, fmt, hash::Hash};
-pub use ui::show_layout;
+pub use ui::{PaintPhase, show_layout, show_layout_with_phases};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutError {

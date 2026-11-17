@@ -250,7 +250,7 @@ impl State<ViewReport> for ViewReportState {
 
 fn baseline_example(ctx: &egui::Context) -> Widget {
     let mut baselines = Vec::new();
-    let children = [
+    let mut children: Vec<FlexItem> = [
         (16.0, "Ag small", egui::Color32::from_rgb(49, 83, 123)),
         (28.0, "Ag large", egui::Color32::from_rgb(103, 81, 47)),
     ]
@@ -283,26 +283,26 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
             label.style.font_size = Some(size);
         }
         let paragraph = label.into_widget();
-        FlexItem::fixed(Widget::stack(
-            StackStyle::default(),
-            vec![
-                StackItem::positioned(
-                    Widget::leaf(egui::Vec2::ZERO, move |ui| {
-                        ui.painter().rect_filled(ui.max_rect(), 0.0, color);
-                    }),
-                    rust_flutter::layout::Positioned {
-                        left: Some(0.0),
-                        right: Some(0.0),
-                        top: Some(0.0),
-                        bottom: Some(0.0),
-                        ..Default::default()
-                    },
-                ),
-                StackItem::new(paragraph),
-            ],
-        ))
+        FlexItem::fixed(
+            rust_flutter::decoration::DecoratedBox::new(
+                rust_flutter::decoration::BoxDecoration::solid(color),
+            )
+            .into_widget(paragraph),
+        )
     })
     .collect();
+    children.push(FlexItem::fixed(
+        rust_flutter::decoration::DecoratedBox {
+            decoration: rust_flutter::decoration::BoxDecoration::solid(egui::Color32::from_rgb(
+                131, 78, 179,
+            )),
+            position: rust_flutter::decoration::DecorationPosition::Foreground,
+        }
+        .into_widget(Widget::leaf(egui::vec2(24.0, 24.0), |ui| {
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(227, 189, 66));
+        })),
+    ));
     #[cfg(debug_assertions)]
     eprintln!(
         "rust-flutter gallery baseline-demo small={} large={}",

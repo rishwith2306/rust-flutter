@@ -80,7 +80,7 @@ pub trait RenderObjectWidget: Sized + 'static {
     fn did_unmount_render_object(&self, _object: &mut Self::Object) {}
 }
 /// Custom leaf or container layout, paint and mounted lifetime hooks. Child
-/// geometry is validated by BoxChildren; paint runs before placed children.
+/// geometry is validated by BoxChildren; paint callbacks bracket placed children.
 pub trait RenderBox: 'static {
     /// Revision of external layout inputs. Sampled during tree synchronization;
     /// changes invalidate ancestor layout caches as well as this object's cache.
@@ -127,6 +127,8 @@ pub trait RenderBox: 'static {
         ctx: &RenderContext,
     ) -> Result<BoxGeometry, LayoutError>;
     fn paint(&mut self, _ui: &mut egui::Ui, _ctx: &RenderContext) {}
+    /// Paint above all placed descendants using the same box Ui and clip.
+    fn paint_foreground(&mut self, _ui: &mut egui::Ui, _ctx: &RenderContext) {}
     fn detach(&mut self) {}
     fn dispose(&mut self) {}
 }
@@ -142,6 +144,7 @@ pub(super) trait MountedRender {
     fn synchronize(&mut self, children: Vec<egui::Id>);
     fn layout(&self) -> CustomBox;
     fn paint(&self) -> Paint;
+    fn paint_foreground(&self) -> Paint;
 }
 pub(super) struct RenderWidget<W: RenderObjectWidget>(pub W);
 struct Instance<W: RenderObjectWidget> {
@@ -156,6 +159,7 @@ struct Mounted<W: RenderObjectWidget> {
     instance: Rc<RefCell<Instance<W>>>,
     layout: CustomBox,
     paint: Paint,
+    foreground: Paint,
 }
 struct Adapter<W: RenderObjectWidget>(Rc<RefCell<Instance<W>>>);
 impl<W: RenderObjectWidget> CustomBoxLayout for Adapter<W> {
@@ -239,7 +243,14 @@ impl<W: RenderObjectWidget> RenderDescription for RenderWidget<W> {
             let context = instance.context.clone();
             instance.object.paint(ui, &context);
         }));
+        let foreground_instance = instance.clone();
+        let foreground: Paint = Rc::new(RefCell::new(move |ui: &mut egui::Ui| {
+            let mut instance = foreground_instance.borrow_mut();
+            let context = instance.context.clone();
+            instance.object.paint_foreground(ui, &context);
+        }));
         Box::new(Mounted {
+            foreground,
             layout: CustomBox::new(Adapter(instance.clone())),
             instance,
             paint,
@@ -280,6 +291,9 @@ impl<W: RenderObjectWidget> MountedRender for Mounted<W> {
     }
     fn paint(&self) -> Paint {
         self.paint.clone()
+    }
+    fn paint_foreground(&self) -> Paint {
+        self.foreground.clone()
     }
 }
 impl<W: RenderObjectWidget> Drop for Mounted<W> {

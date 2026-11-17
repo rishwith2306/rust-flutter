@@ -60,7 +60,13 @@ def probe_baselines(path, trace, scale=1.0):
     assert small[1] > large[1], "smaller font was not shifted down"
     assert abs(small_y - large_y) <= 2.0, (small_y, large_y)
     assert abs(line_y - large_y) <= 2.0, (line_y, large_y)
-    return {"passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
+    foreground = bounds(path, "#834eb3")
+    assert foreground, "missing foreground decoration"
+    assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
+    exact_fill(path, foreground, "#834eb3", scale)
+    assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
+    return {"foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+            "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
 
