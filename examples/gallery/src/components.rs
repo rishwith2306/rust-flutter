@@ -606,6 +606,27 @@ fn baseline_example(ctx: &egui::Context, binding: &GestureBinding) -> Widget {
     }
     .provide(Widget::flex(style, children))
 }
+fn scroll_example(
+    position: &rust_flutter::scrolling::ScrollPosition,
+    binding: &GestureBinding,
+) -> Widget {
+    let mut column = FlexStyle::new(Axis::Vertical);
+    column.main_size = rust_flutter::layout::MainAxisSize::Min;
+    column.cross_alignment = CrossAxisAlignment::Stretch;
+    let stripes = [(40, 75, 114), (111, 142, 66), (184, 118, 87)]
+        .into_iter()
+        .map(|(r, g, b)| {
+            FlexItem::fixed(Widget::leaf(egui::vec2(100.0, 60.0), move |ui| {
+                ui.painter()
+                    .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(r, g, b));
+            }))
+        })
+        .collect();
+    rust_flutter::scrolling::SingleChildScrollView::new(position, binding)
+        .expect("valid scroll view")
+        .into_widget(Widget::flex(column, stripes))
+        .expect("valid scroll child")
+}
 pub(super) struct ComponentDemo {
     tree: ElementTree,
     reversed: bool,
@@ -618,12 +639,18 @@ pub(super) struct ComponentDemo {
     view_tree: ElementTree,
     last_view_query: Option<egui::Vec2>,
     baseline_tree: ElementTree,
+    scroll_tree: ElementTree,
+    scroll_position: rust_flutter::scrolling::ScrollPosition,
+    scroll_controller: rust_flutter::scrolling::ScrollController,
+    _scroll_attachment: rust_flutter::scrolling::ScrollAttachment,
+    last_scroll_pixels: Option<f32>,
     binding: GestureBinding,
     baseline_scale: f32,
 }
 impl ComponentDemo {
     pub fn cancel_input(&self) {
         self.binding.cancel_all();
+        let _ = self.scroll_position.cancel_activity();
     }
     pub fn new(ctx: &egui::Context) -> Self {
         let binding = GestureBinding::new();
@@ -658,7 +685,21 @@ impl ComponentDemo {
             }),
         )
         .expect("valid observable demo");
+        let scroll_controller = rust_flutter::scrolling::ScrollController::default();
+        let scroll_position = scroll_controller
+            .create_position(ctx)
+            .expect("valid scroll position");
+        let scroll_attachment = scroll_controller
+            .attach(&scroll_position)
+            .expect("single scroll attachment");
+        let scroll_tree = ElementTree::new(ctx, scroll_example(&scroll_position, &binding))
+            .expect("valid scroll demo");
         Self {
+            scroll_tree,
+            scroll_position,
+            scroll_controller,
+            _scroll_attachment: scroll_attachment,
+            last_scroll_pixels: None,
             observable,
             observable_tree,
             last_view_query: None,
@@ -848,6 +889,34 @@ impl ComponentDemo {
                     egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(78, 164, 168)),
                 );
             }
+        }
+        ui.horizontal(|ui| {
+            ui.label("Retained scroll: drag upward");
+            if ui
+                .add(egui::Button::new("Reset scroll").fill(egui::Color32::from_rgb(73, 97, 76)))
+                .clicked()
+            {
+                let _ = self.scroll_controller.jump_to(0.0);
+            }
+        });
+        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 60.0))
+            && let Err(error) =
+                self.scroll_tree
+                    .show_in_gesture_frame(ui, constraints, &mut gestures)
+        {
+            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+        }
+        let pixels = self.scroll_position.pixels();
+        if self.last_scroll_pixels != Some(pixels) {
+            self.last_scroll_pixels = Some(pixels);
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "rust-flutter gallery scroll pixels={} max={}",
+                pixels,
+                self.scroll_position
+                    .dimensions()
+                    .map_or(0.0, |d| d.max_scroll_extent())
+            );
         }
         #[cfg(debug_assertions)]
         let roots = gestures.root_count();

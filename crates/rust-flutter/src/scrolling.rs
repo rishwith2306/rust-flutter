@@ -1,12 +1,15 @@
 //! UI-local scroll positions, metrics and controller attachments.
-//! Retained viewports and platform scroll physics are still under development.
+//! Eager retained single-child viewports support captured primary-pointer pans.
+//! Wheel routing, lazy slivers and platform scroll physics remain unfinished.
 mod controller;
 mod position;
+mod viewport;
 use crate::animation::AnimationError;
 pub use controller::{ScrollAttachment, ScrollController, WeakScrollController};
 pub use position::{
     ScrollActivity, ScrollDimensions, ScrollMetrics, ScrollPosition, WeakScrollPosition,
 };
+pub use viewport::SingleChildScrollView;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollError {
@@ -21,6 +24,8 @@ pub enum ScrollError {
     NoClients,
     MultipleClients,
     AlreadyAttached,
+    ViewportAlreadyAttached,
+    Binding(crate::gestures::BindingError),
     Animation(AnimationError),
 }
 impl std::fmt::Display for ScrollError {

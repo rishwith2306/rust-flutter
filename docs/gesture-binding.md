@@ -49,6 +49,12 @@ replaces the candidates and cancels the old tracking. Changing behavior affects
 future down hit tests; existing input stays captured. Unmount unregisters the
 target and cancels its recognizers, including winners still waiting for up.
 
+`GestureDetector::sequence_key` supplies explicit capture identity. Changing the
+key cancels the old target's active recognizers and registers fresh ones while
+preserving the retained child. Omitted/unchanged keys preserve the ordinary
+callback-only update policy. Scroll viewports use it when position, axis or
+reverse changes, so a drag cannot continue against a different configuration.
+
 ## Geometry and dispatch
 
 `LayoutBox::hit_test_path` returns deepest/frontmost entries before ancestors.

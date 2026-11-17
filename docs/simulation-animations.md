@@ -99,5 +99,5 @@ Reviewed API references:
 [animateWith](https://api.flutter.dev/flutter/animation/AnimationController/animateWith.html)
 and [animateBackWith](https://api.flutter.dev/flutter/animation/AnimationController/animateBackWith.html).
 Unbounded/velocity controllers, fling convenience APIs, runtime configuration,
-platform scroll simulations, retained scroll viewports, slivers, overscroll,
+platform scroll simulations, wheel/nested scroll integration, slivers, overscroll,
 animation accessibility policy and full member compatibility remain unfinished.

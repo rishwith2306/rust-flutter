@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 371 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 389 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -706,3 +706,44 @@ checks. No new native scroll-input/rendering claim is established. Retained
 viewport layout/clipping, pointer/wheel adapters, platform scroll physics,
 overscroll, restoration, lazy slivers and full member compatibility remain
 unfinished. See [position semantics and ownership](scroll-positions.md).
+
+
+### Scroll position CI follow-up
+
+Revision `4782d17` passed all four jobs in
+[run 44116996940](https://github.com/rishwith2306/rust-flutter/actions/runs/44116996940),
+covering Linux rendered checks, macOS build/tests, ARM Android compilation and
+ordinary Android interactions plus three same-process activity recreations.
+This remains the pre-viewport revision; it does not establish a native scroll
+viewport claim.
+
+
+## Retained single-child viewport
+
+389 workspace tests pass, including 18 new viewport tests. They cover eager
+vertical/horizontal/reverse layout, finite shrink wrapping, hard clip/hit bounds,
+pure dry queries and explicit intrinsic/baseline policy, cached offset updates,
+resize correction, deferred metric callbacks, latest-layout/unmount delivery,
+exclusive viewport ownership/retry, captured pan and child-tap competition,
+position/axis/reverse capture cancellation with retained child IDs, first-pass
+input and scale-two scene conversion across rebuilds. The executable viewport
+guide passes. Workspace/local x86_64 Android Clippy with warnings denied,
+Rustdoc, formatting and both renderer provenance/selection verifiers pass.
+
+The Linux Xvfb native probe passes on the final viewport implementation. The
+60-point viewport initially shows one exact blue stripe, with the other two
+fully clipped. Injected captured drag records offsets 20→40→60→80 within a
+maximum extent of 120; olive/coral pixels remain inside the same viewport.
+A real controller-reset click returns offset 0 and the original exact blue
+pixels. The shared scene now has three roots/four targets and records 23
+processed frames, six marker taps and one marker pan, alongside scroll input.
+Existing purple implicit motion, spring endpoints/muting, release feedback,
+counter glyphs, layout, foreground/baselines, assets and restoration remain green.
+Android/macOS results for this revision are recorded separately by CI.
+
+Wet dimensions publish outside render-object borrows at pass end, or before
+pointer-down handling after layout. Viewport ownership and pending callbacks
+are released on unmount; externally owned positions retain their own lifetime.
+Wheel/trackpad routing, axis-specific and nested input, scrollbars, semantics,
+restoration, platform overscroll, lazy slivers and full member compatibility
+remain unfinished. See [viewport geometry and scope](scroll-viewports.md).

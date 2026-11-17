@@ -11,6 +11,7 @@ pub struct GestureDetector {
     binding: GestureBinding,
     config: GestureTargetConfig,
     behavior: HitTestBehavior,
+    sequence_key: Option<crate::egui::Id>,
 }
 impl GestureDetector {
     pub fn new(
@@ -25,10 +26,16 @@ impl GestureDetector {
             binding: binding.clone(),
             config,
             behavior: HitTestBehavior::DeferToChild,
+            sequence_key: None,
         })
     }
     pub fn behavior(mut self, behavior: HitTestBehavior) -> Self {
         self.behavior = behavior;
+        self
+    }
+    /// Changing this key cancels active sequences while preserving the child.
+    pub fn sequence_key(mut self, key: impl std::hash::Hash) -> Self {
+        self.sequence_key = Some(crate::egui::Id::new(key));
         self
     }
     pub fn into_widget(self, child: Widget) -> Widget {
@@ -39,14 +46,16 @@ pub struct GestureDetectorRenderBox {
     binding: GestureBinding,
     target: Option<GestureTarget>,
     behavior: HitTestBehavior,
+    sequence_key: Option<crate::egui::Id>,
     error: Option<BindingError>,
 }
 impl GestureDetectorRenderBox {
     fn configure(&mut self, config: &GestureDetector, ctx: &RenderContext) {
         self.behavior = config.behavior;
-        if !self.binding.same_source(&config.binding) {
+        if !self.binding.same_source(&config.binding) || self.sequence_key != config.sequence_key {
             self.target = None;
             self.binding = config.binding.clone();
+            self.sequence_key = config.sequence_key;
         }
         let result = if let Some(target) = &self.target {
             target.update(config.config.clone())
@@ -81,6 +90,7 @@ impl RenderObjectWidget for GestureDetector {
             binding: self.binding.clone(),
             target: None,
             behavior: self.behavior,
+            sequence_key: self.sequence_key,
             error: None,
         };
         object.configure(self, ctx);

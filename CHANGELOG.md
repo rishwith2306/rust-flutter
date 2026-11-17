@@ -2,7 +2,9 @@
 
 ## Unreleased — 0.1.0 development
 
-- Add observable scroll positions, validated dimensions, drag/programmatic/fluid-release motion and owned multi-client controller attachments; retained viewport/input integration remains pending.
+- Add retained eager SingleChildScrollView layout/clipping, horizontal/reverse offsets, captured pan input and deferred metrics; preserve children while sequence keys cancel changed gesture owners; add native scroll/reset probes.
+
+- Add observable scroll positions, validated dimensions, drag/programmatic/fluid-release motion and owned multi-client controller attachments; wheel/trackpad and platform scroll integration remain pending.
 
 - Drive checked physics simulations through bounded animation controllers with forward/backward status, muting/cancellation, reentrant sampling and explicit Failed outcomes; add a native spring marker and probes.
 

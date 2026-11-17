@@ -3,8 +3,9 @@
 The public `scrolling` module separates persistent offset/activity from layout.
 `ScrollPosition` is a UI-local, observable finite f32 offset driven by its owning
 egui context/viewport. `ScrollController` observes and commands attached positions.
-This is the state/motion foundation; it does not yet provide a retained scroll
-viewport, pointer/wheel adapter, slivers, or platform scroll physics. The existing
+[SingleChildScrollView](scroll-viewports.md) now connects this state to retained
+layout, clipping and primary-pointer pan input. Wheel adapters, slivers and
+platform scroll physics remain unfinished. The existing
 `widgets::scroll` helper continues to use an independent egui ScrollArea.
 
 ```rust
@@ -121,9 +122,8 @@ input, rendering, accessibility or performance.
 
 Reviewed [ScrollController](https://api.flutter.dev/flutter/widgets/ScrollController-class.html)
 and [ScrollPosition](https://api.flutter.dev/flutter/widgets/ScrollPosition-class.html).
-This is a partial Rust counterpart. Viewport layout/clipping, retained scroll
-widgets, pointer/wheel routing, ScrollPhysics composition, overscroll, restoration,
+This is a partial Rust counterpart. Wheel/trackpad routing, ScrollPhysics composition, overscroll, restoration,
 notifications/bubbling, ensureVisible, activity/context adoption, tracking/primary
 controllers, scrollbars, accessibility, lazy slivers and full member parity remain
 unfinished. [SingleChildScrollView](https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html)
-is the next integration target; publishing a position API does not implement it.
+now has a partial retained Rust counterpart; its remaining scope is recorded separately.

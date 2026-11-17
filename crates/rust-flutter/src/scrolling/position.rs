@@ -77,6 +77,7 @@ pub enum ScrollActivity {
 }
 struct State {
     command: Rc<()>,
+    viewport: Weak<()>,
     pixels: f32,
     dimensions: Option<ScrollDimensions>,
     activity: ScrollActivity,
@@ -123,6 +124,7 @@ impl ScrollPosition {
         let position = Self(Rc::new(Inner {
             state: RefCell::new(State {
                 command: Rc::new(()),
+                viewport: Weak::new(),
                 pixels: initial_offset,
                 dimensions: None,
                 activity: ScrollActivity::Idle,
@@ -163,6 +165,19 @@ impl ScrollPosition {
             .map_err(|_| ScrollError::Disposed)?;
         *position.0.subscriptions.borrow_mut() = vec![pixels, status];
         Ok(position)
+    }
+    pub(super) fn identity(&self) -> usize {
+        Rc::as_ptr(&self.0) as usize
+    }
+    pub(super) fn claim_viewport(&self) -> Result<Rc<()>, ScrollError> {
+        self.check()?;
+        let mut state = self.0.state.borrow_mut();
+        if state.viewport.upgrade().is_some() {
+            return Err(ScrollError::ViewportAlreadyAttached);
+        }
+        let lease = Rc::new(());
+        state.viewport = Rc::downgrade(&lease);
+        Ok(lease)
     }
     pub fn downgrade(&self) -> WeakScrollPosition {
         WeakScrollPosition(Rc::downgrade(&self.0))

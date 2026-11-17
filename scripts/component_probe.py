@@ -67,10 +67,10 @@ def probe_baselines(path, trace, scale=1.0):
     arena_drags = trace.count("gesture-arena drag accepted")
     assert arena_taps >= 4 and arena_drags >= 1, (arena_taps, arena_drags)
     assert "gesture-arena tap rejected" in trace, "drag did not reject the tap candidate"
-    binding_taps = trace.count("gesture-binding tap targets=3 pointers=1")
-    shared_frames = trace.count("gesture-frame roots=2 targets=3")
+    binding_taps = trace.count("gesture-binding tap targets=4 pointers=1")
+    shared_frames = trace.count("gesture-frame roots=3 targets=4")
     assert shared_frames >= 4, shared_frames
-    binding_pans = trace.count("gesture-binding pan targets=3 pointers=1")
+    binding_pans = trace.count("gesture-binding pan targets=4 pointers=1")
     assert binding_taps >= 4 and binding_pans >= 1, (binding_taps, binding_pans)
     ends = re.findall(r"pan-end vx=([\d.eE+-]+) vy=([\d.eE+-]+) raw_x=([\d.eE+-]+) raw_y=([\d.eE+-]+) confidence=([\d.eE+-]+) samples=(\d+) age_ms=([\d.eE+-]+) status=(Fitted|Unavailable|Stopped) fling=(true|false)", trace)
     assert ends, "missing rich pan-end details"
@@ -262,4 +262,40 @@ def probe_components(capture, tap, scale=1.0, drag=None):
 
 
     spring_bounds(after_drag_restored, 12)
-    return {"spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    scroll_initial = capture("components-scroll-initial.png")
+    scroll_view = bounds(scroll_initial, "#284b72")
+    assert scroll_view and abs(scroll_view[3] - 60 * scale) <= 1, scroll_view
+    assert not bounds(scroll_initial, "#6f8e42") and not bounds(scroll_initial, "#b87657"), "scroll content escaped initial clip"
+    exact_fill(scroll_initial, scroll_view, "#284b72", scale)
+    x, y = center(scroll_view)
+    drag(x, y, x, y - 80 * scale)
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        scrolled = capture("components-scroll-dragged.png")
+        green = bounds(scrolled, "#6f8e42")
+        coral = bounds(scrolled, "#b87657")
+        if not bounds(scrolled, "#284b72") and (green or coral):
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("captured pan did not scroll the viewport")
+    for rect in (green, coral):
+        if rect:
+            assert rect[0] == scroll_view[0] and rect[2] == scroll_view[2], (rect, scroll_view)
+            assert rect[1] >= scroll_view[1] - 1 and rect[1] + rect[3] <= scroll_view[1] + scroll_view[3] + 1, "scrolled content escaped hard clip"
+    solid_rect, solid_color = max([(r, c) for r, c in ((green, "#6f8e42"), (coral, "#b87657")) if r], key=lambda item: item[0][3])
+    exact_fill(scrolled, solid_rect, solid_color, scale)
+    reset_scroll = bounds(scrolled, "#49614c")
+    assert reset_scroll, "missing controller reset button"
+    tap(*center(reset_scroll))
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        reset_scroll_image = capture("components-scroll-reset.png")
+        if bounds(reset_scroll_image, "#284b72") == scroll_view:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("controller jump did not reset scroll pixels")
+    assert not bounds(reset_scroll_image, "#6f8e42") and not bounds(reset_scroll_image, "#b87657")
+    exact_fill(reset_scroll_image, scroll_view, "#284b72", scale)
+    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "controller_reset": True, "hard_clip": True}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
