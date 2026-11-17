@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 266 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 286 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -499,3 +499,36 @@ Android checks for this revision are recorded separately by CI. These results
 do not establish a general widget input binding, complete gesture catalog,
 device-dependent gesture policy or full Flutter semantics. See the documented
 [recognizer policies and remaining work](gesture-recognizers.md).
+
+The published recognizer revision `fcbe600` passed all four jobs in
+[CI run 44064681593](https://github.com/rishwith2306/rust-flutter/actions/runs/44064681593),
+including Android recreation and rendered interaction. Its downloaded Linux and
+Android results each record six tap completions and one pan start, plus post-drag
+interaction and the existing exact-pixel gates.
+
+## Retained detector, hit paths and shared root binding
+
+The workspace passes 286 Rust tests. Nineteen new integration tests cover
+deepest/frontmost path order, offsets and bounds, translucent/opaque/deferred
+behavior, whole-path arena registration, captured movement, independent pointers,
+target replacement/unmount, latest callbacks without gesture reset, stale queued
+target identities, pointer reuse inside an up callback, disposal and weak
+lifetime, invalid input/timestamp errors, idempotent reentrant cancellation,
+egui multipass deduplication, parent clip, focus loss and disabled roots. A private
+test checks target-ID exhaustion without partial registration. Formatting,
+warnings-denied Clippy, generated documentation, both renderer checks and the
+binding Markdown example pass locally.
+
+The gallery no longer has a private primary-pointer adapter. Its marker is a
+public retained GestureDetector under ElementTree::show_with_gestures. The native
+Linux X11 probe passes with six taps and one pan callback that each observe one
+registered binding target and one captured pointer. The drag rejects tap and
+paints exact feedback; subsequent taps still work. Existing implicit animation,
+scoped ticker pause/catch-up, decoration/covered-child, baseline, layout, component,
+input/restoration/assets and render-cache gates pass. Android/macOS results for
+this revision are recorded separately by CI.
+
+This evidence covers one root/viewport's normalized primary pointer. Cross-root
+binding, backend-control arena integration, raw multitouch/signals, local
+transforms, complete gesture/member semantics and accessibility remain open;
+see [binding scope](gesture-binding.md).

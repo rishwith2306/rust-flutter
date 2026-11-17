@@ -6,7 +6,8 @@ Hosts still perform initial hit testing, normalize input and register the down
 with each target recognizer. A recognizer tracks one primary-pointer sequence
 at a time; extra pointers are ignored until that sequence ends. Instances without
 any callbacks do not register. These are initial recognizers, not the complete
-Flutter gesture system or a general widget input binding.
+Flutter gesture system. A [retained detector and shared root binding](gesture-binding.md)
+now connect them to layout hit paths.
 
 ```rust
 use rust_flutter::{egui::Pos2, gestures::*};
@@ -107,18 +108,18 @@ cycles. This queue does not replace a host-wide event binding; hosts permitting
 nested pointer reuse must also keep their up/sweep cleanup tied to the original
 sequence, rather than sweeping a newly created arena with the same pointer ID.
 
-The gallery's private primary-pointer host now uses these public recognizers
-instead of implementing tap/drag decisions itself. Its normalized egui events
-use `Unknown` device labels, since that event stream alone does not distinguish
-mouse from emulated touch. Native probes inject a drag outside the initial hit
-region, verify tap rejection/drag feedback, then tap again to verify reuse.
+The gallery now uses the public retained GestureDetector and shared root binding
+instead of a private primary-pointer host. Its normalized egui events use
+`Unknown` device labels, since that stream alone does not distinguish mouse from
+emulated touch. Native probes inject a drag outside the initial hit region,
+verify tap rejection/drag feedback, then tap again to verify reuse.
 
 The integration suite covers competition, boundaries, early wins, delayed
 resolution, accumulated/start-position behavior, cancellation and teardown,
 protocol errors/rollback, callback panics and reentrant input/reuse. A private
 test verifies sequence-ID exhaustion rollback.
 
-General widget hit paths/binding, secondary/tertiary taps, deadlines, double/long
+Cross-root/global binding, backend control arbitration, secondary/tertiary taps, deadlines, double/long
 taps, axis drags, device settings, velocity/flings, drag teams, multitouch
 strategies, local transforms, scale/rotation, pointer signals and pan/zoom events,
 scrolling physics and semantics remain unfinished. The immediate tap-down timing

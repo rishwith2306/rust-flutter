@@ -64,6 +64,7 @@ pub enum ElementError {
     TreeTooDeep,
     EmptyTree,
     ContextChanged,
+    GestureBinding(crate::gestures::BindingError),
     DisposedNotifier,
     Layout(LayoutError),
 }
@@ -78,6 +79,7 @@ impl std::fmt::Display for ElementError {
             }
             Self::ContextChanged => f.write_str("element tree belongs to a different egui context"),
             Self::Layout(e) => e.fmt(f),
+            Self::GestureBinding(e) => e.fmt(f),
         }
     }
 }
@@ -85,6 +87,7 @@ impl std::error::Error for ElementError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Layout(e) => Some(e),
+            Self::GestureBinding(e) => Some(e),
             _ => None,
         }
     }
@@ -690,13 +693,40 @@ impl ElementTree {
         ui: &mut egui::Ui,
         constraints: BoxConstraints,
     ) -> Result<egui::Response, ElementError> {
+        self.show_internal(ui, constraints, None)
+    }
+    /// Layout then dispatch this root's input before painting. Use the same
+    /// binding in its GestureDetector descendants. One root/viewport per binding.
+    pub fn show_with_gestures(
+        &mut self,
+        ui: &mut egui::Ui,
+        constraints: BoxConstraints,
+        binding: &crate::gestures::GestureBinding,
+    ) -> Result<egui::Response, ElementError> {
+        self.show_internal(ui, constraints, Some(binding))
+    }
+    fn show_internal(
+        &mut self,
+        ui: &mut egui::Ui,
+        constraints: BoxConstraints,
+        binding: Option<&crate::gestures::GestureBinding>,
+    ) -> Result<egui::Response, ElementError> {
         if ui.ctx() != &self.ctx {
             return Err(ElementError::ContextChanged);
         }
         let geometry = self.layout(constraints)?;
-        Ok(layout::show_layout_with_phases(
+        let mut input_error = None;
+        let response = layout::show_layout_with_input(
             ui,
             &geometry,
+            |ui, rect| {
+                if let Some(binding) = binding {
+                    match binding.handle_egui(ui, &geometry, rect.min) {
+                        Ok(report) => input_error = report.failures.first().map(|f| f.error),
+                        Err(error) => input_error = Some(error),
+                    }
+                }
+            },
             |id, phase, ui| {
                 if let Some((background, foreground)) = self.paint.get(&id) {
                     let paint = match phase {
@@ -708,6 +738,11 @@ impl ElementTree {
                     }
                 }
             },
-        ))
+        );
+        if let Some(error) = input_error {
+            Err(ElementError::GestureBinding(error))
+        } else {
+            Ok(response)
+        }
     }
 }

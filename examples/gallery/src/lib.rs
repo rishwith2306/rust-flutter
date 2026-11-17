@@ -12,7 +12,6 @@ use rust_flutter::{
 };
 use serde::{Deserialize, Serialize};
 mod components;
-mod gesture_marker;
 
 static ASSETS: EmbeddedBundle =
     EmbeddedBundle::new(include!(concat!(env!("OUT_DIR"), "/assets.rs")));

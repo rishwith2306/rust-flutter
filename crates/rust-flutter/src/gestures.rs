@@ -1,5 +1,12 @@
 //! UI-local gesture arbitration and explicit pointer routing.
 mod arena;
+mod binding;
+mod detector;
+pub use binding::{
+    BindingError, DispatchFailure, DispatchReport, GestureBinding, GestureTarget,
+    GestureTargetConfig, WeakGestureBinding,
+};
+pub use detector::{GestureDetector, GestureDetectorRenderBox};
 mod recognizers;
 mod router;
 pub use arena::{

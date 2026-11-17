@@ -26,9 +26,18 @@ pub fn show_layout(
 pub fn show_layout_with_phases(
     ui: &mut egui::Ui,
     layout: &LayoutBox,
+    render: impl FnMut(Id, PaintPhase, &mut egui::Ui),
+) -> egui::Response {
+    show_layout_with_input(ui, layout, |_, _| {}, render)
+}
+pub(crate) fn show_layout_with_input(
+    ui: &mut egui::Ui,
+    layout: &LayoutBox,
+    input: impl FnOnce(&mut egui::Ui, Rect),
     mut render: impl FnMut(Id, PaintPhase, &mut egui::Ui),
 ) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(layout.size, egui::Sense::hover());
+    input(ui, rect);
     let scope = ui.id().with(layout.id);
     visit(ui, scope, layout, rect.min, ui.clip_rect(), &mut render);
     response

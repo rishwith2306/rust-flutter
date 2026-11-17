@@ -3,6 +3,8 @@
 mod baseline;
 pub use baseline::{Baselines, TextBaseline};
 mod custom;
+mod hit;
+pub use hit::{HitTestBehavior, HitTestEntry};
 mod flex;
 mod query;
 pub use custom::{BoxChildren, BoxGeometry, CustomBox, CustomBoxLayout};
@@ -11,6 +13,7 @@ mod stack;
 mod ui;
 use egui::{Id, Pos2, Rect, Vec2};
 use std::{collections::HashSet, fmt, hash::Hash};
+pub(crate) use ui::show_layout_with_input;
 pub use ui::{PaintPhase, show_layout, show_layout_with_phases};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -754,6 +757,7 @@ pub struct LayoutBox {
     leaf: bool,
     paint_self: bool,
     hit_self: bool,
+    hit_behavior: Option<HitTestBehavior>,
     pub baselines: Baselines,
     pub id: Id,
     pub size: Vec2,
@@ -792,6 +796,7 @@ impl LayoutBox {
             leaf,
             paint_self: leaf,
             hit_self: leaf,
+            hit_behavior: None,
             baselines: Baselines::NONE,
             id,
             size,
@@ -804,14 +809,7 @@ impl LayoutBox {
     /// Topmost participating box at a local point. As with box hit testing, ancestors' bounds
     /// gate hits even when Clip::None permits painting outside them.
     pub fn hit_test(&self, point: Pos2) -> Option<Id> {
-        if !(point.x >= 0.0 && point.y >= 0.0 && point.x < self.size.x && point.y < self.size.y) {
-            return None;
-        }
-        self.children
-            .iter()
-            .rev()
-            .find_map(|child| child.layout.hit_test(point - child.offset))
-            .or_else(|| self.hit_self.then_some(self.id))
+        self.hit_test_path(point).first().map(|entry| entry.id)
     }
     pub fn find(&self, id: Id) -> Option<&Self> {
         if self.id == id {

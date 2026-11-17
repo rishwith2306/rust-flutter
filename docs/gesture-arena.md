@@ -93,15 +93,14 @@ pending sweep and eager-claim presence. It exposes no live RefCell borrow.
 
 ## Native validation adapter and remaining scope
 
-The [gallery adapter](../examples/gallery/src/gesture_marker.rs) supplies a
-primary-pointer experiment over raw egui PointerButton/PointerMoved events.
+The gallery now uses a retained [GestureDetector and shared root binding](gesture-binding.md)
+over normalized egui PointerButton/PointerMoved events.
 A down inside the marker registers the public [tap/pan recognizers](gesture-recognizers.md),
 then closes the arena. The recognizers handle movement, cancellation and completion.
 Movement beyond 18 logical points rejects tap and claims pan; otherwise up claims
 tap. It sweeps on up, flushes after event dispatch, and
 cancels on pointer loss, focus loss or disposal. The adapter deduplicates egui
-multipass delivery per frame. It is gallery code, not the public widget input
-binding.
+multipass delivery per frame. The public binding now supplies the root hit path and capture lifecycle.
 
 The native probe injects taps to drive the existing animation, then drags outside
 the marker. The drag must win, render an exact pink feedback swatch and leave the
@@ -117,7 +116,7 @@ reentrant callbacks and pointer recreation, flush boundaries, disposal/drop,
 protocol errors, independent pointers and panic isolation. A private test checks
 ID exhaustion rollback.
 
-General widget-tree hit-path dispatch, arena participation by backend controls,
+Cross-root/global dispatch, arena participation by backend controls,
 multitouch normalization, full recognizer catalog/teams, tap deadlines,
 double/long/secondary taps, complete drag details and velocity, scale/rotation,
 scrolling/physics, semantics and complete Flutter gesture member compatibility

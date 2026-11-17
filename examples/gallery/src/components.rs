@@ -2,6 +2,7 @@ use rust_flutter::{
     display::{ViewAspect, ViewMetrics},
     egui,
     element::*,
+    gestures::*,
     layout::{
         Axis, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
         IntrinsicDimension, LayoutError, TextBaseline,
@@ -248,11 +249,12 @@ impl State<ViewReport> for ViewReportState {
     }
 }
 
-struct AnimatedMarker;
+struct AnimatedMarker {
+    binding: GestureBinding,
+}
 struct AnimatedMarkerState {
     expanded: bool,
     dragged: bool,
-    pointer: Option<Rc<RefCell<crate::gesture_marker::PointerMarker>>>,
 }
 impl StatefulWidget for AnimatedMarker {
     type State = AnimatedMarkerState;
@@ -260,43 +262,67 @@ impl StatefulWidget for AnimatedMarker {
         AnimatedMarkerState {
             expanded: false,
             dragged: false,
-            pointer: None,
         }
     }
 }
 impl State<AnimatedMarker> for AnimatedMarkerState {
-    fn init_state(&mut self, _: &AnimatedMarker, ctx: &StateContext<Self>) {
+    fn build(&mut self, widget: &AnimatedMarker, ctx: &StateContext<Self>) -> Widget {
         let tap = ctx.handle();
         let drag = ctx.handle();
-        self.pointer = Some(Rc::new(RefCell::new(
-            crate::gesture_marker::PointerMarker::new(
-                move || {
-                    let _ = tap.update(|state| state.expanded = !state.expanded);
+        #[cfg(debug_assertions)]
+        let tap_binding = widget.binding.downgrade();
+        #[cfg(debug_assertions)]
+        let drag_binding = widget.binding.downgrade();
+        let config = GestureTargetConfig {
+            tap: Some((
+                TapConfig::default(),
+                TapCallbacks {
+                    on_tap: Some(Rc::new(move |_| {
+                        #[cfg(debug_assertions)]
+                        eprintln!("rust-flutter gallery gesture-arena tap accepted");
+                        #[cfg(debug_assertions)]
+                        if let Some(binding) = tap_binding.upgrade() {
+                            eprintln!(
+                                "rust-flutter gallery gesture-binding tap targets={} pointers={}",
+                                binding.target_count(),
+                                binding.active_pointers()
+                            );
+                        }
+                        let _ = tap.update(|state| state.expanded = !state.expanded);
+                    })),
+                    on_cancel: Some(Rc::new(|_| {
+                        #[cfg(debug_assertions)]
+                        eprintln!("rust-flutter gallery gesture-arena tap rejected");
+                    })),
+                    ..Default::default()
                 },
-                move || {
-                    let _ = drag.update(|state| state.dragged = true);
+            )),
+            pan: Some((
+                PanConfig::default(),
+                PanCallbacks {
+                    on_start: Some(Rc::new(move |_| {
+                        #[cfg(debug_assertions)]
+                        eprintln!("rust-flutter gallery gesture-arena drag accepted");
+                        #[cfg(debug_assertions)]
+                        if let Some(binding) = drag_binding.upgrade() {
+                            eprintln!(
+                                "rust-flutter gallery gesture-binding pan targets={} pointers={}",
+                                binding.target_count(),
+                                binding.active_pointers()
+                            );
+                        }
+                        let _ = drag.update(|state| state.dragged = true);
+                    })),
+                    ..Default::default()
                 },
-            ),
-        )));
-    }
-    fn dispose(&mut self) {
-        if let Some(pointer) = &self.pointer {
-            pointer.borrow_mut().cancel();
-        }
-    }
-    fn build(&mut self, _: &AnimatedMarker, _: &StateContext<Self>) -> Widget {
-        let pointer = self
-            .pointer
-            .as_ref()
-            .expect("initialized pointer adapter")
-            .clone();
+            )),
+        };
         let dragged = self.dragged;
-        rust_flutter::animation::TweenAnimationBuilder::new(
+        let marker = rust_flutter::animation::TweenAnimationBuilder::new(
             24.0_f32,
             if self.expanded { 48.0 } else { 24.0 },
             std::time::Duration::from_secs(2),
             move |_, width| {
-                let pointer = pointer.clone();
                 #[cfg(debug_assertions)]
                 eprintln!(
                     "rust-flutter gallery animation value={}",
@@ -314,7 +340,6 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
                         0.0,
                         egui::Color32::from_rgb(227, 189, 66),
                     );
-                    pointer.borrow_mut().handle(ui);
                 }));
                 Widget::stack(
                     StackStyle::default(),
@@ -347,10 +372,15 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
             #[cfg(debug_assertions)]
             eprintln!("rust-flutter gallery implicit-animation end");
         })
-        .into_widget()
+        .into_widget();
+        GestureDetector::new(&widget.binding, config)
+            .expect("valid marker detector")
+            .into_widget(marker)
     }
 }
-struct TickerDemo;
+struct TickerDemo {
+    binding: GestureBinding,
+}
 struct TickerDemoState {
     enabled: bool,
 }
@@ -361,7 +391,7 @@ impl StatefulWidget for TickerDemo {
     }
 }
 impl State<TickerDemo> for TickerDemoState {
-    fn build(&mut self, _: &TickerDemo, ctx: &StateContext<Self>) -> Widget {
+    fn build(&mut self, widget: &TickerDemo, ctx: &StateContext<Self>) -> Widget {
         let enabled = self.enabled;
         let handle = ctx.handle();
         let mut style = FlexStyle::new(Axis::Horizontal);
@@ -372,7 +402,9 @@ impl State<TickerDemo> for TickerDemoState {
             vec![
                 FlexItem::fixed(Widget::ticker_mode(
                     enabled,
-                    Widget::stateful(AnimatedMarker),
+                    Widget::stateful(AnimatedMarker {
+                        binding: widget.binding.clone(),
+                    }),
                 )),
                 FlexItem::fixed(Widget::leaf(egui::vec2(80.0, 24.0), move |ui| {
                     if ui
@@ -390,7 +422,7 @@ impl State<TickerDemo> for TickerDemoState {
         )
     }
 }
-fn baseline_example(ctx: &egui::Context) -> Widget {
+fn baseline_example(ctx: &egui::Context, binding: &GestureBinding) -> Widget {
     let mut baselines = Vec::new();
     let mut children: Vec<FlexItem> = [
         (16.0, "Ag small", egui::Color32::from_rgb(49, 83, 123)),
@@ -433,7 +465,9 @@ fn baseline_example(ctx: &egui::Context) -> Widget {
         )
     })
     .collect();
-    children.push(FlexItem::fixed(Widget::stateful(TickerDemo)));
+    children.push(FlexItem::fixed(Widget::stateful(TickerDemo {
+        binding: binding.clone(),
+    })));
     #[cfg(debug_assertions)]
     eprintln!(
         "rust-flutter gallery baseline-demo small={} large={}",
@@ -464,10 +498,12 @@ pub(super) struct ComponentDemo {
     view_tree: ElementTree,
     last_view_query: Option<egui::Vec2>,
     baseline_tree: ElementTree,
+    binding: GestureBinding,
     baseline_scale: f32,
 }
 impl ComponentDemo {
     pub fn new(ctx: &egui::Context) -> Self {
+        let binding = GestureBinding::new();
         let metrics = Rc::default();
         let root = Widget::inherited_model(
             CounterStep { a: 1, b: 1 },
@@ -506,9 +542,10 @@ impl ComponentDemo {
             observable,
             observable_tree,
             last_view_query: None,
-            baseline_tree: ElementTree::new(ctx, baseline_example(ctx))
+            baseline_tree: ElementTree::new(ctx, baseline_example(ctx, &binding))
                 .expect("valid baseline demo"),
             baseline_scale: ctx.pixels_per_point(),
+            binding,
             view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
                 .expect("valid view report"),
             tree: ElementTree::new(ctx, root).expect("valid component demo"),
@@ -664,13 +701,18 @@ impl ComponentDemo {
         }
         if self.baseline_scale != ui.ctx().pixels_per_point() {
             self.baseline_scale = ui.ctx().pixels_per_point();
-            if let Err(error) = self.baseline_tree.update(baseline_example(ui.ctx())) {
+            if let Err(error) = self
+                .baseline_tree
+                .update(baseline_example(ui.ctx(), &self.binding))
+            {
                 ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
             }
         }
         if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0)) {
             let geometry = self.baseline_tree.layout(constraints);
-            let response = self.baseline_tree.show(ui, constraints);
+            let response = self
+                .baseline_tree
+                .show_with_gestures(ui, constraints, &self.binding);
             if let (Ok(geometry), Ok(response)) = (geometry, response)
                 && let Some(distance) = geometry.baseline(TextBaseline::Alphabetic)
             {

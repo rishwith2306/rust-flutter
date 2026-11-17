@@ -12,6 +12,8 @@ pub struct BoxGeometry {
     pub size: Vec2,
     pub clip: Clip,
     pub hit_test_self: bool,
+    /// Overrides the legacy self-hit flag when set.
+    pub hit_test_behavior: Option<HitTestBehavior>,
     pub baselines: Baselines,
 }
 impl BoxGeometry {
@@ -20,6 +22,7 @@ impl BoxGeometry {
             size,
             clip: Clip::None,
             hit_test_self: false,
+            hit_test_behavior: None,
             baselines: Baselines::NONE,
         }
     }
@@ -273,6 +276,7 @@ impl CustomBox {
         layout.baselines = geometry.baselines;
         layout.paint_self = true;
         layout.hit_self = geometry.hit_test_self;
+        layout.hit_behavior = geometry.hit_test_behavior;
         state.cache = Some(Cache {
             id,
             constraints,
