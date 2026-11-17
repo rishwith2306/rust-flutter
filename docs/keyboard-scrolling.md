@@ -62,3 +62,5 @@ handling, focus traversal and preservation, disabled/omitted views, cancellation
 resize, unmount and reentrant listeners. Native smoke probes inject End, Home,
 PageDown and ArrowDown and require rendered movement followed by exact reset.
 Their `native_keyboard` result is true only after those pixel checks pass.
+Both Linux X11 and API 35 / x86_64 Android emulator artifacts pass these checks
+at revision `350d929`; see the [exact CI runtime record](verification.md#keyboard-scrolling-ci-runtime-result).

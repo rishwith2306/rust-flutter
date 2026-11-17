@@ -46,6 +46,7 @@ Runtime claims below remain scoped to their stated environment.
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
 | Android OS mouse wheel | Passed on API 35 / x86_64 emulator | Four separate-process OS mouse-scroll packets, unchanged gallery PID, native movement and exact rendered reset; physical hardware remains unverified |
+| Retained viewport keyboard scrolling | Passed on Linux X11 and API 35 / x86_64 Android emulator | Native End/Home, page and arrow input produces expected rendered content and exact reset; macOS runtime and physical Android keyboards remain unverified |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
 | macOS compilation | Passed on GitHub macos-latest / Apple Silicon | Stable Rust 1.100.0: workspace tests, Clippy, docs, asset rebuild and generated-app compilation |
 | macOS runtime | Not verified | No window/input/Metal/VoiceOver runtime claim is established. |
@@ -918,3 +919,27 @@ Android runtime result; exact-revision CI results must be inspected separately.
 macOS runtime input, physical Android keyboards, nested keyboard bubbling,
 accessibility scrolling and full Focus/Actions/Shortcuts parity remain
 unverified or unfinished. See [keyboard behavior and scope](keyboard-scrolling.md).
+
+### Keyboard scrolling CI runtime result
+
+Published code revision `350d929fadb16f3193459520d665066f04a465bc` passes all
+four jobs in [run 44176723480](https://github.com/rishwith2306/rust-flutter/actions/runs/44176723480):
+Linux native checks, macOS workspace/build checks, ARM Android compilation and
+Android runtime. The executable keyboard guide and local x86_64 Android Clippy
+with warnings denied also pass.
+
+Downloaded Linux and Android result files both record `native_keyboard=true`
+and `native_wheel=true`. On API 35 / x86_64 Android, scale 2.625, the retained
+viewport remains 158 physical pixels high. OS End/Home moves offset 0→120→0;
+two PageDown events produce 0→48→96→0 after Home; two DPAD_DOWN events produce
+0→50→100→0 after Home. The independent screenshot checks verify later content
+and exact blue reset pixels. The Android End and reset screenshots were visually
+inspected: coral then blue fills the same clip, with corner focus markers and
+the software keyboard hidden. This is OS-injected key input, not a physical
+keyboard or platform convention audit.
+
+Existing IME show/hide metrics, same-process recreation, ordinary-package
+RGB888/input/restoration, clipping, wheel, glyph, baseline and animation gates
+remain green. Recreation keeps PID 3210 across three cycles and four Rust hosts;
+the ordinary APK probe runs in a separate gallery process, PID 4078. macOS
+runtime input and all previously listed framework gaps remain outstanding.
