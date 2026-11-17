@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 287 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 305 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -532,3 +532,39 @@ This evidence covers one root/viewport's normalized primary pointer. Cross-root
 binding, backend-control arena integration, raw multitouch/signals, local
 transforms, complete gesture/member semantics and accessibility remain open;
 see [binding scope](gesture-binding.md).
+
+The published retained-detector revision `b5cf8fa` passed all four jobs in
+[CI run 44069893038](https://github.com/rishwith2306/rust-flutter/actions/runs/44069893038).
+Downloaded Linux/Android artifacts each confirm six taps, one pan, drag feedback
+and post-drag interaction through its single-root binding. Android recreation
+also passed.
+
+## Shared viewport frames and arena-backed buttons
+
+The workspace passes 305 Rust tests. Seventeen new integration tests and a
+private lease-exhaustion test cover complete-frame root collection, paint/layer
+order, translucent competition across roots, capture without retargeting,
+omitted/disabled/modal-blocked roots, backend area occlusion, clip edges,
+uniform layer transforms and invalid transforms, duplicate/expired collectors,
+abandoned leases, input-mode changes, button/parent tap and pan arbitration,
+latest callbacks, pure sizing, disabled buttons, keyboard activation across
+multipass and desktop AccessKit Click actions. The accessibility-action test
+also moves the retained button between parent Ui scopes, checking stable IDs.
+The modal test follows egui's documented prior-frame modal gate; it is not proof
+of a full framework modal-route implementation.
+
+Formatting, warnings-denied Clippy, generated documentation, renderer provenance
+and selection, and the shared-frame Markdown example pass locally. The gallery
+collects its observable-counter and typography/marker roots together. Its counter
+and ticker toggle use GestureButton. The native Linux X11 probe passes and records
+two roots, three targets, six marker taps, one pan and seventeen processed shared
+frames. Counter glyph/state changes, exact fills, ticker pause/catch-up, covered-child
+painting, baseline, layout, retained components, restoration/assets and input
+gates remain green. The gallery cancels capture when its host view is hidden.
+Android and macOS checks for this revision are recorded separately by CI.
+
+This is one viewport's scene plus an opt-in egui-painted button bridge. Other
+backend controls/window dragging remain independent; global multi-viewport input,
+raw multitouch/signals, full gesture/widget catalogs, Material/Cupertino,
+semantics/TalkBack and native VoiceOver validation remain unfinished. See
+[frame and button scope](gesture-frames.md).

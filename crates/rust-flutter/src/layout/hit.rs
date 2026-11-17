@@ -15,14 +15,23 @@ pub struct HitTestEntry {
     /// Origin of this box relative to the root used for the hit test.
     pub offset: Vec2,
 }
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HitTestResult {
+    pub path: Vec<HitTestEntry>,
+    /// True when this subtree blocks a sibling/root behind it.
+    pub absorbed: bool,
+}
 impl LayoutBox {
     /// Hit the current geometry without painting. Ancestor bounds gate hits,
     /// even when visual overflow is unclipped. Translucent entries can precede
     /// a blocking sibling; an opaque descendant still blocks siblings behind it.
     pub fn hit_test_path(&self, point: Pos2) -> Vec<HitTestEntry> {
-        let mut result = Vec::new();
-        self.hit_path(point, Vec2::ZERO, &mut result);
-        result
+        self.hit_test_result(point).path
+    }
+    pub fn hit_test_result(&self, point: Pos2) -> HitTestResult {
+        let mut path = Vec::new();
+        let absorbed = self.hit_path(point, Vec2::ZERO, &mut path);
+        HitTestResult { path, absorbed }
     }
     fn hit_path(&self, point: Pos2, offset: Vec2, result: &mut Vec<HitTestEntry>) -> bool {
         if !(point.x >= 0.0 && point.y >= 0.0 && point.x < self.size.x && point.y < self.size.y) {

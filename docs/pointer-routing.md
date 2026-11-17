@@ -61,7 +61,7 @@ initial hit region and releases its subscription on up or cancellation.
 Native tap/drag probes exercise this integration.
 [Tap and pan recognizers](gesture-recognizers.md) now use this routing service.
 A [shared root binding and retained detector](gesture-binding.md) now supply layout hit paths and capture.
-Cross-root/global binding, full recognizer catalog, teams, velocity,
+Global multi-viewport binding, full recognizer catalog, teams, velocity,
 multitouch policy and full Flutter gesture compatibility remain unfinished.
 
 `tests/pointer_router.rs` covers pointer/global order, independent pointers,

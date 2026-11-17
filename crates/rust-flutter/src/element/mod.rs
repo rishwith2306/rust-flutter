@@ -693,7 +693,7 @@ impl ElementTree {
         ui: &mut egui::Ui,
         constraints: BoxConstraints,
     ) -> Result<egui::Response, ElementError> {
-        self.show_internal(ui, constraints, None)
+        self.show_internal(ui, constraints, None, None)
     }
     /// Layout then dispatch this root's input before painting. Use the same
     /// binding in its GestureDetector descendants. One root/viewport per binding.
@@ -703,13 +703,24 @@ impl ElementTree {
         constraints: BoxConstraints,
         binding: &crate::gestures::GestureBinding,
     ) -> Result<egui::Response, ElementError> {
-        self.show_internal(ui, constraints, Some(binding))
+        self.show_internal(ui, constraints, Some(binding), None)
+    }
+    /// Collect this root in paint order; finish the shared frame after showing
+    /// all roots. Gesture callbacks run after collection, rather than here.
+    pub fn show_in_gesture_frame(
+        &mut self,
+        ui: &mut egui::Ui,
+        constraints: BoxConstraints,
+        frame: &mut crate::gestures::GestureFrame,
+    ) -> Result<egui::Response, ElementError> {
+        self.show_internal(ui, constraints, None, Some(frame))
     }
     fn show_internal(
         &mut self,
         ui: &mut egui::Ui,
         constraints: BoxConstraints,
         binding: Option<&crate::gestures::GestureBinding>,
+        frame: Option<&mut crate::gestures::GestureFrame>,
     ) -> Result<egui::Response, ElementError> {
         if ui.ctx() != &self.ctx {
             return Err(ElementError::ContextChanged);
@@ -720,6 +731,9 @@ impl ElementTree {
             ui,
             &geometry,
             |ui, rect| {
+                if let Some(frame) = frame {
+                    input_error = frame.add_root(ui, &geometry, rect.min).err();
+                }
                 if let Some(binding) = binding {
                     match binding.handle_egui(ui, &geometry, rect.min) {
                         Ok(report) => input_error = report.failures.first().map(|f| f.error),

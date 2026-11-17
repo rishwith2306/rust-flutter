@@ -1,5 +1,9 @@
 # Hit paths, shared input and retained gesture detectors
 
+For multiple roots and opt-in backend button participation, see
+[shared gesture frames and GestureButton](gesture-frames.md). The single-root
+convenience method described here remains available.
+
 `GestureDetector` registers a retained tap/pan target with a `GestureBinding`.
 Use `ElementTree::show_with_gestures` to lay out a root, dispatch its normalized
 primary-pointer input, then paint. Nested targets join the same arena in hit-path
@@ -106,9 +110,10 @@ frame is painted before those component updates are applied on a later flush.
 
 The adapter normalizes egui's primary pointer as ID 0 with `Unknown` device kind.
 It does not yet bind raw multitouch, hover, pointer signals or trackpad pan/zoom.
-Backend egui controls continue to use their own input system and do not join
-these arenas automatically. Combining such a control and a detector can therefore
-produce independent callbacks. Cross-root/global event binding, gesture teams,
+Ordinary backend egui controls continue to use their own input system and do not join
+these arenas automatically. GestureButton is an opt-in arena-backed bridge. Combining such a control and a detector can therefore
+produce independent callbacks. A shared GestureFrame now handles multiple roots in one viewport. Global
+multi-viewport event binding, gesture teams,
 the full recognizer catalog and semantics remain unfinished.
 
 The test suite covers nested ordering, opaque/deferred/translucent hits, offsets,

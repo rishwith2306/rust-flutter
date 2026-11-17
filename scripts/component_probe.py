@@ -66,8 +66,10 @@ def probe_baselines(path, trace, scale=1.0):
     arena_drags = trace.count("gesture-arena drag accepted")
     assert arena_taps >= 4 and arena_drags >= 1, (arena_taps, arena_drags)
     assert "gesture-arena tap rejected" in trace, "drag did not reject the tap candidate"
-    binding_taps = trace.count("gesture-binding tap targets=1 pointers=1")
-    binding_pans = trace.count("gesture-binding pan targets=1 pointers=1")
+    binding_taps = trace.count("gesture-binding tap targets=3 pointers=1")
+    shared_frames = trace.count("gesture-frame roots=2 targets=3")
+    assert shared_frames >= 4, shared_frames
+    binding_pans = trace.count("gesture-binding pan targets=3 pointers=1")
     assert binding_taps >= 4 and binding_pans >= 1, (binding_taps, binding_pans)
     implicit_completions = trace.count("implicit-animation end")
     assert implicit_completions >= 4, f"missing implicit completion callbacks: {implicit_completions}"
@@ -76,7 +78,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}

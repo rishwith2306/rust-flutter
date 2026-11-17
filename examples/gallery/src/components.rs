@@ -406,18 +406,17 @@ impl State<TickerDemo> for TickerDemoState {
                         binding: widget.binding.clone(),
                     }),
                 )),
-                FlexItem::fixed(Widget::leaf(egui::vec2(80.0, 24.0), move |ui| {
-                    if ui
-                        .put(
-                            ui.max_rect(),
-                            egui::Button::new(if enabled { "Ticking" } else { "Muted" })
-                                .fill(egui::Color32::from_rgb(62, 108, 114)),
-                        )
-                        .clicked()
-                    {
-                        let _ = handle.update(|state| state.enabled = !state.enabled);
-                    }
-                })),
+                FlexItem::fixed(
+                    GestureButton::new(
+                        &widget.binding,
+                        if enabled { "Ticking" } else { "Muted" },
+                        move || {
+                            let _ = handle.update(|state| state.enabled = !state.enabled);
+                        },
+                    )
+                    .fill(egui::Color32::from_rgb(62, 108, 114))
+                    .into_widget(),
+                ),
             ],
         )
     }
@@ -502,6 +501,9 @@ pub(super) struct ComponentDemo {
     baseline_scale: f32,
 }
 impl ComponentDemo {
+    pub fn cancel_input(&self) {
+        self.binding.cancel_all();
+    }
     pub fn new(ctx: &egui::Context) -> Self {
         let binding = GestureBinding::new();
         let metrics = Rc::default();
@@ -515,26 +517,23 @@ impl ComponentDemo {
         );
         let observable = ValueNotifier::new(0_i32);
         let counter = observable.clone();
+        let observable_binding = binding.clone();
         let observable_tree = ElementTree::new(
             ctx,
             Widget::value_listenable_builder(observable.clone(), move |_, value| {
                 let counter = counter.clone();
-                Widget::leaf(egui::vec2(280.0, 44.0), move |ui| {
-                    if ui
-                        .put(
-                            ui.max_rect(),
-                            egui::Button::new(
-                                egui::RichText::new(format!("Observable: {value}"))
-                                    .size(22.0)
-                                    .color(egui::Color32::WHITE),
-                            )
-                            .fill(egui::Color32::from_rgb(161, 75, 50)),
-                        )
-                        .clicked()
-                    {
+                GestureButton::new(
+                    &observable_binding,
+                    egui::RichText::new(format!("Observable: {value}"))
+                        .size(22.0)
+                        .color(egui::Color32::WHITE),
+                    move || {
                         let _ = counter.update(|value| value.saturating_add(1));
-                    }
-                })
+                    },
+                )
+                .size(egui::vec2(280.0, 44.0))
+                .fill(egui::Color32::from_rgb(161, 75, 50))
+                .into_widget()
             }),
         )
         .expect("valid observable demo");
@@ -557,6 +556,10 @@ impl ComponentDemo {
         }
     }
     pub fn show(&mut self, ui: &mut egui::Ui) {
+        let mut gestures = self
+            .binding
+            .begin_egui_frame(ui.ctx())
+            .expect("one component input frame");
         ui.label("Tap A, then swap. Its local state follows its key. Removing B disposes it; adding it again creates fresh state.");
         let mut changed = false;
         ui.horizontal_wrapped(|ui| {
@@ -668,7 +671,9 @@ impl ComponentDemo {
             }
         });
         if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0))
-            && let Err(error) = self.observable_tree.show(ui, constraints)
+            && let Err(error) =
+                self.observable_tree
+                    .show_in_gesture_frame(ui, constraints, &mut gestures)
         {
             ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
         }
@@ -712,7 +717,7 @@ impl ComponentDemo {
             let geometry = self.baseline_tree.layout(constraints);
             let response = self
                 .baseline_tree
-                .show_with_gestures(ui, constraints, &self.binding);
+                .show_in_gesture_frame(ui, constraints, &mut gestures);
             if let (Ok(geometry), Ok(response)) = (geometry, response)
                 && let Some(distance) = geometry.baseline(TextBaseline::Alphabetic)
             {
@@ -722,6 +727,21 @@ impl ComponentDemo {
                     egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(78, 164, 168)),
                 );
             }
+        }
+        #[cfg(debug_assertions)]
+        let roots = gestures.root_count();
+        let report = gestures.finish().expect("valid component input frame");
+        #[cfg(debug_assertions)]
+        if report.processed > 0 {
+            eprintln!(
+                "rust-flutter gallery gesture-frame roots={} targets={} processed={}",
+                roots,
+                self.binding.target_count(),
+                report.processed
+            );
+        }
+        if let Some(failure) = report.failures.first() {
+            ui.colored_label(egui::Color32::LIGHT_RED, failure.error.to_string());
         }
     }
 }

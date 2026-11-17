@@ -4,7 +4,7 @@ mod baseline;
 pub use baseline::{Baselines, TextBaseline};
 mod custom;
 mod hit;
-pub use hit::{HitTestBehavior, HitTestEntry};
+pub use hit::{HitTestBehavior, HitTestEntry, HitTestResult};
 mod flex;
 mod query;
 pub use custom::{BoxChildren, BoxGeometry, CustomBox, CustomBoxLayout};

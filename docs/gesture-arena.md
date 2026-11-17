@@ -116,7 +116,7 @@ reentrant callbacks and pointer recreation, flush boundaries, disposal/drop,
 protocol errors, independent pointers and panic isolation. A private test checks
 ID exhaustion rollback.
 
-Cross-root/global dispatch, arena participation by backend controls,
+Global multi-viewport dispatch, arena participation by backend controls,
 multitouch normalization, full recognizer catalog/teams, tap deadlines,
 double/long/secondary taps, complete drag details and velocity, scale/rotation,
 scrolling/physics, semantics and complete Flutter gesture member compatibility

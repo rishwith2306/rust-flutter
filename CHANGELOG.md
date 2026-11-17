@@ -14,6 +14,7 @@
 - Explicit pointer router with per-pointer/global subscriptions, owned cleanup tokens, weak handles and reentrant dispatch.
 - Primary tap/pan recognizers with arena-gated completion, configurable slop/start position, normalized samples, cancellation and reentrant tracking.
 - Ordered layout hit paths, opaque/deferred/translucent behavior, shared root input binding and retained GestureDetector with safe callback updates/unmount cleanup.
+- Shared-frame collection across roots, layer/clip/modal ordering, hidden-root cancellation and opt-in GestureButton with arena pointer actions, keyboard focus and desktop Click-action bridging.
 - Retained paragraphs with styled spans, wrapping, line limits/ellipsis, intrinsic sizing and real alphabetic baselines.
 - Inherited Text/DefaultTextStyle, nested span styles, explicit linear text scaling and line-limit overrides.
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.

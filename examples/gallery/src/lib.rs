@@ -171,6 +171,11 @@ impl Application for Gallery {
             ui.colored_label(egui::Color32::LIGHT_RED, error);
         }
         ui.separator();
+        if *self.navigator.current() != Route::Components
+            && let Some(demo) = &self.component_demo
+        {
+            demo.cancel_input();
+        }
         match *self.navigator.current() {
             Route::Home => {
                 scroll(ui, "home", |ui| {

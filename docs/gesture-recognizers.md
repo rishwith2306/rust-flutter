@@ -119,7 +119,7 @@ resolution, accumulated/start-position behavior, cancellation and teardown,
 protocol errors/rollback, callback panics and reentrant input/reuse. A private
 test verifies sequence-ID exhaustion rollback.
 
-Cross-root/global binding, backend control arbitration, secondary/tertiary taps, deadlines, double/long
+Global multi-viewport binding, general backend control arbitration, secondary/tertiary taps, deadlines, double/long
 taps, axis drags, device settings, velocity/flings, drag teams, multitouch
 strategies, local transforms, scale/rotation, pointer signals and pan/zoom events,
 scrolling physics and semantics remain unfinished. The immediate tap-down timing

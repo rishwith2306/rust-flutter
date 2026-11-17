@@ -1,8 +1,11 @@
 use super::*;
+#[path = "scene.rs"]
+mod scene;
 use crate::{
     egui::{Id, Pos2},
     layout::LayoutBox,
 };
+pub use scene::GestureFrame;
 use std::{
     cell::{Cell, RefCell},
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
@@ -51,6 +54,10 @@ impl GestureTargetConfig {
 pub enum BindingError {
     HostChanged,
     MultipleRoots,
+    FrameAlreadyOpen,
+    FrameExpired,
+    DuplicateRoot(Id),
+    InvalidTransform,
     Disposed,
     IdExhausted,
     TargetAlreadyRegistered(Id),
@@ -229,8 +236,11 @@ struct Inner {
 struct EguiHost {
     context: crate::egui::Context,
     viewport: crate::egui::ViewportId,
-    root: Id,
-    frame: u64,
+    root: Option<Id>,
+    frame: Option<u64>,
+    collecting: Option<(u64, u64)>,
+    next_lease: u64,
+    previous_targets: Vec<Weak<Target>>,
 }
 impl Inner {
     fn remove(&self, id: Id, generation: u64) -> bool {
@@ -570,33 +580,48 @@ impl GestureBinding {
         }
         let frame = ui.ctx().cumulative_frame_nr();
         let viewport = ui.ctx().viewport_id();
+        let mut switched = false;
         {
             let mut host = self.0.host.borrow_mut();
             if let Some(host) = host.as_mut() {
                 if host.context != *ui.ctx() || host.viewport != viewport {
                     return Err(BindingError::HostChanged);
                 }
-                if host.frame == frame {
-                    return if host.root == geometry.id {
+                if host.collecting.is_some() {
+                    return Err(BindingError::FrameAlreadyOpen);
+                }
+                if host.frame == Some(frame) {
+                    return if host.root == Some(geometry.id) {
                         Ok(DispatchReport::default())
                     } else {
                         Err(BindingError::MultipleRoots)
                     };
                 }
-                host.frame = frame;
-                host.root = geometry.id;
+                switched = host.frame.is_some() && host.root.is_none();
+                host.previous_targets.clear();
+                host.frame = Some(frame);
+                host.root = Some(geometry.id);
             } else {
                 *host = Some(EguiHost {
                     context: ui.ctx().clone(),
                     viewport,
-                    root: geometry.id,
-                    frame,
+                    root: Some(geometry.id),
+                    frame: Some(frame),
+                    collecting: None,
+                    next_lease: 0,
+                    previous_targets: Vec::new(),
                 });
             }
         }
         let (focused, time, events) = ui.input(|i| (i.focused, i.time, i.events.clone()));
+        let mut report = if switched {
+            self.cancel_all()
+        } else {
+            DispatchReport::default()
+        };
         if !focused || !ui.is_enabled() {
-            return Ok(self.cancel_all());
+            report.merge(self.cancel_all());
+            return Ok(report);
         }
         let time = std::time::Duration::try_from_secs_f64(time).unwrap_or_default();
         let pointer = PointerId(0);
@@ -608,7 +633,6 @@ impl GestureBinding {
             buttons,
             device: PointerDeviceKind::Unknown,
         };
-        let mut report = DispatchReport::default();
         let mut merge = |r: DispatchReport| {
             report.processed += r.processed;
             report.queued |= r.queued;
@@ -728,6 +752,28 @@ impl Drop for GestureTarget {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn exhausted_frame_leases_do_not_leave_a_collector_open() {
+        let binding = GestureBinding::new();
+        let context = crate::egui::Context::default();
+        drop(binding.begin_egui_frame(&context).unwrap());
+        binding.0.host.borrow_mut().as_mut().unwrap().next_lease = u64::MAX;
+        assert!(matches!(
+            binding.begin_egui_frame(&context),
+            Err(BindingError::IdExhausted)
+        ));
+        assert!(
+            binding
+                .0
+                .host
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .collecting
+                .is_none()
+        );
+        assert_eq!(binding.active_pointers(), 0);
+    }
     #[test]
     fn exhausted_target_ids_leave_registry_unchanged() {
         let binding = GestureBinding::new();
