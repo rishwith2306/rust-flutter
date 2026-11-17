@@ -163,6 +163,10 @@ impl<A: Application> Host<A> {
             MainEvent::Start => self.lifecycle(LifecycleEvent::Started),
             MainEvent::Resume { .. } => {
                 self.resumed = true;
+                #[cfg(debug_assertions)]
+                {
+                    self.presented_geometry = None;
+                }
                 self.lifecycle(LifecycleEvent::Resumed);
                 self.trace("resumed");
                 self.dirty = true;
@@ -175,6 +179,10 @@ impl<A: Application> Host<A> {
             }
             MainEvent::Stop => self.lifecycle(LifecycleEvent::Stopped),
             MainEvent::InitWindow { .. } => {
+                #[cfg(debug_assertions)]
+                {
+                    self.presented_geometry = None;
+                }
                 let window = self
                     .activity
                     .native_window()
@@ -212,6 +220,15 @@ impl<A: Application> Host<A> {
             }
             MainEvent::GainedFocus | MainEvent::LostFocus => {
                 self.focused = matches!(event, MainEvent::GainedFocus);
+                #[cfg(debug_assertions)]
+                {
+                    self.presented_geometry = None;
+                }
+                self.trace(if self.focused {
+                    "focus-gained"
+                } else {
+                    "focus-lost"
+                });
                 if !self.focused {
                     self.input.cancel();
                 }
@@ -282,10 +299,11 @@ impl<A: Application> Host<A> {
         self.insets.update(&self.ctx, &mut raw);
         #[cfg(debug_assertions)]
         let mut geometry = format!(
-            "{}x{} scale={scale} safe_top_px={}",
+            "{}x{} scale={scale} safe_top_px={} focused={}",
             size[0],
             size[1],
-            raw.safe_area_insets.unwrap_or_default().0.top * scale
+            raw.safe_area_insets.unwrap_or_default().0.top * scale,
+            self.focused
         );
         let output = self.ctx.run(raw, |ctx| {
             self.runtime.frame(ctx);

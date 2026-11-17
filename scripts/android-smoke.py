@@ -15,6 +15,7 @@ import subprocess
 import time
 from component_probe import probe_baselines, probe_components, native_formats
 from android_ime import ime_state
+from android_ready import focused_presentation, paused_since
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--serial", required=True)
@@ -60,6 +61,13 @@ def wait_state(**expected):
         if value and all(value.get(k) == v for k, v in expected.items()):
             return value
         time.sleep(0.2)
+    try:
+        pid = device("shell", "pidof", package, check=False).stdout.decode().strip()
+        if pid:
+            (output / "android-failure-trace.txt").write_bytes(device("logcat", "-d", "-v", "threadtime", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout)
+        screenshot("android-failure.png")
+    except Exception as diagnostic_error:
+        print(f"Failure diagnostics unavailable: {diagnostic_error}")
     raise AssertionError(f"expected {expected}; last state: {state()}")
 
 
@@ -135,22 +143,40 @@ def wait_keyboard_shown():
 
 
 def start():
+    before = set(device("logcat", "-d", "-v", "threadtime", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace").splitlines())
     result = device("shell", "am", "start", "-W", "-n", f"{package}/android.app.NativeActivity", timeout=30)
     if b"Status: ok" not in result.stdout:
         raise AssertionError(result.stdout.decode(errors="replace"))
     # App snapshots are written during UI construction, before GPU presentation.
-    # Wait for the debug host's successful present at the expected inset/density.
+    # Require this launch's native resume, then its latest focused presentation
+    # at the expected inset/density. An earlier surface's log is not readiness.
     deadline = time.monotonic() + 30
+    pid, trace = "", ""
     while time.monotonic() < deadline:
         pid = device("shell", "pidof", package, check=False).stdout.decode().strip()
         if pid:
-            trace = device("logcat", "-d", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
-            geometry = re.findall(r"presented \d+x\d+ scale=([\d.]+) safe_top_px=([\d.]+)", trace)
-            if geometry and abs(float(geometry[-1][0]) - args.scale) < 0.01 and abs(float(geometry[-1][1]) - args.top_inset_px) < 1:
+            trace = device("logcat", "-d", "-v", "threadtime", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
+            if focused_presentation(before, trace, args.scale, args.top_inset_px):
                 surface_formats.extend(native_formats(trace))
                 return
         time.sleep(0.2)
-    raise TimeoutError("debug gallery did not present the expected density/insets")
+    (output / "android-startup-trace.txt").write_text(trace if pid else "gallery PID unavailable")
+    raise TimeoutError("debug gallery did not freshly resume and present focused at expected density/insets")
+
+
+def background():
+    pid = device("shell", "pidof", package).stdout.decode().strip()
+    before = set(device("logcat", "-d", "-v", "threadtime", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace").splitlines())
+    device("shell", "input", "keyevent", "3")
+    deadline = time.monotonic() + 30
+    trace = ""
+    while time.monotonic() < deadline:
+        trace = device("logcat", "-d", "-v", "threadtime", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
+        if paused_since(before, trace):
+            return
+        time.sleep(0.2)
+    (output / "android-background-trace.txt").write_text(trace)
+    raise TimeoutError("gallery did not pause after Home; resume probe would not test a background transition")
 
 
 def screenshot(name):
@@ -185,15 +211,15 @@ wait_state(route="home")
 tap(270, 205)
 wait_state(count=2, name="Ada")
 # Verify surface recreation and app state after background/resume.
-device("shell", "input", "keyevent", "3")
+background()
 start()
-time.sleep(1)
+wait_state(count=2, name="Ada")
 tap(270, 205)
 wait_state(count=3, name="Ada")
 # A new process must load saved state, then increment from the restored value.
 device("shell", "am", "force-stop", package)
 start()
-time.sleep(2)
+wait_state(count=3, name="Ada")
 tap(270, 205)
 value = wait_state(count=4, name="Ada")
 screenshot("android-restored.png")

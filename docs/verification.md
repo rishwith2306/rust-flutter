@@ -568,3 +568,25 @@ backend controls/window dragging remain independent; global multi-viewport input
 raw multitouch/signals, full gesture/widget catalogs, Material/Cupertino,
 semantics/TalkBack and native VoiceOver validation remain unfinished. See
 [frame and button scope](gesture-frames.md).
+
+### Android resume readiness follow-up
+
+The first shared-frame CI run (`c7fa5f3`,
+[44077536483](https://github.com/rishwith2306/rust-flutter/actions/runs/44077536483))
+passed Linux/macOS checks and ARM compilation. Android activity recreation passed,
+but the ordinary home counter remained at 2 when the background/resume probe
+expected 3. This occurred before the component/gesture probe ran. Its missing
+post-failure log limits causal diagnosis.
+
+Review found a concrete readiness defect: `start()` could accept a presentation
+record from before that resume, followed by a fixed one-second delay. The probe
+now confirms a fresh pause after Home, then a new resume and the latest focused
+GPU presentation at the expected density/insets. Debug-only diagnostics re-emit
+presentation geometry after resume/surface/focus changes and include focus;
+they do not alter application input state. Lost focus, pause or surface loss
+invalidates an earlier ready record. Eight GPU-free parser regression tests
+pass, alongside four IME tests, 305 Rust tests and local Android Clippy. Startup
+and failed counter assertions now save trace/screenshot diagnostics. Exact
+counter, restoration, pixel/glyph and gesture assertions remain required.
+The follow-up native CI run records whether this closes the observed failure;
+the stale-log defect alone does not prove the entire cause of the missed tap.
