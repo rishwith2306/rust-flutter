@@ -95,9 +95,10 @@ pending sweep and eager-claim presence. It exposes no live RefCell borrow.
 
 The [gallery adapter](../examples/gallery/src/gesture_marker.rs) supplies a
 primary-pointer experiment over raw egui PointerButton/PointerMoved events.
-A down inside the marker registers tap and drag candidates, then closes the
-arena. Movement beyond a fixed 18 logical points rejects tap and accepts drag;
-otherwise up accepts tap. It sweeps on up, flushes after event dispatch, and
+A down inside the marker registers the public [tap/pan recognizers](gesture-recognizers.md),
+then closes the arena. The recognizers handle movement, cancellation and completion.
+Movement beyond 18 logical points rejects tap and claims pan; otherwise up claims
+tap. It sweeps on up, flushes after event dispatch, and
 cancels on pointer loss, focus loss or disposal. The adapter deduplicates egui
 multipass delivery per frame. It is gallery code, not the public widget input
 binding.
@@ -117,8 +118,8 @@ protocol errors, independent pointers and panic isolation. A private test checks
 ID exhaustion rollback.
 
 General widget-tree hit-path dispatch, arena participation by backend controls,
-multitouch normalization/recognizer routing, recognizer teams, tap deadlines,
-double/long/secondary taps, drag detail streams and velocity, scale/rotation,
+multitouch normalization, full recognizer catalog/teams, tap deadlines,
+double/long/secondary taps, complete drag details and velocity, scale/rotation,
 scrolling/physics, semantics and complete Flutter gesture member compatibility
 remain unfinished. This arena is a foundation for those capabilities, not a
 claim that the full gesture system exists.

@@ -1,63 +1,67 @@
-//! Gallery-only primary-pointer adapter exercising the public arena and router.
-//! General widget hit-path routing and a recognizer catalog remain framework work.
+//! Gallery-only primary-pointer binding for the public recognizers.
+//! General widget hit-path dispatch remains framework work.
 use rust_flutter::{egui, gestures::*};
-use std::{cell::RefCell, rc::Rc};
+use std::{rc::Rc, time::Duration};
 const POINTER: PointerId = PointerId(0);
-struct Candidate {
-    #[cfg_attr(not(debug_assertions), allow(dead_code))]
-    kind: &'static str,
-    accepted: Rc<dyn Fn()>,
-}
-impl GestureArenaMember for Candidate {
-    fn accept_gesture(&self, _: PointerId) {
-        #[cfg(debug_assertions)]
-        eprintln!("rust-flutter gallery gesture-arena {} accepted", self.kind);
-        (self.accepted)();
-    }
-    fn reject_gesture(&self, _: PointerId) {
-        #[cfg(debug_assertions)]
-        eprintln!("rust-flutter gallery gesture-arena {} rejected", self.kind);
-    }
-}
-struct Sequence {
-    start: egui::Pos2,
-    tap: GestureArenaEntry,
-    drag: GestureArenaEntry,
-    dragged: bool,
-}
-impl Sequence {
-    fn moved(&mut self, pos: egui::Pos2) {
-        if !self.dragged && pos.distance(self.start) > 18.0 {
-            self.dragged = true;
-            self.tap.resolve(GestureDisposition::Rejected);
-            self.drag.resolve(GestureDisposition::Accepted);
-        }
-    }
-}
+
 pub(super) struct PointerMarker {
     arena: GestureArenaManager,
-    router: PointerRouter<egui::Pos2>,
-    route: Option<PointerRoute<egui::Pos2>>,
-    active: Option<Rc<RefCell<Sequence>>>,
+    router: PointerRouter<PointerEvent>,
+    tap: TapGestureRecognizer,
+    pan: PanGestureRecognizer,
     last_frame: Option<u64>,
-    tap: Rc<dyn Fn()>,
-    drag: Rc<dyn Fn()>,
 }
 impl PointerMarker {
     pub fn new(tap: impl Fn() + 'static, drag: impl Fn() + 'static) -> Self {
+        let arena = GestureArenaManager::new();
+        let router = PointerRouter::new();
+        let tap = TapGestureRecognizer::new(
+            &arena,
+            &router,
+            TapConfig::default(),
+            TapCallbacks {
+                on_tap: Some(Rc::new(move |_| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("rust-flutter gallery gesture-arena tap accepted");
+                    tap();
+                })),
+                on_cancel: Some(Rc::new(|_| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("rust-flutter gallery gesture-arena tap rejected");
+                })),
+                ..Default::default()
+            },
+        )
+        .expect("valid tap settings");
+        let pan = PanGestureRecognizer::new(
+            &arena,
+            &router,
+            PanConfig::default(),
+            PanCallbacks {
+                on_start: Some(Rc::new(move |_| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("rust-flutter gallery gesture-arena drag accepted");
+                    drag();
+                })),
+                on_cancel: Some(Rc::new(|_| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("rust-flutter gallery gesture-arena drag rejected");
+                })),
+                ..Default::default()
+            },
+        )
+        .expect("valid pan settings");
         Self {
-            arena: GestureArenaManager::new(),
-            router: PointerRouter::new(),
-            route: None,
-            active: None,
+            arena,
+            router,
+            tap,
+            pan,
             last_frame: None,
-            tap: Rc::new(tap),
-            drag: Rc::new(drag),
         }
     }
     pub fn cancel(&mut self) {
-        self.route = None;
-        self.active = None;
+        self.tap.cancel();
+        self.pan.cancel();
         self.arena.cancel(POINTER);
         self.arena.flush();
     }
@@ -67,11 +71,21 @@ impl PointerMarker {
             return;
         }
         self.last_frame = Some(frame);
-        let (focused, events) = ui.input(|i| (i.focused, i.events.clone()));
+        let (focused, time, events) = ui.input(|i| (i.focused, i.time, i.events.clone()));
         if !focused {
             self.cancel();
             return;
         }
+        let time = Duration::try_from_secs_f64(time).unwrap_or_default();
+        let sample = |phase, position, buttons| PointerEvent {
+            pointer: POINTER,
+            phase,
+            position,
+            time,
+            buttons,
+            // egui's normalized primary pointer alone does not identify its device.
+            device: PointerDeviceKind::Unknown,
+        };
         for event in events {
             match event {
                 egui::Event::PointerButton {
@@ -85,50 +99,19 @@ impl PointerMarker {
                         && ui.clip_rect().contains(pos)
                     {
                         self.cancel();
-                        let tap = self
-                            .arena
-                            .add(
-                                POINTER,
-                                Rc::new(Candidate {
-                                    kind: "tap",
-                                    accepted: self.tap.clone(),
-                                }),
-                            )
-                            .expect("fresh tap arena");
-                        let drag = self
-                            .arena
-                            .add(
-                                POINTER,
-                                Rc::new(Candidate {
-                                    kind: "drag",
-                                    accepted: self.drag.clone(),
-                                }),
-                            )
-                            .expect("open drag arena");
-                        let sequence = Rc::new(RefCell::new(Sequence {
-                            start: pos,
-                            tap,
-                            drag,
-                            dragged: false,
-                        }));
-                        let weak = Rc::downgrade(&sequence);
-                        self.route = Some(
-                            self.router
-                                .add_route(POINTER, move |_, &pos| {
-                                    if let Some(sequence) = weak.upgrade() {
-                                        sequence.borrow_mut().moved(pos);
-                                    }
-                                })
-                                .expect("live pointer router"),
-                        );
-                        self.active = Some(sequence);
+                        let down = sample(PointerPhase::Down, pos, PointerButtons::PRIMARY);
+                        self.tap.add_pointer(down).expect("live tap recognizer");
+                        self.pan.add_pointer(down).expect("live pan recognizer");
                         self.arena
                             .close(POINTER)
                             .expect("registered down candidates");
                     }
                 }
                 egui::Event::PointerMoved(pos) => {
-                    self.router.route(POINTER, &pos);
+                    self.router.route(
+                        POINTER,
+                        &sample(PointerPhase::Move, pos, PointerButtons::PRIMARY),
+                    );
                 }
                 egui::Event::PointerButton {
                     pos,
@@ -136,15 +119,11 @@ impl PointerMarker {
                     pressed: false,
                     ..
                 } => {
-                    if let Some(sequence) = self.active.take() {
-                        self.router.route(POINTER, &pos);
-                        self.route = None;
-                        let sequence = sequence.borrow();
-                        if !sequence.dragged {
-                            sequence.tap.resolve(GestureDisposition::Accepted);
-                        }
-                        self.arena.sweep(POINTER).expect("closed up arena");
-                    }
+                    self.router.route(
+                        POINTER,
+                        &sample(PointerPhase::Up, pos, PointerButtons::NONE),
+                    );
+                    self.arena.sweep(POINTER).expect("closed up arena");
                 }
                 egui::Event::PointerGone | egui::Event::WindowFocused(false) => self.cancel(),
                 _ => {}

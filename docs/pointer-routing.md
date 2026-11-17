@@ -58,9 +58,10 @@ coordinates or perform hit testing. Hosts must dispatch their cancel payloads
 before cleanup, and explicitly end tracking on up/cancel/unmount. The gallery's
 primary-pointer adapter now uses this router to track movement outside its
 initial hit region and releases its subscription on up or cancellation.
-Native tap/drag probes exercise this integration. General widget hit-path
-binding, recognizers, teams, velocity, multitouch policy and full Flutter
-gesture compatibility remain unfinished.
+Native tap/drag probes exercise this integration.
+[Tap and pan recognizers](gesture-recognizers.md) now use this routing service.
+General widget hit-path binding, full recognizer catalog, teams, velocity,
+multitouch policy and full Flutter gesture compatibility remain unfinished.
 
 `tests/pointer_router.rs` covers pointer/global order, independent pointers,
 reentrant dispatch and registration, cancellation during dispatch, pointer

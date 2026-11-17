@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 246 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 266 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -472,3 +472,30 @@ Android and macOS checks for this revision are recorded separately by CI. This
 does not establish general widget hit-path dispatch, a recognizer catalog,
 multitouch normalization or full Flutter pointer compatibility; see
 [routing scope](pointer-routing.md).
+
+The published router revision `ae4e8c0` passed all four jobs in
+[CI run 44062494314](https://github.com/rishwith2306/rust-flutter/actions/runs/44062494314):
+Linux/macOS checks, Android ARM compilation/Clippy and Android emulator
+recreation plus ordinary-package rendered interaction.
+
+## Tap/pan recognizer verification
+
+The workspace passes 266 Rust tests, including nineteen recognizer integration
+tests and one private sequence-ID exhaustion test. They cover tap/pan
+competition, threshold boundaries, pre/post-accept tap slop, early arena wins,
+pending claims across up/close, start-position policies and accumulated movement,
+independent/ignored extra pointers, button/device changes, timestamp regression,
+invalid geometry, registration rollback, arena rejection, cancellation/disposal,
+final-handle drop, weak lifetime, callback panics and reentrant input/reuse.
+Formatting, warnings-denied Clippy, generated documentation and the recognizer
+Markdown example pass locally.
+
+The gallery's private host now uses the public recognizers for gesture decisions.
+Native Linux X11 tests pass with six tap completions, one pan start, rejected tap
+on drag, exact feedback pixels and subsequent tap/return interaction. Existing
+implicit animation, scoped ticker pause/catch-up, covered-child decoration,
+baseline, layout, component, restoration and input gates remain green. macOS and
+Android checks for this revision are recorded separately by CI. These results
+do not establish a general widget input binding, complete gesture catalog,
+device-dependent gesture policy or full Flutter semantics. See the documented
+[recognizer policies and remaining work](gesture-recognizers.md).

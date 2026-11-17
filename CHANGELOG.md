@@ -12,6 +12,7 @@
 - Typed implicit TweenAnimationBuilder with continuous retargeting and post-pass completion callbacks.
 - Reentrant gesture arena with eager/deferred resolution, hold/release/sweep, cancellation and pointer-generation safety.
 - Explicit pointer router with per-pointer/global subscriptions, owned cleanup tokens, weak handles and reentrant dispatch.
+- Primary tap/pan recognizers with arena-gated completion, configurable slop/start position, normalized samples, cancellation and reentrant tracking.
 - Retained paragraphs with styled spans, wrapping, line limits/ellipsis, intrinsic sizing and real alphabetic baselines.
 - Inherited Text/DefaultTextStyle, nested span styles, explicit linear text scaling and line-limit overrides.
 - Inherited models with aspect subscriptions, selective notifications and nested fallback.
