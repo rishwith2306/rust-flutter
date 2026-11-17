@@ -3,6 +3,7 @@
 //! Wheel/point-scroll signals use the shared binding. Lazy slivers and platform
 //! scroll physics remain unfinished.
 mod controller;
+mod keyboard;
 mod position;
 mod viewport;
 use crate::animation::AnimationError;

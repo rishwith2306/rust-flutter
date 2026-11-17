@@ -2,6 +2,7 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add focused retained viewport keyboard scrolling, Tab/blank-tap focus, child focus preservation and an opt-out; native probes now require key-driven movement and reset pixels.
 - Add separate-process Android OS mouse-wheel injection and strict result validation to the ordinary APK runtime probe; rendered wheel/reset evidence is required before reporting success.
 
 - Add axis drag recognition and named horizontal/vertical recognizers with primary update/release metadata, axis-projected fling classification and orthogonal viewport competition; keep unrestricted pan as the default.

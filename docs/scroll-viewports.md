@@ -113,9 +113,13 @@ edge, require different content within the same clip, and click a controller
 reset to restore exact initial pixels. Existing spring, gesture, layout, glyph,
 baseline, asset and restoration gates remain required.
 
+[Keyboard scrolling](keyboard-scrolling.md) now supports focused viewport shortcuts
+and Tab/blank-tap focus, with an opt-out. Full Focus/Actions/Shortcuts APIs and
+nested keyboard bubbling remain unfinished.
+
 [Wheel and point-scroll signals](scroll-signals.md) now route through the shared
 binding with unit conversion and basic edge handoff. Full trackpad pan/zoom
-phases, scrollbars, keyboard/
+phases, scrollbars,
 accessibility scrolling, keep-alive/restoration, ensureVisible, nested scrolling,
 lazy lists/grids/slivers, overscroll and platform feel remain unfinished. Reviewed
 [SingleChildScrollView](https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html)

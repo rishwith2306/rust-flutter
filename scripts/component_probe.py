@@ -106,7 +106,7 @@ def probe_baselines(path, trace, scale=1.0):
             "tolerance_physical_pixels": 2.0}
 
 
-def probe_components(capture, tap, scale=1.0, drag=None, wheel=None):
+def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=None):
     """capture(name) returns a PNG path; tap(x,y) injects a physical click/touch."""
     initial = capture("components-initial.png")
     blue = bounds(initial, "#1769aa")
@@ -324,4 +324,36 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None):
             raise AssertionError("controller reset failed after native wheel input")
         exact_fill(wheel_reset, scroll_view, "#284b72", scale)
         wheel_verified = True
-    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    keyboard_verified = False
+    if press_key is not None:
+        def await_keyboard(name, expected_blue=False, expected_end=False):
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline:
+                path = capture(name)
+                blue = bounds(path, "#284b72")
+                coral = bounds(path, "#b87657")
+                valid = blue == scroll_view if expected_blue else (not blue and bool(coral))
+                if expected_end:
+                    valid = valid and coral == scroll_view
+                if valid:
+                    return path
+                time.sleep(0.1)
+            raise AssertionError(f"keyboard scroll did not reach expected pixels: {name}")
+        tap(*center(scroll_view))
+        press_key("End")
+        await_keyboard("components-scroll-key-end.png", expected_end=True)
+        press_key("Home")
+        await_keyboard("components-scroll-key-home.png", expected_blue=True)
+        press_key("PageDown")
+        press_key("PageDown")
+        await_keyboard("components-scroll-key-page.png")
+        press_key("Home")
+        await_keyboard("components-scroll-key-page-reset.png", expected_blue=True)
+        press_key("ArrowDown")
+        press_key("ArrowDown")
+        await_keyboard("components-scroll-key-arrows.png")
+        press_key("Home")
+        final_keys = await_keyboard("components-scroll-key-reset.png", expected_blue=True)
+        exact_fill(final_keys, scroll_view, "#284b72", scale)
+        keyboard_verified = True
+    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

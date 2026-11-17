@@ -274,7 +274,8 @@ time.sleep(1)
 components = probe_components(lambda name: screenshot("android-" + name),
     lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))), args.scale,
     drag=lambda x,y,end_x,end_y: device("shell", "input", "swipe", str(round(x)), str(round(y)), str(round(end_x)), str(round(end_y)), "400"),
-    wheel=wheel if args.wheel_instrumentation else None)
+    wheel=wheel if args.wheel_instrumentation else None,
+    press_key=lambda key: device("shell", "input", "keyevent", {"End": "KEYCODE_MOVE_END", "Home": "KEYCODE_MOVE_HOME", "PageDown": "KEYCODE_PAGE_DOWN", "ArrowDown": "KEYCODE_DPAD_DOWN"}[key]))
 device("shell", "input", "keyevent", "4")
 wait_state(route="home")
 pid = device("shell", "pidof", package).stdout.decode().strip()

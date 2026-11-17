@@ -1,3 +1,4 @@
+use super::keyboard::ScrollKeyboard;
 use super::{ScrollActivity, ScrollDimensions, ScrollError, ScrollPosition, WeakScrollPosition};
 use crate::{
     egui,
@@ -27,6 +28,8 @@ pub struct SingleChildScrollView {
     reverse: bool,
     scale: Rc<Cell<Option<f32>>>,
     dimensions: Rc<Cell<Option<ScrollDimensions>>>,
+    keyboard: Rc<ScrollKeyboard>,
+    keyboard_enabled: bool,
 }
 impl SingleChildScrollView {
     pub fn new(position: &ScrollPosition, binding: &GestureBinding) -> Result<Self, ScrollError> {
@@ -40,6 +43,8 @@ impl SingleChildScrollView {
             reverse: false,
             scale: Rc::new(Cell::new(Some(1.0))),
             dimensions: Rc::new(Cell::new(None)),
+            keyboard: Rc::new(ScrollKeyboard::default()),
+            keyboard_enabled: true,
         })
     }
     pub fn axis(mut self, axis: Axis) -> Self {
@@ -50,7 +55,13 @@ impl SingleChildScrollView {
         self.reverse = reverse;
         self
     }
+    /// Enable viewport focus and keyboard scrolling (default true).
+    pub fn keyboard_scrolling(mut self, enabled: bool) -> Self {
+        self.keyboard_enabled = enabled;
+        self
+    }
     pub fn into_widget(self, child: Widget) -> Result<Widget, ScrollError> {
+        let focus = self.keyboard.clone();
         let down = self.position.downgrade();
         let down_dimensions = self.dimensions.clone();
         let start = self.position.downgrade();
@@ -163,7 +174,15 @@ impl SingleChildScrollView {
                     })),
                 },
             )),
-            tap: None,
+            tap: self.keyboard_enabled.then_some((
+                TapConfig::default(),
+                TapCallbacks {
+                    on_tap: Some(Rc::new(move |details| {
+                        focus.focus_from_tap(details.up.position)
+                    })),
+                    ..Default::default()
+                },
+            )),
         };
         let detector = GestureDetector::new(&self.binding, config)
             .map_err(ScrollError::Binding)?
@@ -202,12 +221,15 @@ pub struct ScrollViewportRenderBox {
     reverse: bool,
     scale: Rc<Cell<Option<f32>>>,
     dimensions: Rc<Cell<Option<ScrollDimensions>>>,
+    keyboard: Rc<ScrollKeyboard>,
+    keyboard_enabled: bool,
     lease: Option<Rc<()>>,
     subscription: Option<Subscription>,
-    task: Option<Rc<DimensionsTask>>,
+    task: Option<Rc<ViewportTask>>,
 }
 impl ScrollViewportRenderBox {
     fn bind(&mut self, config: &SingleChildScrollView, ctx: &RenderContext) {
+        self.keyboard_enabled = config.keyboard_enabled;
         self.axis = config.axis;
         self.reverse = config.reverse;
         config.dimensions.set(self.dimensions.get());
@@ -219,6 +241,18 @@ impl ScrollViewportRenderBox {
             self.position = config.position.clone();
         }
         self.acquire(ctx);
+        if self.lease.is_some() {
+            if !Rc::ptr_eq(&self.keyboard, &config.keyboard) {
+                config.keyboard.inherit(&self.keyboard);
+            }
+            self.keyboard = config.keyboard.clone();
+            if !self.keyboard_enabled {
+                self.keyboard.disable();
+            }
+            if let Some(task) = &self.task {
+                *task.keyboard.borrow_mut() = self.keyboard.clone();
+            }
+        }
     }
     fn acquire(&mut self, ctx: &RenderContext) {
         if self.lease.is_none()
@@ -232,10 +266,11 @@ impl ScrollViewportRenderBox {
                     let _ = handle.mark_needs_layout();
                 }))
                 .ok();
-            self.task = Some(DimensionsTask::new(
+            self.task = Some(ViewportTask::new(
                 ctx.egui(),
                 &self.position,
                 ctx.handle(),
+                self.keyboard.clone(),
             ));
         }
     }
@@ -275,6 +310,8 @@ impl RenderObjectWidget for SingleChildScrollView {
             reverse: self.reverse,
             scale: self.scale.clone(),
             dimensions: self.dimensions.clone(),
+            keyboard: self.keyboard.clone(),
+            keyboard_enabled: self.keyboard_enabled,
             lease: None,
             subscription: None,
             task: None,
@@ -355,13 +392,23 @@ impl RenderBox for ScrollViewportRenderBox {
         geometry.clip = Clip::HardEdge;
         Ok(geometry)
     }
-    fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
+    fn paint(&mut self, ui: &mut egui::Ui, ctx: &RenderContext) {
+        self.keyboard.paint(
+            ui,
+            egui::Id::new(("rust-flutter-scroll-focus", ctx.element_id())),
+            self.axis,
+            self.reverse,
+            self.keyboard_enabled,
+        );
         let scale = ui
             .ctx()
             .layer_transform_to_global(ui.layer_id())
             .map_or(1.0, |t| t.scaling);
         self.scale
             .set((scale.is_finite() && scale > 0.0).then_some(scale));
+    }
+    fn paint_foreground(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
+        self.keyboard.paint_focus(ui);
     }
     fn dispose(&mut self) {
         self.release();
@@ -371,17 +418,26 @@ impl RenderBox for ScrollViewportRenderBox {
 #[derive(Clone, Copy)]
 struct Driver(u64);
 static NEXT_DRIVER: AtomicU64 = AtomicU64::new(1);
-thread_local! {static TASKS:RefCell<HashMap<u64,Vec<Weak<DimensionsTask>>>>=RefCell::new(HashMap::new());}
-struct DimensionsTask {
+thread_local! {static TASKS:RefCell<HashMap<u64,Vec<Weak<ViewportTask>>>>=RefCell::new(HashMap::new());}
+pub(super) struct ViewportTask {
     key: u64,
     viewport: egui::ViewportId,
     active: Cell<bool>,
     pending: Cell<Option<ScrollDimensions>>,
     position: WeakScrollPosition,
     handle: RenderHandle,
+    keyboard: RefCell<Rc<ScrollKeyboard>>,
 }
-impl DimensionsTask {
-    fn new(ctx: &egui::Context, position: &ScrollPosition, handle: RenderHandle) -> Rc<Self> {
+impl ViewportTask {
+    pub(super) fn keyboard_active(&self) -> bool {
+        self.active.get() && self.handle.mounted()
+    }
+    fn new(
+        ctx: &egui::Context,
+        position: &ScrollPosition,
+        handle: RenderHandle,
+        keyboard: Rc<ScrollKeyboard>,
+    ) -> Rc<Self> {
         let (key, new) = ctx.data_mut(|data| {
             let id = egui::Id::new("rust-flutter-scroll-dimensions");
             if let Some(driver) = data.get_temp::<Driver>(id) {
@@ -399,6 +455,7 @@ impl DimensionsTask {
             pending: Cell::new(None),
             position: position.downgrade(),
             handle,
+            keyboard: RefCell::new(keyboard),
         });
         TASKS.with(|tasks| {
             tasks
@@ -441,6 +498,12 @@ impl DimensionsTask {
                             task.pending.set(Some(dimensions));
                             ctx.request_repaint_of(task.viewport);
                         }
+                        if task.keyboard_active()
+                            && let Some(position) = task.position.upgrade()
+                        {
+                            let keyboard = task.keyboard.borrow().clone();
+                            keyboard.dispatch(&task, ctx, &position);
+                        }
                     }
                 }),
             );
@@ -448,7 +511,7 @@ impl DimensionsTask {
         task
     }
 }
-impl Drop for DimensionsTask {
+impl Drop for ViewportTask {
     fn drop(&mut self) {
         let _ = TASKS.try_with(|tasks| {
             if let Ok(mut tasks) = tasks.try_borrow_mut()

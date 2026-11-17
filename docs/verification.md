@@ -893,3 +893,28 @@ ARM Android compilation and 420 Rust tests remain green. This verifies injected
 OS mouse input on the stated emulator/ordinary APK path. It does not certify
 physical Android mouse hardware, macOS trackpad runtime, device-specific feel,
 accessibility scrolling or full Flutter parity.
+
+## Focused viewport keyboard scrolling
+
+The keyboard-scrolling implementation passes 435 workspace tests, including 15
+new keyboard tests for both axes/reverse, ordered key events, repeat-pass
+suppression, modifier handling, Tab traversal, child editor/button focus,
+opt-out/disabled/omitted views, motion cancellation, resize, unmount and
+reentrant listeners. Workspace Clippy with warnings denied, rustdoc, formatting
+and both renderer patch/resolution checks pass locally.
+
+The Linux X11/Xvfb rendered probe passes real xdotool End/Home, PageDown and
+ArrowDown input after focusing the retained viewport. It requires the final
+coral stripe at End, later content after pages/arrows and exact original blue
+pixels after Home. `desktop-result.json` records `native_keyboard=true` and
+`native_wheel=true`; existing touch/pan, clipping, RGB888, glyph, baseline,
+restoration and animation checks also pass. The End screenshot was visually
+inspected and shows the last stripe within the original 60-point clip and
+corner focus markers.
+
+Android probes now inject the equivalent OS key events (MOVE_END/MOVE_HOME,
+PAGE_DOWN and DPAD_DOWN). Adding those probes does not itself establish an
+Android runtime result; exact-revision CI results must be inspected separately.
+macOS runtime input, physical Android keyboards, nested keyboard bubbling,
+accessibility scrolling and full Focus/Actions/Shortcuts parity remain
+unverified or unfinished. See [keyboard behavior and scope](keyboard-scrolling.md).
