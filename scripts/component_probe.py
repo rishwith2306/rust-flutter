@@ -106,7 +106,7 @@ def probe_baselines(path, trace, scale=1.0):
             "tolerance_physical_pixels": 2.0}
 
 
-def probe_components(capture, tap, scale=1.0, drag=None):
+def probe_components(capture, tap, scale=1.0, drag=None, wheel=None):
     """capture(name) returns a PNG path; tap(x,y) injects a physical click/touch."""
     initial = capture("components-initial.png")
     blue = bounds(initial, "#1769aa")
@@ -298,4 +298,26 @@ def probe_components(capture, tap, scale=1.0, drag=None):
         raise AssertionError("controller jump did not reset scroll pixels")
     assert not bounds(reset_scroll_image, "#6f8e42") and not bounds(reset_scroll_image, "#b87657")
     exact_fill(reset_scroll_image, scroll_view, "#284b72", scale)
-    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "controller_reset": True, "hard_clip": True}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    wheel_verified = False
+    if wheel is not None:
+        wheel(*center(scroll_view), 4)
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            wheel_image = capture("components-scroll-wheel.png")
+            if not bounds(wheel_image, "#284b72") and (bounds(wheel_image, "#6f8e42") or bounds(wheel_image, "#b87657")):
+                break
+            time.sleep(0.1)
+        else:
+            raise AssertionError("native wheel did not scroll the retained viewport")
+        tap(*center(bounds(wheel_image, "#49614c")))
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            wheel_reset = capture("components-scroll-wheel-reset.png")
+            if bounds(wheel_reset, "#284b72") == scroll_view:
+                break
+            time.sleep(0.1)
+        else:
+            raise AssertionError("controller reset failed after native wheel input")
+        exact_fill(wheel_reset, scroll_view, "#284b72", scale)
+        wheel_verified = True
+    return {"scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

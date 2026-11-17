@@ -277,6 +277,7 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
         #[cfg(debug_assertions)]
         let drag_binding = widget.binding.downgrade();
         let config = GestureTargetConfig {
+            on_scroll: None,
             tap: Some((
                 TapConfig::default(),
                 TapCallbacks {
@@ -929,6 +930,16 @@ impl ComponentDemo {
                 self.binding.target_count(),
                 report.processed
             );
+        }
+        #[cfg(debug_assertions)]
+        if !report.scroll_claims.is_empty() {
+            eprintln!(
+                "rust-flutter gallery scroll-signal claimed={}",
+                report.scroll_claims.len()
+            );
+        }
+        if let Some(failure) = report.scroll_failures.first() {
+            ui.colored_label(egui::Color32::LIGHT_RED, failure.error.to_string());
         }
         if let Some(failure) = report.failures.first() {
             ui.colored_label(egui::Color32::LIGHT_RED, failure.error.to_string());

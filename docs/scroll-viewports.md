@@ -112,9 +112,11 @@ edge, require different content within the same clip, and click a controller
 reset to restore exact initial pixels. Existing spring, gesture, layout, glyph,
 baseline, asset and restoration gates remain required.
 
-This does not implement wheel/trackpad signal routing, scrollbars, keyboard/
+[Wheel and point-scroll signals](scroll-signals.md) now route through the shared
+binding with unit conversion and basic edge handoff. Full trackpad pan/zoom
+phases, scrollbars, keyboard/
 accessibility scrolling, keep-alive/restoration, ensureVisible, nested scrolling,
-lazy lists/grids/slivers, overscroll or platform feel. Reviewed
+lazy lists/grids/slivers, overscroll and platform feel remain unfinished. Reviewed
 [SingleChildScrollView](https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html)
 and its [viewport source](https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/widgets/single_child_scroll_view.dart);
 full member compatibility remains unproven. See also

@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 389 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 406 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -766,3 +766,42 @@ artifacts. This removes a plausible reset race; it is not proof of the whole
 cause of the earlier failure. The local full native probe passes with this
 harness, retaining every existing rendered/input/restoration assertion. A new
 revision's CI will check the updated startup path.
+
+
+### Persistent X display CI follow-up
+
+Revision `c5d4a37` passed all four jobs in
+[run 44121916695](https://github.com/rishwith2306/rust-flutter/actions/runs/44121916695),
+including Linux native viewport checks with `-noreset` and ordinary Android
+interactions/recreation. The earlier `203d873` Android artifacts independently
+record a passed 158-physical-pixel viewport, captured touch scroll, controller
+reset and hard clip. The startup follow-up establishes this run passed; it does
+not retrospectively prove the entire cause of the old display-open failure.
+
+## Immediate scroll-signal routing
+
+406 workspace tests pass, including 17 new signal tests. They cover first-willing
+resolution and validation, panic isolation, callback updates/disposal, expired hit
+target identity, FIFO ordering with reentrant pointer packets, units/modifiers,
+scale-aware points versus local line/page units, interruption, raw frame replay
+suppression, event-time/stationary cursor tracking, single-root input, front/
+disabled-root ordering, nested edge handoff and unfinished-frame cursor cleanup.
+Workspace/local x86_64 Android Clippy with warnings denied, Rustdoc, formatting,
+the executable signal guide and both renderer source/selection checks pass.
+
+The Linux Xvfb native probe passes real X11 wheel input against the retained
+viewport, reaching its content limit (120) and resetting to exact original blue
+pixels. Debug reports record six claimed normalized signals across three frames;
+this is not a wheel-notch calibration or device fidelity claim. The existing
+touch-like captured drag/reset, clip, spring, pointer arena, glyph/layout/assets
+and fresh-process restoration checks remain green. The shared scene records
+three roots/four targets, 27 processed frames, six marker taps and one marker pan.
+
+Android's host now emits a scroll packet's pointer location before its wheel
+signal. This mapping compiles locally; physical Android wheel input and actual
+macOS trackpad hardware remain unverified. Android's native probe continues to
+verify touch scrolling, not wheel input. This revision's exact CI is recorded
+separately. Generic signals share the binding queue but do not join the arena;
+full backend/viewport-global arbitration, trackpad phases/device settings,
+residual redistribution and full scrolling/accessibility/member parity remain
+unfinished. See [signal semantics and limits](scroll-signals.md).

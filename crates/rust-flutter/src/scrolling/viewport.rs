@@ -18,7 +18,7 @@ use std::{
 
 /// Eager retained single-child viewport with primary-pointer pan input.
 /// The caller owns the position/controller attachment and uses this binding
-/// with ElementTree's gesture-aware show methods. No wheel adapter is added yet.
+/// with ElementTree's gesture-aware show methods for pan and scroll signals.
 #[derive(Clone)]
 pub struct SingleChildScrollView {
     position: ScrollPosition,
@@ -61,7 +61,58 @@ impl SingleChildScrollView {
         let sign = if self.reverse { 1.0 } else { -1.0 };
         let update_scale = self.scale.clone();
         let end_scale = self.scale.clone();
+        let scroll = self.position.downgrade();
+        let scroll_dimensions = self.dimensions.clone();
+        let scroll_scale = self.scale.clone();
+        let reverse = self.reverse;
         let config = GestureTargetConfig {
+            on_scroll: Some(Rc::new(move |event| {
+                if event.modifiers.ctrl || event.modifiers.command {
+                    return false;
+                }
+                let Some(position) = scroll.upgrade().filter(|p| !p.is_disposed()) else {
+                    return false;
+                };
+                let Some(dimensions) = scroll_dimensions.get().or_else(|| position.dimensions())
+                else {
+                    return false;
+                };
+                let raw = if event.modifiers.shift && event.scroll_delta.x == 0.0 {
+                    if axis == Axis::Horizontal {
+                        event.scroll_delta.y
+                    } else {
+                        0.0
+                    }
+                } else {
+                    main(axis, event.scroll_delta)
+                };
+                let multiplier = match event.unit {
+                    ScrollSignalUnit::Points => {
+                        let Some(scale) = scroll_scale.get() else {
+                            return false;
+                        };
+                        1.0 / f64::from(scale)
+                    }
+                    ScrollSignalUnit::Lines => 20.0,
+                    ScrollSignalUnit::Pages => f64::from(dimensions.viewport_dimension()),
+                };
+                let delta = f64::from(raw) * multiplier * if reverse { -1.0 } else { 1.0 };
+                let current = position.pixels().clamp(
+                    dimensions.min_scroll_extent(),
+                    dimensions.max_scroll_extent(),
+                );
+                let target = (f64::from(current) + delta).clamp(
+                    f64::from(dimensions.min_scroll_extent()),
+                    f64::from(dimensions.max_scroll_extent()),
+                ) as f32;
+                if target == current {
+                    return false;
+                }
+                if position.apply_dimensions(dimensions).is_err() {
+                    return false;
+                }
+                position.jump_to(target).is_ok()
+            })),
             pan: Some((
                 PanConfig {
                     start_behavior: DragStartBehavior::Down,
@@ -107,7 +158,7 @@ impl SingleChildScrollView {
                     })),
                 },
             )),
-            ..Default::default()
+            tap: None,
         };
         let detector = GestureDetector::new(&self.binding, config)
             .map_err(ScrollError::Binding)?

@@ -1,11 +1,17 @@
 use super::*;
 #[path = "scene.rs"]
 mod scene;
+#[path = "signals.rs"]
+mod signals;
 use crate::{
     egui::{Id, Pos2},
     layout::LayoutBox,
 };
 pub use scene::GestureFrame;
+use signals::ScrollPacket;
+pub use signals::{
+    PointerScrollEvent, ScrollCallback, ScrollClaim, ScrollDispatchFailure, ScrollSignalUnit,
+};
 use std::{
     cell::{Cell, RefCell},
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
@@ -16,6 +22,7 @@ use std::{
 pub struct GestureTargetConfig {
     pub tap: Option<(TapConfig, TapCallbacks)>,
     pub pan: Option<(PanConfig, PanCallbacks)>,
+    pub on_scroll: Option<ScrollCallback>,
 }
 impl GestureTargetConfig {
     fn tap_config(&self) -> Option<TapConfig> {
@@ -73,6 +80,8 @@ pub enum BindingError {
     MissingDown(PointerId),
     OldTimestamp(PointerId),
     InvalidPosition,
+    InvalidScrollDelta,
+    ScrollCallbackPanicked(Id),
     Recognizer(RecognizerError),
     Arena(ArenaError),
 }
@@ -94,6 +103,8 @@ pub struct DispatchReport {
     /// Reentrant calls enqueue work; the outer dispatch reports its outcome.
     pub queued: bool,
     pub failures: Vec<DispatchFailure>,
+    pub scroll_claims: Vec<ScrollClaim>,
+    pub scroll_failures: Vec<ScrollDispatchFailure>,
 }
 type Callback<T> = Option<Rc<dyn Fn(T)>>;
 fn forward<T: 'static>(
@@ -221,7 +232,11 @@ impl Target {
         }
     }
 }
-struct Packet {
+enum Packet {
+    Pointer(PointerPacket),
+    Scroll(ScrollPacket),
+}
+struct PointerPacket {
     event: PointerEvent,
     path: Vec<(Id, Weak<Target>)>,
 }
@@ -248,6 +263,7 @@ struct EguiHost {
     collecting: Option<(u64, u64)>,
     next_lease: u64,
     previous_targets: Vec<Weak<Target>>,
+    cursor: Option<Pos2>,
 }
 impl Inner {
     fn remove(&self, id: Id, generation: u64) -> bool {
@@ -281,7 +297,7 @@ impl Inner {
         }
         self.router.dispose();
     }
-    fn dispatch_one(&self, packet: Packet) -> Result<(), BindingError> {
+    fn dispatch_one(&self, packet: PointerPacket) -> Result<(), BindingError> {
         let event = packet.event;
         if self.arena.is_disposed() || self.router.is_disposed() {
             self.shutdown();
@@ -481,7 +497,10 @@ impl GestureBinding {
             .state
             .borrow_mut()
             .queue
-            .push_back(Packet { event, path });
+            .push_back(Packet::Pointer(PointerPacket { event, path }));
+        self.drain()
+    }
+    fn drain(&self) -> DispatchReport {
         if self.0.dispatching.replace(true) {
             return DispatchReport {
                 queued: true,
@@ -501,10 +520,26 @@ impl GestureBinding {
             let Some(packet) = packet else {
                 break;
             };
-            let event = packet.event;
             report.processed += 1;
-            if let Err(error) = self.0.dispatch_one(packet) {
-                report.failures.push(DispatchFailure { event, error });
+            match packet {
+                Packet::Pointer(packet) => {
+                    let event = packet.event;
+                    if let Err(error) = self.0.dispatch_one(packet) {
+                        report.failures.push(DispatchFailure { event, error });
+                    }
+                }
+                Packet::Scroll(packet) => {
+                    let event = packet.event;
+                    match self.0.dispatch_scroll_one(packet) {
+                        Ok(Some(target)) => {
+                            report.scroll_claims.push(ScrollClaim { event, target })
+                        }
+                        Ok(None) => {}
+                        Err(error) => report
+                            .scroll_failures
+                            .push(ScrollDispatchFailure { event, error }),
+                    }
+                }
             }
         }
         report
@@ -536,8 +571,12 @@ impl GestureBinding {
             let pending: HashSet<_> = state
                 .queue
                 .iter()
-                .filter(|p| p.event.phase == PointerPhase::Cancel)
-                .map(|p| p.event.pointer)
+                .filter_map(|p| match p {
+                    Packet::Pointer(p) if p.event.phase == PointerPhase::Cancel => {
+                        Some(p.event.pointer)
+                    }
+                    _ => None,
+                })
                 .collect();
             state
                 .active
@@ -562,9 +601,7 @@ impl GestureBinding {
                 },
                 [],
             );
-            report.processed += r.processed;
-            report.queued |= r.queued;
-            report.failures.extend(r.failures);
+            report.merge(r);
         }
         report
     }
@@ -617,6 +654,7 @@ impl GestureBinding {
                     collecting: None,
                     next_lease: 0,
                     previous_targets: Vec::new(),
+                    cursor: None,
                 });
             }
         }
@@ -627,6 +665,7 @@ impl GestureBinding {
             DispatchReport::default()
         };
         if !focused || !ui.is_enabled() {
+            self.set_cursor(None);
             report.merge(self.cancel_all());
             return Ok(report);
         }
@@ -640,14 +679,52 @@ impl GestureBinding {
             buttons,
             device: PointerDeviceKind::Unknown,
         };
+        let mut cursor = self.cursor(ui.ctx(), &events);
         let mut merge = |r: DispatchReport| {
-            report.processed += r.processed;
-            report.queued |= r.queued;
-            report.failures.extend(r.failures);
+            report.merge(r);
         };
         for event in events {
+            match &event {
+                Event::PointerMoved(pos) | Event::PointerButton { pos, .. } => cursor = Some(*pos),
+                Event::PointerGone | Event::WindowFocused(false) => cursor = None,
+                _ => {}
+            }
             let active = self.0.state.borrow().active.contains_key(&pointer);
             match event {
+                Event::MouseWheel {
+                    unit,
+                    delta,
+                    modifiers,
+                } => {
+                    if let Some(position) = cursor
+                        && position.x >= ui.clip_rect().min.x
+                        && position.y >= ui.clip_rect().min.y
+                        && position.x < ui.clip_rect().max.x
+                        && position.y < ui.clip_rect().max.y
+                        && position.x >= origin.x
+                        && position.y >= origin.y
+                        && position.x < origin.x + geometry.size.x
+                        && position.y < origin.y + geometry.size.y
+                    {
+                        let signal = self.dispatch_scroll_layout(
+                            signals::from_egui(position, unit, delta, modifiers, time),
+                            geometry,
+                            origin,
+                        );
+                        if !signal.scroll_claims.is_empty()
+                            || signal
+                                .scroll_failures
+                                .iter()
+                                .any(|f| matches!(f.error, BindingError::ScrollCallbackPanicked(_)))
+                        {
+                            ui.input_mut(|i| {
+                                i.raw_scroll_delta = crate::egui::Vec2::ZERO;
+                                i.smooth_scroll_delta = crate::egui::Vec2::ZERO;
+                            });
+                        }
+                        merge(signal);
+                    }
+                }
                 Event::PointerButton {
                     pos,
                     button: PointerButton::Primary,
@@ -695,6 +772,7 @@ impl GestureBinding {
                 _ => {}
             }
         }
+        self.set_cursor(cursor);
         self.0.arena.flush();
         Ok(report)
     }

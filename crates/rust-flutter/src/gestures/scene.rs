@@ -31,6 +31,8 @@ impl DispatchReport {
         self.processed += other.processed;
         self.queued |= other.queued;
         self.failures.extend(other.failures);
+        self.scroll_claims.extend(other.scroll_claims);
+        self.scroll_failures.extend(other.scroll_failures);
     }
 }
 impl GestureBinding {
@@ -51,6 +53,7 @@ impl GestureBinding {
             collecting: None,
             next_lease: 0,
             previous_targets: Vec::new(),
+            cursor: None,
         });
         if host.context != *context || host.viewport != viewport {
             return Err(BindingError::HostChanged);
@@ -286,6 +289,7 @@ impl GestureFrame {
                 .context
                 .input(|i| (i.focused, i.time, i.events.clone()));
             if !focused {
+                self.binding.set_cursor(None);
                 report.merge(self.binding.cancel_all());
             } else {
                 let time = std::time::Duration::try_from_secs_f64(time).unwrap_or_default();
@@ -298,12 +302,47 @@ impl GestureFrame {
                     buttons,
                     device: PointerDeviceKind::Unknown,
                 };
+                let mut cursor = self.binding.cursor(&self.context, &events);
                 for event in events {
+                    match &event {
+                        egui::Event::PointerMoved(pos) | egui::Event::PointerButton { pos, .. } => {
+                            cursor = Some(*pos)
+                        }
+                        egui::Event::PointerGone | egui::Event::WindowFocused(false) => {
+                            cursor = None
+                        }
+                        _ => {}
+                    }
                     if self.binding.is_disposed() {
                         break;
                     }
                     let active = self.binding.0.state.borrow().active.contains_key(&pointer);
                     match event {
+                        egui::Event::MouseWheel {
+                            unit,
+                            delta,
+                            modifiers,
+                        } => {
+                            if let Some(position) = cursor
+                                && let Some(path) = self.path_at(position)
+                            {
+                                let signal = self.binding.dispatch_scroll(
+                                    signals::from_egui(position, unit, delta, modifiers, time),
+                                    path,
+                                );
+                                if !signal.scroll_claims.is_empty()
+                                    || signal.scroll_failures.iter().any(|f| {
+                                        matches!(f.error, BindingError::ScrollCallbackPanicked(_))
+                                    })
+                                {
+                                    self.context.input_mut(|i| {
+                                        i.raw_scroll_delta = egui::Vec2::ZERO;
+                                        i.smooth_scroll_delta = egui::Vec2::ZERO;
+                                    });
+                                }
+                                report.merge(signal);
+                            }
+                        }
                         egui::Event::PointerButton {
                             pos,
                             button: egui::PointerButton::Primary,
@@ -346,6 +385,7 @@ impl GestureFrame {
                         _ => {}
                     }
                 }
+                self.binding.set_cursor(cursor);
             }
         }
         self.binding.arena().flush();
@@ -367,6 +407,7 @@ impl GestureFrame {
 impl Drop for GestureFrame {
     fn drop(&mut self) {
         if !self.finished && self.release() {
+            self.binding.set_cursor(None);
             self.binding.cancel_all();
         }
     }

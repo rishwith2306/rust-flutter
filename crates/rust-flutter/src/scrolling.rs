@@ -1,6 +1,7 @@
 //! UI-local scroll positions, metrics and controller attachments.
 //! Eager retained single-child viewports support captured primary-pointer pans.
-//! Wheel routing, lazy slivers and platform scroll physics remain unfinished.
+//! Wheel/point-scroll signals use the shared binding. Lazy slivers and platform
+//! scroll physics remain unfinished.
 mod controller;
 mod position;
 mod viewport;

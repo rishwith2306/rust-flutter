@@ -29,6 +29,7 @@ fn config(log: &Log, name: &str, pan: bool) -> GestureTargetConfig {
         name.to_string(),
     );
     GestureTargetConfig {
+        on_scroll: None,
         tap: Some((
             TapConfig::default(),
             TapCallbacks {

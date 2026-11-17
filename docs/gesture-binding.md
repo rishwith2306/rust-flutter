@@ -115,7 +115,8 @@ StateHandle callbacks queue updates and request repaint; the already-laid-out
 frame is painted before those component updates are applied on a later flush.
 
 The adapter normalizes egui's primary pointer as ID 0 with `Unknown` device kind.
-It does not yet bind raw multitouch, hover, pointer signals or trackpad pan/zoom.
+[Immediate scroll signals](scroll-signals.md) now share the binding queue and hit
+paths. Raw multitouch, general hover and trackpad pan/zoom remain pending.
 Ordinary backend egui controls continue to use their own input system and do not join
 these arenas automatically. GestureButton is an opt-in arena-backed bridge. Combining such a control and a detector can therefore
 produce independent callbacks. A shared GestureFrame now handles multiple roots in one viewport. Global

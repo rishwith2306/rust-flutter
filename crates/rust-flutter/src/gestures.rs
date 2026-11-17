@@ -6,7 +6,8 @@ pub use button::{GestureButton, GestureButtonRenderBox};
 mod detector;
 pub use binding::{
     BindingError, DispatchFailure, DispatchReport, GestureBinding, GestureFrame, GestureTarget,
-    GestureTargetConfig, WeakGestureBinding,
+    GestureTargetConfig, PointerScrollEvent, ScrollCallback, ScrollClaim, ScrollDispatchFailure,
+    ScrollSignalUnit, WeakGestureBinding,
 };
 pub use detector::{GestureDetector, GestureDetectorRenderBox};
 mod recognizers;

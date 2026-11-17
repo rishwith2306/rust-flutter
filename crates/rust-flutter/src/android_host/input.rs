@@ -47,6 +47,11 @@ impl Input {
                     }
                     MotionAction::Scroll => {
                         use android_activity::input::Axis;
+                        let pointer = motion.pointer_at_index(0);
+                        self.events.push(egui::Event::PointerMoved(egui::pos2(
+                            pointer.x() / scale,
+                            pointer.y() / scale,
+                        )));
                         self.events.push(egui::Event::MouseWheel {
                             unit: egui::MouseWheelUnit::Line,
                             delta: egui::vec2(

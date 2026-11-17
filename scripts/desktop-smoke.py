@@ -144,7 +144,10 @@ try:
                     assert xdo("mousemove", "--sync", "--window", window, str(round(x+(end_x-x)*step/4)), str(round(y+(end_y-y)*step/4))).returncode == 0
                     time.sleep(0.05)
                 assert xdo("mouseup", "1").returncode == 0
-            components = probe_components(component_capture, lambda x,y: click(window, round(x), round(y)), drag=component_drag)
+            def component_wheel(x, y, steps):
+                assert xdo("mousemove", "--window", window, str(round(x)), str(round(y))).returncode == 0
+                assert xdo("click", "--repeat", str(abs(steps)), "--delay", "120", "5" if steps > 0 else "4").returncode == 0
+            components = probe_components(component_capture, lambda x,y: click(window, round(x), round(y)), drag=component_drag, wheel=component_wheel)
             def view_report():
                 matches = re.findall(r"inherited-view build=(\d+) size=([\d.]+)x([\d.]+) keyboard=(\w+)", (output / "gallery.log").read_text())
                 return matches[-1] if matches else None
