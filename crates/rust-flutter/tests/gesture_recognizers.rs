@@ -55,7 +55,7 @@ fn pan_callbacks(log: &Log) -> PanCallbacks {
             c.borrow_mut().push(Record::Update(details.delta))
         })),
         on_end: Some(Rc::new(move |event| {
-            d.borrow_mut().push(Record::End(event.position))
+            d.borrow_mut().push(Record::End(event.event.position))
         })),
         on_cancel: Some(Rc::new(move |_| e.borrow_mut().push(Record::Cancel("pan")))),
     }

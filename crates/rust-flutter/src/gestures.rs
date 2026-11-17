@@ -11,14 +11,19 @@ pub use binding::{
 pub use detector::{GestureDetector, GestureDetectorRenderBox};
 mod recognizers;
 mod router;
+mod velocity;
 pub use arena::{
     ArenaError, ArenaSnapshot, GestureArenaEntry, GestureArenaManager, GestureArenaMember,
     GestureDisposition, PointerId, WeakGestureArenaManager,
 };
 pub use recognizers::{
-    DragStartBehavior, DragUpdateDetails, PanCallbacks, PanConfig, PanGestureRecognizer,
-    PointerButtons, PointerDeviceKind, PointerEvent, PointerPhase, RecognizerError, TapCallbacks,
-    TapConfig, TapDetails, TapGestureRecognizer, WeakPanGestureRecognizer,
-    WeakTapGestureRecognizer,
+    DragEndDetails, DragStartBehavior, DragUpdateDetails, PanCallbacks, PanConfig,
+    PanGestureRecognizer, PointerButtons, PointerDeviceKind, PointerEvent, PointerPhase,
+    RecognizerError, TapCallbacks, TapConfig, TapDetails, TapGestureRecognizer,
+    WeakPanGestureRecognizer, WeakTapGestureRecognizer,
 };
 pub use router::{PointerRoute, PointerRouter, PointerRouterError, WeakPointerRouter};
+pub use velocity::{
+    Fling, FlingConfig, Velocity, VelocityError, VelocityEstimate, VelocityEstimateStatus,
+    VelocityTracker, VelocityTrackerConfig,
+};

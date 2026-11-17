@@ -255,6 +255,7 @@ struct AnimatedMarker {
 struct AnimatedMarkerState {
     expanded: bool,
     dragged: bool,
+    released: bool,
 }
 impl StatefulWidget for AnimatedMarker {
     type State = AnimatedMarkerState;
@@ -262,6 +263,7 @@ impl StatefulWidget for AnimatedMarker {
         AnimatedMarkerState {
             expanded: false,
             dragged: false,
+            released: false,
         }
     }
 }
@@ -269,6 +271,7 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
     fn build(&mut self, widget: &AnimatedMarker, ctx: &StateContext<Self>) -> Widget {
         let tap = ctx.handle();
         let drag = ctx.handle();
+        let end = ctx.handle();
         #[cfg(debug_assertions)]
         let tap_binding = widget.binding.downgrade();
         #[cfg(debug_assertions)]
@@ -300,6 +303,26 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
             pan: Some((
                 PanConfig::default(),
                 PanCallbacks {
+                    on_end: Some(Rc::new(move |_details| {
+                        #[cfg(debug_assertions)]
+                        if let Some(estimate) = _details.estimate {
+                            let velocity = _details.velocity.pixels_per_second();
+                            let raw = estimate.velocity.pixels_per_second();
+                            eprintln!(
+                                "rust-flutter gallery pan-end vx={} vy={} raw_x={} raw_y={} confidence={} samples={} age_ms={} status={:?} fling={}",
+                                velocity.x,
+                                velocity.y,
+                                raw.x,
+                                raw.y,
+                                estimate.confidence,
+                                estimate.samples,
+                                estimate.age.as_secs_f64() * 1000.0,
+                                estimate.status,
+                                _details.is_fling
+                            );
+                        }
+                        let _ = end.update(|state| state.released = true);
+                    })),
                     on_start: Some(Rc::new(move |_| {
                         #[cfg(debug_assertions)]
                         eprintln!("rust-flutter gallery gesture-arena drag accepted");
@@ -318,6 +341,7 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
             )),
         };
         let dragged = self.dragged;
+        let released = self.released;
         let marker = rust_flutter::animation::TweenAnimationBuilder::new(
             24.0_f32,
             if self.expanded { 48.0 } else { 24.0 },
@@ -345,6 +369,24 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
                     StackStyle::default(),
                     vec![
                         StackItem::new(decorated),
+                        StackItem::positioned(
+                            Widget::leaf(egui::Vec2::ZERO, move |ui| {
+                                if released {
+                                    ui.painter().rect_filled(
+                                        ui.max_rect(),
+                                        0.0,
+                                        egui::Color32::from_rgb(72, 199, 189),
+                                    );
+                                }
+                            }),
+                            rust_flutter::layout::Positioned {
+                                right: Some(2.0),
+                                top: Some(2.0),
+                                width: Some(4.0),
+                                height: Some(4.0),
+                                ..Default::default()
+                            },
+                        ),
                         StackItem::positioned(
                             Widget::leaf(egui::Vec2::ZERO, move |ui| {
                                 if dragged {

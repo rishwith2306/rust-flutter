@@ -66,12 +66,16 @@ pub enum DragStartBehavior {
 pub struct PanConfig {
     pub slop: f32,
     pub start_behavior: DragStartBehavior,
+    pub velocity: VelocityTrackerConfig,
+    pub fling: FlingConfig,
 }
 impl Default for PanConfig {
     fn default() -> Self {
         Self {
             slop: 18.0,
             start_behavior: DragStartBehavior::Start,
+            velocity: VelocityTrackerConfig::default(),
+            fling: FlingConfig::default(),
         }
     }
 }
@@ -85,6 +89,15 @@ pub struct DragUpdateDetails {
     pub event: PointerEvent,
     pub delta: Vec2,
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DragEndDetails {
+    pub event: PointerEvent,
+    /// Effective fling velocity, zero for non-flings; inspect estimate for raw
+    /// fitted motion even when it does not pass the fling thresholds.
+    pub velocity: Velocity,
+    pub is_fling: bool,
+    pub estimate: Option<VelocityEstimate>,
+}
 /// Down is immediate candidate feedback, not an arena victory. Cancel follows a
 /// candidate that cannot complete; tap requires both an up and an arena win.
 #[derive(Clone, Default)]
@@ -93,17 +106,18 @@ pub struct TapCallbacks {
     pub on_tap: Option<Rc<dyn Fn(TapDetails)>>,
     pub on_cancel: Option<Rc<dyn Fn(PointerId)>>,
 }
-/// End currently contains the final sample, without velocity/fling estimation.
+/// Pan end carries the final sample and a release-time velocity estimate.
 #[derive(Clone, Default)]
 pub struct PanCallbacks {
     pub on_down: Option<Rc<dyn Fn(PointerEvent)>>,
     pub on_start: Option<Rc<dyn Fn(PointerEvent)>>,
     pub on_update: Option<Rc<dyn Fn(DragUpdateDetails)>>,
-    pub on_end: Option<Rc<dyn Fn(PointerEvent)>>,
+    pub on_end: Option<Rc<dyn Fn(DragEndDetails)>>,
     pub on_cancel: Option<Rc<dyn Fn(PointerId)>>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RecognizerError {
+    Velocity(VelocityError),
     InvalidSlop,
     InvalidPosition,
     ExpectedDown,
@@ -116,6 +130,7 @@ pub enum RecognizerError {
 impl std::fmt::Display for RecognizerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Velocity(error) => error.fmt(f),
             Self::InvalidSlop => f.write_str("gesture slop must be finite and nonnegative"),
             Self::InvalidPosition => f.write_str("pointer position must be finite"),
             Self::ExpectedDown => f.write_str("recognizer registration requires a down event"),
@@ -145,6 +160,7 @@ struct Sequence {
     up: bool,
     entry: GestureArenaEntry,
     route: Option<PointerRoute<PointerEvent>>,
+    velocity: Option<VelocityTracker>,
 }
 #[derive(Default)]
 struct State {
@@ -241,6 +257,17 @@ impl Core {
                 .checked_add(1)
                 .ok_or(RecognizerError::IdExhausted)?
         };
+        let velocity = match &self.policy {
+            Policy::Pan(config, _) => {
+                let mut tracker = VelocityTracker::with_config(event.device, config.velocity)
+                    .map_err(RecognizerError::Velocity)?;
+                tracker
+                    .add_position(event.time, event.position)
+                    .map_err(RecognizerError::Velocity)?;
+                Some(tracker)
+            }
+            _ => None,
+        };
         let arena = self
             .arena
             .upgrade()
@@ -283,6 +310,7 @@ impl Core {
                 up: false,
                 entry,
                 route: Some(route),
+                velocity,
             });
         }
         match &self.policy {
@@ -438,9 +466,25 @@ impl Core {
         };
         if let Some(s) = completed {
             let last = s.last;
+            let estimate = s.velocity.as_ref().and_then(|t| t.estimate_at(last.time));
             drop(s);
-            if let Policy::Pan(_, cb) = &self.policy {
-                invoke(&cb.on_end, last);
+            if let Policy::Pan(config, cb) = &self.policy {
+                let fling = estimate
+                    .as_ref()
+                    .and_then(|e| config.fling.classify(e).ok())
+                    .unwrap_or(Fling {
+                        velocity: Velocity::ZERO,
+                        is_fling: false,
+                    });
+                invoke(
+                    &cb.on_end,
+                    DragEndDetails {
+                        event: last,
+                        velocity: fling.velocity,
+                        is_fling: fling.is_fling,
+                        estimate,
+                    },
+                );
             }
         }
     }
@@ -479,6 +523,16 @@ impl Core {
             }
             let delta = event.position - s.last.position;
             if !delta.is_finite() {
+                drop(state);
+                self.cancel_generation(generation);
+                return;
+            }
+            // A stationary up checks elapsed time without inventing another
+            // motion sample. A changed up position contributes its final motion.
+            if let Some(tracker) = &mut s.velocity
+                && (event.phase != PointerPhase::Up || delta != Vec2::ZERO)
+                && tracker.add_position(event.time, event.position).is_err()
+            {
                 drop(state);
                 self.cancel_generation(generation);
                 return;
@@ -618,6 +672,11 @@ impl PanGestureRecognizer {
         if !valid_slop(config.slop) {
             return Err(RecognizerError::InvalidSlop);
         }
+        config
+            .velocity
+            .validate()
+            .map_err(RecognizerError::Velocity)?;
+        config.fling.validate().map_err(RecognizerError::Velocity)?;
         Ok(Self(Core::new(
             arena,
             router,

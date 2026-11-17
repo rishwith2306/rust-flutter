@@ -37,6 +37,13 @@ impl GestureTargetConfig {
             .map(|(c, _)| *c)
     }
     pub(super) fn validate(&self) -> Result<(), BindingError> {
+        if let Some((config, _)) = &self.pan {
+            config
+                .velocity
+                .validate()
+                .and_then(|_| config.fling.validate())
+                .map_err(|e| BindingError::Recognizer(RecognizerError::Velocity(e)))?;
+        }
         let valid = |v: f32| v.is_finite() && v >= 0.0;
         if self
             .tap

@@ -85,8 +85,7 @@ With `DragStartBehavior::Start`, start uses the latest recognition position and
 pre-start movement is omitted. With `Down`, start uses the original down sample
 and the first update contains accumulated displacement. Subsequent nonzero
 updates report global logical deltas. Up delivers any final movement before
-`on_end`; end currently contains the final sample without velocity or fling
-estimation. Cancel can follow start and replaces end when a running pan stops.
+`on_end`; it now receives [DragEndDetails with release velocity and fling classification](gesture-velocity.md). Cancel can follow start and replaces end when a running pan stops.
 
 ## Ownership and reentrancy
 
@@ -120,7 +119,7 @@ protocol errors/rollback, callback panics and reentrant input/reuse. A private
 test verifies sequence-ID exhaustion rollback.
 
 Global multi-viewport binding, general backend control arbitration, secondary/tertiary taps, deadlines, double/long
-taps, axis drags, device settings, velocity/flings, drag teams, multitouch
+taps, axis drags, device settings, alternate velocity strategies and fling/scroll simulations, drag teams, multitouch
 strategies, local transforms, scale/rotation, pointer signals and pan/zoom events,
 scrolling physics and semantics remain unfinished. The immediate tap-down timing
 and radial pan threshold are explicit current policies. Full member-level

@@ -3,6 +3,7 @@ Uses injected pointer events and image patches, without component state backdoor
 Image operations require ImageMagick's convert. Coordinates are physical pixels.
 """
 import re
+import math
 import subprocess
 import time
 
@@ -71,6 +72,22 @@ def probe_baselines(path, trace, scale=1.0):
     assert shared_frames >= 4, shared_frames
     binding_pans = trace.count("gesture-binding pan targets=3 pointers=1")
     assert binding_taps >= 4 and binding_pans >= 1, (binding_taps, binding_pans)
+    ends = re.findall(r"pan-end vx=([\d.eE+-]+) vy=([\d.eE+-]+) raw_x=([\d.eE+-]+) raw_y=([\d.eE+-]+) confidence=([\d.eE+-]+) samples=(\d+) age_ms=([\d.eE+-]+) status=(Fitted|Unavailable|Stopped) fling=(true|false)", trace)
+    assert ends, "missing rich pan-end details"
+    for vx, vy, raw_x, raw_y, confidence, samples, age_ms, status, fling in ends:
+        values = list(map(float, (vx, vy, raw_x, raw_y, confidence)))
+        assert all(math.isfinite(v) for v in values), values
+        assert 0.0 <= values[4] <= 1.0 and int(samples) <= 20, (confidence, samples)
+        assert math.hypot(values[0], values[1]) <= 8000.01, values[:2]
+        age = float(age_ms)
+        assert math.isfinite(age) and age >= 0.0, age
+        assert (age > 40.0) if status == "Stopped" else (age <= 40.0), (age, status)
+        if status == "Fitted":
+            assert int(samples) >= 3, samples
+        if fling == "false":
+            assert values[:2] == [0.0, 0.0], values[:2]
+        else:
+            assert status == "Fitted" and math.hypot(values[2], values[3]) > 50.0, (status, values)
     implicit_completions = trace.count("implicit-animation end")
     assert implicit_completions >= 4, f"missing implicit completion callbacks: {implicit_completions}"
     foreground = bounds(path, "#834eb3")
@@ -78,7 +95,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
@@ -212,6 +229,11 @@ def probe_components(capture, tap, scale=1.0, drag=None):
     feedback_x, feedback_y = center(feedback)
     pixel = subprocess.check_output(["convert", str(dragged), "-alpha", "off", "-crop", f"1x1+{int(feedback_x)}+{int(feedback_y)}", "-depth", "8", "rgb:-"], timeout=15)
     assert pixel == bytes.fromhex("d2618d"), pixel.hex()
+    ended = bounds(dragged, "#48c7bd")
+    assert ended, "pan end did not render release feedback"
+    end_x, end_y = center(ended)
+    pixel = subprocess.check_output(["convert", str(dragged), "-alpha", "off", "-crop", f"1x1+{int(end_x)}+{int(end_y)}", "-depth", "8", "rgb:-"], timeout=15)
+    assert pixel == bytes.fromhex("48c7bd"), pixel.hex()
     tap(*center(drag_marker))
     after_drag_expanded, after_drag_large = await_width("components-arena-tap-after-drag.png", 48)
     tap(*center(after_drag_large))
@@ -219,4 +241,4 @@ def probe_components(capture, tap, scale=1.0, drag=None):
 
 
 
-    return {"gesture_arena": {"passed": True, "drag_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    return {"gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

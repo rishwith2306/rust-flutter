@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 305 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 321 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -588,5 +588,32 @@ invalidates an earlier ready record. Eight GPU-free parser regression tests
 pass, alongside four IME tests, 305 Rust tests and local Android Clippy. Startup
 and failed counter assertions now save trace/screenshot diagnostics. Exact
 counter, restoration, pixel/glyph and gesture assertions remain required.
-The follow-up native CI run records whether this closes the observed failure;
-the stale-log defect alone does not prove the entire cause of the missed tap.
+The follow-up revision `3c8d8ea` passed all four jobs in
+[run 44080879231](https://github.com/rishwith2306/rust-flutter/actions/runs/44080879231),
+including ordinary Android input/restoration and three same-process activity
+recreations. This establishes that run passed; it does not prove the entire
+cause of the earlier missed tap.
+
+
+## Bounded velocity estimates and pan release details
+
+The workspace passes 321 tests, including 16 new analytic velocity/release tests.
+They cover linear and quadratic motion, finite numerical limits, equal/older
+sample times, bounded history, pause detection, strict fling thresholds and
+clamping, invalid configuration rollback, and release timestamps preserved
+through delayed arena acceptance. The guide's executable Rust example passes.
+Formatting, workspace Clippy with warnings denied, Rustdoc and both renderer
+provenance/selection checks pass locally.
+
+The Linux Xvfb native probe passes exact cyan release-feedback and pink
+start-feedback pixels, rejects tap during drag, and accepts the next tap. Its
+release records a stopped estimate with zero effective velocity and 56.134081 ms
+sample age, consistent with the 40 ms stop policy. All counter, glyph, animation,
+layout, asset and restoration checks remain required and pass. This verifies
+release delivery and valid metadata, not precise physical fling measurements.
+Android/macOS results for this shipment are recorded by its exact-revision CI.
+
+This adds release data, not scrolling or inertial simulations. The egui adapter
+still timestamps at frame time; raw device history, platform-specific strategies,
+axis/local-coordinate details and full Flutter gesture compatibility remain
+unfinished. See [velocity scope and API migration](gesture-velocity.md).
