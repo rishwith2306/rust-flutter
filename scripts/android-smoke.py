@@ -219,7 +219,8 @@ tap(80, 393)
 wait_state(route="components")
 time.sleep(1)
 components = probe_components(lambda name: screenshot("android-" + name),
-    lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))), args.scale)
+    lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))), args.scale,
+    drag=lambda x,y,end_x,end_y: device("shell", "input", "swipe", str(round(x)), str(round(y)), str(round(end_x)), str(round(end_y)), "400"))
 device("shell", "input", "keyevent", "4")
 wait_state(route="home")
 pid = device("shell", "pidof", package).stdout.decode().strip()

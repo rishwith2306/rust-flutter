@@ -62,6 +62,10 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(line_y - large_y) <= 2.0, (line_y, large_y)
     animation_values = [float(value) for value in re.findall(r"animation value=([\d.eE+-]+)", trace)]
     assert any(0.0 < value < 1.0 for value in animation_values), "missing intermediate frame-driven animation"
+    arena_taps = trace.count("gesture-arena tap accepted")
+    arena_drags = trace.count("gesture-arena drag accepted")
+    assert arena_taps >= 4 and arena_drags >= 1, (arena_taps, arena_drags)
+    assert "gesture-arena tap rejected" in trace, "drag did not reject the tap candidate"
     implicit_completions = trace.count("implicit-animation end")
     assert implicit_completions >= 4, f"missing implicit completion callbacks: {implicit_completions}"
     foreground = bounds(path, "#834eb3")
@@ -69,13 +73,13 @@ def probe_baselines(path, trace, scale=1.0):
     assert abs(foreground[2] - 24 * scale) <= 2 and abs(foreground[3] - 24 * scale) <= 2, foreground
     exact_fill(path, foreground, "#834eb3", scale)
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
-    return {"implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
 
 
-def probe_components(capture, tap, scale=1.0):
+def probe_components(capture, tap, scale=1.0, drag=None):
     """capture(name) returns a PNG path; tap(x,y) injects a physical click/touch."""
     initial = capture("components-initial.png")
     blue = bounds(initial, "#1769aa")
@@ -192,5 +196,22 @@ def probe_components(capture, tap, scale=1.0):
     tap(*center(resumed_marker))
     contracted, final_marker = await_width("components-animation-restored.png", 24)
     time.sleep(0.15)
+    assert drag is not None, "native arena probe requires drag injection"
+    start_x, start_y = center(final_marker)
+    drag(start_x, start_y, start_x + 80 * scale, start_y)
+    dragged = settle("components-arena-drag.png")
+    drag_marker = bounds(dragged, "#834eb3")
+    assert drag_marker and abs(drag_marker[2] - 24 * scale) <= 1, "drag incorrectly triggered a tap animation"
+    feedback = bounds(dragged, "#d2618d")
+    assert feedback, "accepted drag did not render feedback"
+    feedback_x, feedback_y = center(feedback)
+    pixel = subprocess.check_output(["convert", str(dragged), "-alpha", "off", "-crop", f"1x1+{int(feedback_x)}+{int(feedback_y)}", "-depth", "8", "rgb:-"], timeout=15)
+    assert pixel == bytes.fromhex("d2618d"), pixel.hex()
+    tap(*center(drag_marker))
+    after_drag_expanded, after_drag_large = await_width("components-arena-tap-after-drag.png", 48)
+    tap(*center(after_drag_large))
+    after_drag_restored, after_drag_small = await_width("components-arena-restored.png", 24)
 
-    return {"animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+
+
+    return {"gesture_arena": {"passed": True, "drag_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}

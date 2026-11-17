@@ -11,7 +11,7 @@ Runtime claims below remain scoped to their stated environment.
 | Check | Result | Evidence / scope |
 | --- | --- | --- |
 | Workspace compilation | Passed | Library, CLI and shared gallery source |
-| Workspace tests | Passed, 223 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
+| Workspace tests | Passed, 237 tests | Navigation, signals/repaint, workers, animation, services, display insets, Fluent negotiation/plurals/errors, snapshots and corruption/concurrent writes, lifecycle/back/close, native destroy terminality and repaint deadlines, asset compiler/resolution/decoding/cache bounds, constraint layout/flex/stack/clip/hit testing, stable leaf IDs, element reconciliation/lifecycle/queued-update races, inherited scopes/predicates/lifetime/worker updates, model aspect unions/gates/nested fallback, notifier reentrancy/dispatch/disposal/weak subscriptions, equality/merged-source rollback, inherited notifier rebinding/coalescing/failures/builders, scaffold arguments and gallery restoration |
 | Desktop Clippy | Passed with warnings denied | All workspace targets |
 | Android Clippy | Passed with warnings denied | Framework compiled for x86_64-linux-android, including JNI code |
 | Formatting | Passed | `cargo fmt --all -- --check` |
@@ -429,3 +429,27 @@ covered-child, baseline, interaction/restoration/assets, layout, component,
 inherited-view and render-cache gates pass. Android/macOS results for this
 revision are recorded by CI. These tests do not establish full implicit-widget,
 performance or member-level Flutter compatibility; see [implicit scope](implicit-animation.md).
+
+
+## Gesture arena kernel verification
+
+The workspace passes 237 Rust tests, including thirteen new arena integration
+tests and an ID-exhaustion rollback test. Coverage includes eager/explicit
+claims, deferred default timing and rejection, hold/release/sweep ordering,
+claim withdrawal, stale entries/defaults after pointer reuse, reentrant rejection
+and arena recreation, flush snapshot boundaries, disposal during committed
+resolution, drop teardown, independent pointers, protocol errors and panic
+isolation. Formatting, warnings-denied Clippy, generated documentation and the
+arena Markdown example pass locally.
+
+The native Linux X11 probe injects taps and a real pointer drag through the
+public kernel using the gallery's raw primary-pointer adapter. Six tap winners
+and one drag winner are recorded. The drag rejects its tap competitor, paints
+exact #d2618d feedback and leaves the marker unexpanded. Subsequent taps still
+expand and contract it, checking pointer reuse and continued interaction. Six
+implicit completion callbacks are recorded. Existing mode pause/catch-up,
+exact-color, covered-child, baseline, input/restoration/assets, layout, component,
+inherited-view and render-cache gates also pass. Android/macOS checks for this
+revision are recorded by CI. This evidence covers arbitration and the prototype
+adapter, not a general widget input binding or complete recognizer/gesture
+compatibility; see [arena scope](gesture-arena.md).

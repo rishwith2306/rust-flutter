@@ -251,28 +251,58 @@ impl State<ViewReport> for ViewReportState {
 struct AnimatedMarker;
 struct AnimatedMarkerState {
     expanded: bool,
+    dragged: bool,
+    pointer: Option<Rc<RefCell<crate::gesture_marker::PointerMarker>>>,
 }
 impl StatefulWidget for AnimatedMarker {
     type State = AnimatedMarkerState;
     fn create_state(&self) -> Self::State {
-        AnimatedMarkerState { expanded: false }
+        AnimatedMarkerState {
+            expanded: false,
+            dragged: false,
+            pointer: None,
+        }
     }
 }
 impl State<AnimatedMarker> for AnimatedMarkerState {
-    fn build(&mut self, _: &AnimatedMarker, ctx: &StateContext<Self>) -> Widget {
-        let handle = ctx.handle();
+    fn init_state(&mut self, _: &AnimatedMarker, ctx: &StateContext<Self>) {
+        let tap = ctx.handle();
+        let drag = ctx.handle();
+        self.pointer = Some(Rc::new(RefCell::new(
+            crate::gesture_marker::PointerMarker::new(
+                move || {
+                    let _ = tap.update(|state| state.expanded = !state.expanded);
+                },
+                move || {
+                    let _ = drag.update(|state| state.dragged = true);
+                },
+            ),
+        )));
+    }
+    fn dispose(&mut self) {
+        if let Some(pointer) = &self.pointer {
+            pointer.borrow_mut().cancel();
+        }
+    }
+    fn build(&mut self, _: &AnimatedMarker, _: &StateContext<Self>) -> Widget {
+        let pointer = self
+            .pointer
+            .as_ref()
+            .expect("initialized pointer adapter")
+            .clone();
+        let dragged = self.dragged;
         rust_flutter::animation::TweenAnimationBuilder::new(
             24.0_f32,
             if self.expanded { 48.0 } else { 24.0 },
             std::time::Duration::from_secs(2),
             move |_, width| {
-                let handle = handle.clone();
+                let pointer = pointer.clone();
                 #[cfg(debug_assertions)]
                 eprintln!(
                     "rust-flutter gallery animation value={}",
                     (width - 24.0) / 24.0
                 );
-                rust_flutter::decoration::DecoratedBox {
+                let decorated = rust_flutter::decoration::DecoratedBox {
                     decoration: rust_flutter::decoration::BoxDecoration::solid(
                         egui::Color32::from_rgb(131, 78, 179),
                     ),
@@ -284,13 +314,32 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
                         0.0,
                         egui::Color32::from_rgb(227, 189, 66),
                     );
-                    if ui
-                        .interact(ui.max_rect(), ui.id().with("animate"), egui::Sense::click())
-                        .clicked()
-                    {
-                        let _ = handle.update(|state| state.expanded = !state.expanded);
-                    }
-                }))
+                    pointer.borrow_mut().handle(ui);
+                }));
+                Widget::stack(
+                    StackStyle::default(),
+                    vec![
+                        StackItem::new(decorated),
+                        StackItem::positioned(
+                            Widget::leaf(egui::Vec2::ZERO, move |ui| {
+                                if dragged {
+                                    ui.painter().rect_filled(
+                                        ui.max_rect(),
+                                        0.0,
+                                        egui::Color32::from_rgb(210, 97, 141),
+                                    );
+                                }
+                            }),
+                            rust_flutter::layout::Positioned {
+                                right: Some(2.0),
+                                bottom: Some(2.0),
+                                width: Some(4.0),
+                                height: Some(4.0),
+                                ..Default::default()
+                            },
+                        ),
+                    ],
+                )
             },
         )
         .expect("valid implicit marker")

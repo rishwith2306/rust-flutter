@@ -42,6 +42,7 @@ pub mod display;
 pub mod element;
 #[cfg(any(target_os = "android", test))]
 mod frame_schedule;
+pub mod gestures;
 pub mod layout;
 pub mod localization;
 pub mod navigation;
