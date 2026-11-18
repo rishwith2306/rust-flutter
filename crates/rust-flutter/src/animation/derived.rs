@@ -1,3 +1,4 @@
+use super::listeners::Forwarded;
 use super::{AnimationController, AnimationError, AnimationStatus, ParametricCurve};
 use crate::notifier::{Disposed, Listenable, Listener, Subscription, ValueListenable};
 use std::{
@@ -13,7 +14,11 @@ pub trait Animation<T: Clone + 'static>: ValueListenable<Value = T> {
     /// Fallible sampling for derived chains. Ordinary value sources can use
     /// this default; fallible sources override it to preserve their errors.
     fn try_value(&self) -> Result<T, AnimationError> {
-        Ok(self.value())
+        if self.is_disposed() {
+            Err(AnimationError::Disposed)
+        } else {
+            Ok(self.value())
+        }
     }
     fn subscribe_status(&self, listener: Listener) -> Result<Subscription, Disposed>;
     fn is_disposed(&self) -> bool {
@@ -69,13 +74,6 @@ impl<T: Clone + 'static, P: Animation<T> + ?Sized> Animation<T> for Rc<P> {
         (**self).is_animating()
     }
 }
-struct Registration(RefCell<Option<Subscription>>);
-impl Registration {
-    fn cancel(&self) {
-        let subscription = self.0.borrow_mut().take();
-        drop(subscription);
-    }
-}
 struct Curves {
     forward: Rc<dyn ParametricCurve>,
     reverse: Option<Rc<dyn ParametricCurve>>,
@@ -88,7 +86,7 @@ struct Inner<P: Animation<f32>> {
     sampling: Cell<bool>,
     command: RefCell<Rc<()>>,
     status_watch: RefCell<Option<Subscription>>,
-    registrations: RefCell<Vec<Weak<Registration>>>,
+    links: Forwarded,
 }
 impl<P: Animation<f32>> Inner<P> {
     fn track(&self) {
@@ -141,7 +139,7 @@ impl<P: Animation<f32>> CurvedAnimation<P> {
             sampling: Cell::new(false),
             command: RefCell::new(Rc::new(())),
             status_watch: RefCell::new(None),
-            registrations: RefCell::new(vec![]),
+            links: Forwarded::default(),
         });
         inner.track();
         let weak = Rc::downgrade(&inner);
@@ -285,13 +283,7 @@ impl<P: Animation<f32>> CurvedAnimation<P> {
             drop(subscription);
             return Err(Disposed);
         }
-        let registration = Rc::new(Registration(RefCell::new(Some(subscription))));
-        {
-            let mut registrations = self.0.registrations.borrow_mut();
-            registrations.retain(|r| r.strong_count() > 0);
-            registrations.push(Rc::downgrade(&registration));
-        }
-        Ok(Subscription::new(move || registration.cancel()))
+        Ok(self.0.links.add(subscription))
     }
     pub fn dispose(&self) -> Result<(), AnimationError> {
         if self.0.disposed.replace(true) {
@@ -299,11 +291,8 @@ impl<P: Animation<f32>> CurvedAnimation<P> {
         }
         *self.0.command.borrow_mut() = Rc::new(());
         let watch = self.0.status_watch.borrow_mut().take();
-        let registrations = std::mem::take(&mut *self.0.registrations.borrow_mut());
         drop(watch);
-        for registration in registrations.into_iter().filter_map(|r| r.upgrade()) {
-            registration.cancel();
-        }
+        self.0.links.cancel_all();
         Ok(())
     }
 }
@@ -339,11 +328,8 @@ impl<P: Animation<f32>> Animation<f32> for CurvedAnimation<P> {
 impl<P: Animation<f32>> Drop for Inner<P> {
     fn drop(&mut self) {
         let watch = self.status_watch.get_mut().take();
-        let registrations = std::mem::take(self.registrations.get_mut());
         drop(watch);
-        for registration in registrations.into_iter().filter_map(|r| r.upgrade()) {
-            registration.cancel();
-        }
+        self.links.cancel_all();
     }
 }
 

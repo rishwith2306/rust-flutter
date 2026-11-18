@@ -5,12 +5,19 @@ mod derived;
 pub use curves::{Cubic, FlippedCurve, ParametricCurve};
 pub use derived::{Animation, CurvedAnimation, WeakCurvedAnimation};
 mod implicit;
+mod listeners;
+mod tweens;
 pub use controller::{
     AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,
     AnimationStatus, RepeatOptions, WeakAnimationController,
 };
 pub use implicit::{TweenAnimationBuilder, TweenAnimationState, TweenValue};
 use std::time::Duration;
+pub use tweens::{
+    Animatable, AnimationDrive, CallbackAnimatable, ChainedAnimatable, ConstantTween, CurveTween,
+    DrivenAnimation, SequenceItem, TweenSequence, ValueTween, WeakCurveTween, WeakDrivenAnimation,
+    WeakValueTween,
+};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Curve {
     #[default]

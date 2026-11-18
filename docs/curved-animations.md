@@ -82,9 +82,10 @@ the same element-owned parent/muting lifecycle. Native checks require its
 rendered endpoints and frozen geometry, plus nonlinear diagnostic samples in
 both directions. Results are recorded in [verification](verification.md).
 
-Full Animation/Animatable/Tween/CurveTween, Proxy/Reverse/TrainHopping families,
-the curve catalog, generic tween driving, transition widgets and complete member
-compatibility remain unfinished. Reviewed the official
+[Typed tween driving and weighted sequences](value-tweens.md) now use this
+foundation. Full Animation members, Proxy/Reverse/TrainHopping families, the
+curve catalog, further tween specializations, transition widgets and complete
+member compatibility remain unfinished. Reviewed the official
 [Animation contract](https://api.flutter.dev/flutter/animation/Animation-class.html),
 [CurvedAnimation direction/lifetime behavior](https://api.flutter.dev/flutter/animation/CurvedAnimation-class.html)
 and [Cubic API](https://api.flutter.dev/flutter/animation/Cubic-class.html).

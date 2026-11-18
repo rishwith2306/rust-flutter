@@ -1282,3 +1282,41 @@ this probe, not a frame-rate/performance benchmark. Existing strict RGB888/glyph
 component/scrollbar, lazy-list/keep-alive, Offstage, IME/inset, restoration and
 three-cycle recreation gates pass. Physical devices, macOS window/input runtime
 and full Flutter animation/member parity remain unverified or unfinished.
+
+## Typed tween and weighted sequence validation
+
+The typed tween shipment adds 17 headless tests, bringing the local all-feature
+workspace suite to 541 passing tests. Cases cover exact endpoints and scalar/
+vector/color interpolation, finite extrapolation and checked geometric overflow/
+inversion, old custom normalized interpolation contracts, shared mutable
+endpoints, drive/animate/evaluate/chain composition, mixed weighted sequences and
+boundary selection, large/collapsed weight intervals, callback mappings, mutable
+curve mappings, parent/status forwarding, notification/drop ownership, cancellation
+before parent release, disposed parents, overshoot, checked chain failures,
+recursive/reentrant mapping, and controller-driven retained Vec2 geometry.
+Existing derived/implicit animation tests also pass after sharing forwarding-link
+cleanup. The new Animation default checked getter rejects disposed sources;
+legacy direct value getters keep their existing behavior.
+
+Workspace and ARM64 Android framework/gallery Clippy pass with warnings denied.
+Formatting, rustdoc, both runnable typed-tween guide examples, renderer source/
+selection checks and the existing five lazy-build parser checks pass. The gallery
+marker now receives a DrivenAnimation Vec2 directly rather than calculating its
+size in the widget callback. Native gates require corresponding typed size
+samples as well as the existing rendered curve/muting/endpoint gates.
+
+The final Linux X11/Xvfb native result records typed marker sizes
+[12, 12]→[24, 12]→[12, 12] in physical pixels at scale 1. The shared trace parser requires
+all 396 typed width/height samples to match the corresponding curve-driven
+width, a fixed height of 12, finite bounded dimensions and an intermediate size.
+`desktop-result.json` records `components.typed_tween.passed` and
+`baseline_alignment.typed_tween.passed` as true. Existing curve endpoint/frozen
+geometry, exact RGB888/glyph, component/scrollbar, lazy-list/keep-alive, Offstage,
+animation and restoration gates pass.
+
+The Android probe requires the same typed/native gates, but cross-compilation
+alone is not runtime proof. Exact-revision CI artifacts remain to be inspected.
+Nullable endpoints, integer/step/reverse/flipped variants, wider geometry/theme
+specializations and complete Flutter member/precision compatibility remain
+unfinished; physical devices and macOS window/input runtime remain unverified.
+See [typed tween policy and scope](value-tweens.md).

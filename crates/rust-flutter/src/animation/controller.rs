@@ -37,6 +37,7 @@ pub enum AnimationError {
     Simulation(PhysicsError),
     SimulationPanicked,
     CurvePanicked,
+    InterpolationPanicked,
     Superseded,
     Disposed,
     Unmounted,
@@ -49,6 +50,7 @@ impl std::fmt::Display for AnimationError {
             Self::Simulation(error) => error.fmt(f),
             Self::SimulationPanicked => f.write_str("animation simulation panicked"),
             Self::CurvePanicked => f.write_str("animation curve panicked"),
+            Self::InterpolationPanicked => f.write_str("animation interpolation panicked"),
             Self::Superseded => {
                 f.write_str("animation command superseded during simulation sampling")
             }

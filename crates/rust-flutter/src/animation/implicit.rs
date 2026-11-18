@@ -25,6 +25,36 @@ pub trait TweenValue: Clone + PartialEq + 'static {
     fn validate(&self) -> Result<(), AnimationError> {
         Ok(())
     }
+    /// Optional extrapolation for explicit value tweens. Existing custom
+    /// interpolators retain their normalized-only contract by default.
+    fn interpolate_unbounded(&self, target: &Self, progress: f32) -> Result<Self, AnimationError> {
+        if !progress.is_finite() || !(0.0..=1.0).contains(&progress) {
+            return Err(AnimationError::InvalidConfiguration(
+                "custom tween does not support this extrapolation",
+            ));
+        }
+        let value = self.interpolate(target, progress);
+        value.validate()?;
+        Ok(value)
+    }
+}
+macro_rules! unbounded_interpolation {
+    () => {
+        fn interpolate_unbounded(
+            &self,
+            target: &Self,
+            progress: f32,
+        ) -> Result<Self, AnimationError> {
+            if !progress.is_finite() {
+                return Err(AnimationError::InvalidConfiguration(
+                    "tween progress must be finite",
+                ));
+            }
+            let value = self.interpolate(target, progress);
+            value.validate()?;
+            Ok(value)
+        }
+    };
 }
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
     (f64::from(a) * (1.0 - f64::from(t)) + f64::from(b) * f64::from(t)) as f32
@@ -39,6 +69,7 @@ fn finite(valid: bool) -> Result<(), AnimationError> {
     }
 }
 impl TweenValue for f64 {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         self * (1.0 - f64::from(t)) + b * f64::from(t)
     }
@@ -47,6 +78,7 @@ impl TweenValue for f64 {
     }
 }
 impl TweenValue for f32 {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         lerp(*self, *b, t)
     }
@@ -55,6 +87,7 @@ impl TweenValue for f32 {
     }
 }
 impl TweenValue for egui::Vec2 {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         Self::new(lerp(self.x, b.x, t), lerp(self.y, b.y, t))
     }
@@ -63,6 +96,7 @@ impl TweenValue for egui::Vec2 {
     }
 }
 impl TweenValue for egui::Pos2 {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         Self::new(lerp(self.x, b.x, t), lerp(self.y, b.y, t))
     }
@@ -71,6 +105,7 @@ impl TweenValue for egui::Pos2 {
     }
 }
 impl TweenValue for egui::Rect {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         Self::from_min_max(
             self.min.interpolate(&b.min, t),
@@ -82,6 +117,7 @@ impl TweenValue for egui::Rect {
     }
 }
 impl TweenValue for egui::Color32 {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         let a = self.to_array();
         let b = b.to_array();
@@ -90,6 +126,7 @@ impl TweenValue for egui::Color32 {
     }
 }
 impl TweenValue for Insets {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         Self {
             left: lerp(self.left, b.left, t),
@@ -107,6 +144,7 @@ impl TweenValue for Insets {
     }
 }
 impl TweenValue for egui::Stroke {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         Self::new(
             lerp(self.width, b.width, t),
@@ -118,6 +156,7 @@ impl TweenValue for egui::Stroke {
     }
 }
 impl TweenValue for BoxDecoration {
+    unbounded_interpolation!();
     fn interpolate(&self, b: &Self, t: f32) -> Self {
         let radius = |a: u8, b: u8| lerp(f32::from(a), f32::from(b), t).round() as u8;
         Self {

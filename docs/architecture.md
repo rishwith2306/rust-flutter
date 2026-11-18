@@ -81,6 +81,10 @@ and [implicit animations](implicit-animation.md). [Derived animations](curved-an
 share an Animation value/status contract with controllers. CurvedAnimation keeps
 its selected direction through mid-flight reversals, owns parent subscriptions
 and evaluates custom curves outside configuration borrows with supersession checks.
+[Animatable mappings](value-tweens.md) compose typed tweens and weighted sections
+without clocks; DrivenAnimation supplies the parent clock/status and owns its
+forwarding links. Value/curve tween edits share configuration across handles
+without manufacturing parent notifications.
 
 Retained scrolling separates externally owned `ScrollPosition` state from
 viewport layout and input. A viewport lays out an eager child, publishes measured

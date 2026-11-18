@@ -506,15 +506,23 @@ impl State<SpringMarker> for SpringMarkerState {
 struct CurvedMarker {
     expanded: bool,
 }
+type MarkerSizeAnimation = rust_flutter::animation::DrivenAnimation<
+    rust_flutter::animation::CurvedAnimation<rust_flutter::animation::AnimationController>,
+    rust_flutter::animation::ValueTween<egui::Vec2>,
+>;
 struct CurvedMarkerState {
     curve: Option<
         rust_flutter::animation::CurvedAnimation<rust_flutter::animation::AnimationController>,
     >,
+    size: Option<MarkerSizeAnimation>,
 }
 impl StatefulWidget for CurvedMarker {
     type State = CurvedMarkerState;
     fn create_state(&self) -> Self::State {
-        CurvedMarkerState { curve: None }
+        CurvedMarkerState {
+            curve: None,
+            size: None,
+        }
     }
 }
 impl State<CurvedMarker> for CurvedMarkerState {
@@ -531,6 +539,13 @@ impl State<CurvedMarker> for CurvedMarkerState {
         curve
             .set_reverse_curve(Some(Rc::new(Cubic::new(0.0, 0.0, 0.58, 1.0).unwrap())))
             .expect("valid reverse curve");
+        use rust_flutter::animation::{AnimationDrive, ValueTween};
+        self.size = Some(
+            curve
+                .clone()
+                .drive(ValueTween::new(egui::vec2(12.0, 12.0), egui::vec2(24.0, 12.0)).unwrap())
+                .expect("valid typed size animation"),
+        );
         self.curve = Some(curve);
     }
     fn did_update_widget(
@@ -550,22 +565,24 @@ impl State<CurvedMarker> for CurvedMarkerState {
         }
     }
     fn build(&mut self, _: &CurvedMarker, _: &StateContext<Self>) -> Widget {
-        let curve = self.curve.as_ref().unwrap().clone();
         #[cfg(debug_assertions)]
-        let weak = curve.downgrade();
-        Widget::value_listenable_builder(curve, move |_, value| {
-            let width = 12.0 + 12.0 * value;
+        let weak = self.curve.as_ref().unwrap().downgrade();
+        Widget::value_listenable_builder(self.size.as_ref().unwrap().clone(), move |_, size| {
             #[cfg(debug_assertions)]
             if let Some(curve) = weak.upgrade() {
                 eprintln!(
                     "rust-flutter gallery curved parent={} value={} status={:?} width={}",
                     curve.parent().value(),
-                    value,
+                    curve.value(),
                     curve.status(),
-                    width
+                    size.x
+                );
+                eprintln!(
+                    "rust-flutter gallery typed-tween width={} height={}",
+                    size.x, size.y
                 );
             }
-            Widget::leaf(egui::vec2(width, 12.0), |ui| {
+            Widget::leaf(size, |ui| {
                 ui.painter().rect_filled(
                     ui.max_rect(),
                     0.0,
@@ -575,6 +592,9 @@ impl State<CurvedMarker> for CurvedMarkerState {
         })
     }
     fn dispose(&mut self) {
+        if let Some(size) = self.size.take() {
+            let _ = size.dispose();
+        }
         if let Some(curve) = self.curve.take() {
             let _ = curve.dispose();
         }
