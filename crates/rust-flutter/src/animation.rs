@@ -1,5 +1,9 @@
-//! Frame-driven controllers, implicit builders and scalar tween sampling.
+//! Frame-driven controllers, derived curve sources, implicit builders and scalar tweens.
 mod controller;
+mod curves;
+mod derived;
+pub use curves::{Cubic, FlippedCurve, ParametricCurve};
+pub use derived::{Animation, CurvedAnimation, WeakCurvedAnimation};
 mod implicit;
 pub use controller::{
     AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,

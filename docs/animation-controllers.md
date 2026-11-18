@@ -7,7 +7,8 @@ sampling/tick function each frame. It implements Listenable and
 ValueListenable<Value = f32>, so existing observable widget builders can animate
 layout or paint configuration while preserving retained element identity. For
 target-driven animation without an app-managed controller, see the
-[implicit value builder](implicit-animation.md).
+[implicit value builder](implicit-animation.md). For derived/custom cubic easing
+and distinct forward/reverse mappings, see [CurvedAnimation](curved-animations.md).
 
 ```rust
 use rust_flutter::{egui, animation::{AnimationConfig, AnimationController, AnimationOutcome},

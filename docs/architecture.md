@@ -77,7 +77,10 @@ the same controller. Typed `TweenAnimationBuilder` supports implicit value
 changes while preserving its child. The full derived-animation, transition,
 sequence and platform motion catalogs remain unfinished; see
 [animation controllers](animation-controllers.md), [simulation playback](simulation-animations.md)
-and [implicit animations](implicit-animation.md).
+and [implicit animations](implicit-animation.md). [Derived animations](curved-animations.md)
+share an Animation value/status contract with controllers. CurvedAnimation keeps
+its selected direction through mid-flight reversals, owns parent subscriptions
+and evaluates custom curves outside configuration borrows with supersession checks.
 
 Retained scrolling separates externally owned `ScrollPosition` state from
 viewport layout and input. A viewport lays out an eager child, publishes measured

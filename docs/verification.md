@@ -1227,3 +1227,39 @@ IME/inset, component/scrollbar, animation, restoration and three-cycle recreatio
 gates also pass. These are tested native/emulator paths; physical devices,
 macOS window/input runtime, native hidden IME continuity and full Flutter
 keep-alive/notification/member parity remain unverified or unfinished.
+
+## Derived animation and cubic curve validation
+
+The derived animation shipment adds 15 headless tests; the complete local
+all-feature workspace suite passes 524 tests. Cases cover cubic reference
+values, solving x before y, flat/crossed controls and subnormal progress,
+finite overshoot, flipped mappings, invalid controls/progress/output/endpoints,
+latched direction through reversals, configuration and parent/status forwarding,
+independent registrations, synchronous subscription callbacks, disposal during
+registration/notification, weak/drop cleanup, general/derived parent chains,
+checked parent failures, recursive/reentrant sampling and controller-driven
+retained widgets. The source rejects stale samples after configuration or parent
+changes. Legacy controller/implicit-builder Curve parameters remain unchanged.
+
+Workspace and ARM64 Android framework/gallery Clippy pass with warnings denied.
+Formatting, rustdoc, the runnable derived-animation guide, renderer archive and
+selection checks and the existing lazy-build parser regression tests also pass.
+
+The final Linux X11/Xvfb probe records rendered derived-marker widths of
+12→24→12 pixels at scale 1, a muted width of 13 and identical geometry
+through the frozen interval. The existing tap sequence drives its element-owned
+parent; unmuting catches up to the expanded endpoint. The inspected expanded
+screenshot shows the third marker beside the implicit and spring markers.
+The trace contains 385 derived samples, including nonlinear values in both
+forward and reverse directions. `desktop-result.json` records
+`components.curved_animation.passed` and
+`baseline_alignment.curved_animation.nonlinear_forward_reverse` as true.
+Strict RGB888/glyph, component/scrollbar, lazy-list/keep-alive, Offstage,
+animation/muting and restoration gates also pass.
+
+Android uses the same rendered/diagnostic gates, but cross-compilation alone is
+not runtime proof. Exact-revision CI artifacts remain to be inspected. Full
+generic tween driving, further animation/curve families, legacy parameter
+integration, transition widgets and complete Flutter member parity remain
+unfinished. Physical devices and macOS window/input runtime remain unverified.
+See [derived behavior and differences](curved-animations.md).

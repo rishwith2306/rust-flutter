@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add a generic Animation value/status contract, checked cubic/flipped curves and derived CurvedAnimation with latched forward/reverse easing, owned subscription cleanup and reentrant sample guards; exercise derived marker geometry in native probes.
+
 - Retain requested lazy item subtrees with counted owned/declarative keep-alive requests, key-index remapping, per-item build contexts and offstage keyboard activity; add a native row-owned counter retention probe.
 
 - Add retained Offstage subtrees with measured hidden children, preserved state/focused keyboard input, canceled pointer capture, clipped backend output and desktop accessibility hiding; keep animations active unless explicitly muted.

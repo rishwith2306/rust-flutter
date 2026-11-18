@@ -428,6 +428,9 @@ impl State<AnimatedMarker> for AnimatedMarkerState {
                     FlexItem::fixed(Widget::stateful(SpringMarker {
                         expanded: self.expanded,
                     })),
+                    FlexItem::fixed(Widget::stateful(CurvedMarker {
+                        expanded: self.expanded,
+                    })),
                 ],
             ))
     }
@@ -498,6 +501,83 @@ impl State<SpringMarker> for SpringMarkerState {
                     .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(200, 133, 55));
             })
         })
+    }
+}
+struct CurvedMarker {
+    expanded: bool,
+}
+struct CurvedMarkerState {
+    curve: Option<
+        rust_flutter::animation::CurvedAnimation<rust_flutter::animation::AnimationController>,
+    >,
+}
+impl StatefulWidget for CurvedMarker {
+    type State = CurvedMarkerState;
+    fn create_state(&self) -> Self::State {
+        CurvedMarkerState { curve: None }
+    }
+}
+impl State<CurvedMarker> for CurvedMarkerState {
+    fn init_state(&mut self, _: &CurvedMarker, ctx: &StateContext<Self>) {
+        use rust_flutter::animation::{AnimationConfig, Cubic, CurvedAnimation};
+        let parent = ctx
+            .animation_controller(AnimationConfig {
+                duration: std::time::Duration::from_secs(2),
+                ..Default::default()
+            })
+            .expect("valid curved marker parent");
+        let curve = CurvedAnimation::new(parent, Cubic::new(0.42, 0.0, 0.58, 1.0).unwrap())
+            .expect("valid derived marker");
+        curve
+            .set_reverse_curve(Some(Rc::new(Cubic::new(0.0, 0.0, 0.58, 1.0).unwrap())))
+            .expect("valid reverse curve");
+        self.curve = Some(curve);
+    }
+    fn did_update_widget(
+        &mut self,
+        old: &CurvedMarker,
+        new: &CurvedMarker,
+        _: &StateContext<Self>,
+    ) {
+        if old.expanded != new.expanded {
+            let parent = self.curve.as_ref().unwrap().parent();
+            if new.expanded {
+                parent.forward()
+            } else {
+                parent.reverse()
+            }
+            .expect("mounted derived marker");
+        }
+    }
+    fn build(&mut self, _: &CurvedMarker, _: &StateContext<Self>) -> Widget {
+        let curve = self.curve.as_ref().unwrap().clone();
+        #[cfg(debug_assertions)]
+        let weak = curve.downgrade();
+        Widget::value_listenable_builder(curve, move |_, value| {
+            let width = 12.0 + 12.0 * value;
+            #[cfg(debug_assertions)]
+            if let Some(curve) = weak.upgrade() {
+                eprintln!(
+                    "rust-flutter gallery curved parent={} value={} status={:?} width={}",
+                    curve.parent().value(),
+                    value,
+                    curve.status(),
+                    width
+                );
+            }
+            Widget::leaf(egui::vec2(width, 12.0), |ui| {
+                ui.painter().rect_filled(
+                    ui.max_rect(),
+                    0.0,
+                    egui::Color32::from_rgb(142, 111, 178),
+                );
+            })
+        })
+    }
+    fn dispose(&mut self) {
+        if let Some(curve) = self.curve.take() {
+            let _ = curve.dispose();
+        }
     }
 }
 struct TickerDemo {

@@ -36,6 +36,7 @@ pub enum AnimationOutcome {
 pub enum AnimationError {
     Simulation(PhysicsError),
     SimulationPanicked,
+    CurvePanicked,
     Superseded,
     Disposed,
     Unmounted,
@@ -47,6 +48,7 @@ impl std::fmt::Display for AnimationError {
         match self {
             Self::Simulation(error) => error.fmt(f),
             Self::SimulationPanicked => f.write_str("animation simulation panicked"),
+            Self::CurvePanicked => f.write_str("animation curve panicked"),
             Self::Superseded => {
                 f.write_str("animation command superseded during simulation sampling")
             }
