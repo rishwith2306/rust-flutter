@@ -1208,3 +1208,22 @@ buckets. Full automatic-client/notification/parent-data APIs, automatic editable
 focus requests, restoration, variable extents, native IME continuity, screen
 readers, physical devices and macOS runtime remain unfinished or unverified.
 See [retention policy and differences](keep-alive.md).
+
+### Keep-alive CI runtime result
+
+Published revision `209648d8225b5120bfc19043db5299ac1dc80c85` passes all four jobs
+in [run 44301926384](https://github.com/rishwith2306/rust-flutter/actions/runs/44301926384):
+Linux native interactions, macOS tests/build checks, ARM64 Android compilation
+and Android emulator runtime. Downloaded runtime results on both platforms record
+`lazy_list.keep_alive.passed` and `local_counter_retained` as true. The Android
+API 35 / x86_64 return screenshot was inspected: the first row still shows
+Count: 1 after the End/Home excursion, with offset 0 and the thumb at the top.
+
+Linux records 21 nonempty item-build batches, maximum nine per paint pass;
+Android records 23, maximum eight. Both record exactly one configuration refresh
+that builds kept row 0 outside the contiguous end-of-list cache. The exact-index
+parser and its five regression tests pass. Existing Offstage, RGB888/glyph,
+IME/inset, component/scrollbar, animation, restoration and three-cycle recreation
+gates also pass. These are tested native/emulator paths; physical devices,
+macOS window/input runtime, native hidden IME continuity and full Flutter
+keep-alive/notification/member parity remain unverified or unfinished.
