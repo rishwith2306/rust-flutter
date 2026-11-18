@@ -46,6 +46,7 @@ Runtime claims below remain scoped to their stated environment.
 | Android system-bar/cutout insets | Visually verified | Java WindowInsets query on Java UI thread; screenshot clears the notch/status bar and navigation bar |
 | Android extended runtime test | Passed after manifest correction | Touch, injected text, route back, background/resume, force-stop and fresh-process restoration on Android 17 / API 37, x86_64, 16 KB pages. The separate recreation test below covers activity destruction. |
 | Android OS mouse wheel | Passed on API 35 / x86_64 emulator | Four separate-process OS mouse-scroll packets, unchanged gallery PID, native movement and exact rendered reset; physical hardware remains unverified |
+| Fixed-extent lazy list | Passed on Linux X11 and API 35 / x86_64 Android emulator | 10,002 rows, endpoint/drag/wheel/reset pixels and bounded row builds per pass; variable extents, keep-alive and full member compatibility remain unfinished |
 | Retained scrollbar interaction | Passed on Linux X11 and API 35 / x86_64 Android emulator | Thumb drag, 80% track page, OS wheel input over thumb and exact content/thumb reset; platform themes and physical-device behavior remain unverified |
 | Retained viewport keyboard scrolling | Passed on Linux X11 and API 35 / x86_64 Android emulator | Native End/Home, page and arrow input produces expected rendered content and exact reset; macOS runtime and physical Android keyboards remain unverified |
 | Android activity recreation | Passed, three cycles in one process | `Activity.recreate()` produces fresh Rust hosts, each previous loop returns; persisted state and injected touch verified after every recreation; final `Activity.finish()` destroys the fourth host. Test-only instrumentable variant retains identical native bytes. |
@@ -1096,3 +1097,30 @@ Exact RGB888 and 75% glyph-mask thresholds are unchanged. These gallery pixel
 results are scoped to that explicit profile; framework NativeOptions remain
 configurable and retain their existing default. Smoke scripts also remove an
 old result JSON at startup so a failed run cannot leave a prior success record.
+
+
+### Lazy-list CI runtime result
+
+Published code revision `85c7a6e06a9501eb006519dcd3f9dd9acf5a9d0c` passes all four
+jobs in [run 44293486779](https://github.com/rishwith2306/rust-flutter/actions/runs/44293486779):
+Linux native interactions, macOS workspace/build checks, ARM Android compilation
+and Android runtime. Downloaded result files on both runtime platforms record
+lazy_list passed, drag/end_home/native_wheel/exact_reset=true, 10,002 total rows
+and final index 10001. Both report the explicit gallery dithering=false profile.
+
+The Linux artifact records 13 nonempty build batches and at most nine rows built
+per pass. API 35 / x86_64 Android, scale 2.625, records 14 batches and at most
+eight rows built per pass. The End batch builds only indices 9996–10001, including
+the two preceding cached rows; the inspected Android End screenshot shows rows
+9998–10001 within the 240-point viewport, offset 599880 and the thumb at the
+bottom. Home/reset return to the original first-row pixels. These are measured
+build counts for this probe, not a general frame-time or memory benchmark.
+
+Three separate OS wheel sequences each inject four packets: viewport center,
+scrollbar thumb and the lazy list. All preserve ordinary gallery PID 4281 while
+using separate instrumentation PIDs. The recreation fixture keeps PID 3031
+through three cycles and four Rust hosts. Existing IME/inset, RGB888, glyph,
+baseline, animation, restoration, retained layout and scrollbar gates pass.
+This establishes the ordinary emulator APK/input path, not physical Android
+hardware or macOS window/input runtime. Automatic keep-alive, variable extents,
+slivers/grids, restoration, semantics and complete Flutter parity remain open.

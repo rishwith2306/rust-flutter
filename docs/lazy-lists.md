@@ -76,7 +76,10 @@ clamping, tiny viewports at rounded large endpoints, invalid bounds/budgets, dis
 input. The native gallery has 10,002 rows. Probes require endpoint rendering,
 drag and wheel motion, exact reset and at most nine built rows per paint pass
 with its 240-point viewport and 120-point cache. Platform evidence is recorded
-separately in [verification](verification.md).
+separately in [verification](verification.md). Linux X11 and API 35 / x86_64
+Android emulator artifacts pass these gates at revision `85c7a6e`; see the
+[exact CI runtime record](verification.md#lazy-list-ci-runtime-result).
+Physical devices and macOS runtime remain unverified.
 
 This implements finite fixed-extent lazy lists. Variable/prototype extents,
 shrink wrapping, padding/separators, infinite delegates, slivers/grids, automatic
