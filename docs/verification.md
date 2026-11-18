@@ -1263,3 +1263,22 @@ generic tween driving, further animation/curve families, legacy parameter
 integration, transition widgets and complete Flutter member parity remain
 unfinished. Physical devices and macOS window/input runtime remain unverified.
 See [derived behavior and differences](curved-animations.md).
+
+### Derived animation CI runtime result
+
+Published revision `65694ce7bb3d0335bd376521f34937b6f73de66b` passes all four jobs
+in [run 44305365714](https://github.com/rishwith2306/rust-flutter/actions/runs/44305365714):
+Linux native interactions, macOS tests/build checks, ARM64 Android compilation
+and Android emulator runtime. Downloaded Linux and Android result files record
+`components.curved_animation.passed` and
+`baseline_alignment.curved_animation.nonlinear_forward_reverse` as true.
+
+Linux records widths 12→24→12 pixels and a frozen muted width of 14; API 35 /
+x86_64 Android at scale 2.625 records 32→63→32 and a frozen width of 35.
+The inspected Android expanded screenshot shows the third lavender marker next
+to the implicit and spring markers. Native samples include nonlinear values in
+both directions: 1,069 samples on Linux and 196 on Android. These counts describe
+this probe, not a frame-rate/performance benchmark. Existing strict RGB888/glyph,
+component/scrollbar, lazy-list/keep-alive, Offstage, IME/inset, restoration and
+three-cycle recreation gates pass. Physical devices, macOS window/input runtime
+and full Flutter animation/member parity remain unverified or unfinished.
