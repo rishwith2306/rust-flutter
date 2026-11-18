@@ -1151,3 +1151,23 @@ artifacts. macOS window/input, physical devices, native IME continuity and
 VoiceOver/TalkBack remain unverified. Backend callbacks continue under an empty
 clip; this is not skipped traversal or a performance claim. Automatic lazy-list
 keep-alive and full Flutter parity remain unfinished. See [scope](offstage.md).
+
+### Offstage CI runtime result
+
+Published code revision `b4b64430672900987d28e2bb8f1d8f512e3fe35d` passes all four
+jobs in [run 44299171457](https://github.com/rishwith2306/rust-flutter/actions/runs/44299171457):
+Linux native interactions, macOS compilation/tests/checks, ARM64 Android build
+and Android emulator runtime. Downloaded Linux and Android result files both
+record `lazy_list.offstage.passed`, `hidden_wheel_ignored`, `hidden_keyboard` and
+`exact_restore` as true. The Android API 35 / x86_64 run uses scale 2.625.
+
+Inspected Android screenshots show no list or scrollbar while hidden, with the
+Back button moving upward into the released layout space. After End while
+hidden, showing restores rows 9998–10001, offset 599880 and the thumb at the
+bottom. The toggle label also updates correctly. The Linux artifact records 19
+nonempty lazy build batches with at most nine rows per pass; Android records 22
+with at most eight. Existing strict RGB888/glyph, IME/inset, retained component,
+scrollbar, animation, restoration and three-cycle recreation gates pass.
+These results establish the tested emulator/native input paths. macOS runtime,
+physical Android hardware, hidden native IME continuity and screen readers
+remain unverified; complete Flutter Offstage/member parity is not claimed.
