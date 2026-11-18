@@ -446,7 +446,28 @@ def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):
         wheel_verified = True
     final = await_state("lazy-list-reset.png", lambda path: bounds(path, "#17695b") == first and not bounds(path, "#c99843"))
     exact_fill(final, first, "#17695b", scale)
-    return {"passed": True, "items": 10002, "viewport_points": 240, "drag": True, "end_home": True, "native_wheel": wheel_verified, "exact_reset": True}
+    # F8 preserves viewport focus, unlike clicking the toggle button.
+    palette = ["#17695b", "#c99843", "#2e515c", "#644d6f", "#9e5f39", "#436c51", "#b9c7d8", "#4e5866"]
+    def hidden(path):
+        return not any(bounds(path, color) for color in palette)
+    tap(*center(first))
+    press_key("F8")
+    await_state("lazy-list-offstage.png", hidden)
+    if wheel is not None:
+        wheel(first[0] + first[2] / 2, first[1] + 120 * scale, 4)
+    press_key("F8")
+    await_state("lazy-list-offstage-restored.png", lambda path: bounds(path, "#17695b") == first)
+    press_key("F8")
+    await_state("lazy-list-offstage-keyboard.png", hidden)
+    press_key("End")
+    await_state("lazy-list-offstage-end-hidden.png", hidden)
+    press_key("F8")
+    restored = await_state("lazy-list-offstage-end-restored.png", lambda path: bounds(path, "#c99843") == last)
+    exact_fill(restored, last, "#c99843", scale)
+    press_key("Home")
+    restored = await_state("lazy-list-offstage-home.png", lambda path: bounds(path, "#17695b") == first)
+    exact_fill(restored, first, "#17695b", scale)
+    return {"passed": True, "items": 10002, "viewport_points": 240, "drag": True, "end_home": True, "native_wheel": wheel_verified, "exact_reset": True, "offstage": {"passed": True, "hidden_wheel_ignored": wheel_verified, "hidden_keyboard": True, "exact_restore": True}}
 
 
 def probe_lazy_builds(trace):

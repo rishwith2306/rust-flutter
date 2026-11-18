@@ -140,7 +140,7 @@ impl GestureFrame {
             origin,
             clip: ui.clip_rect(),
             layer: ui.layer_id(),
-            enabled: ui.is_enabled(),
+            enabled: ui.is_enabled() && !crate::layout::ui_is_offstage(ui),
         });
         Ok(())
     }
@@ -210,12 +210,22 @@ impl GestureFrame {
         enabled_hit.then_some(path)
     }
     fn update_visibility(&self) {
-        fn targets(g: &LayoutBox, state: &State, out: &mut Vec<Weak<Target>>) {
+        fn targets(
+            g: &LayoutBox,
+            state: &State,
+            out: &mut Vec<Weak<Target>>,
+            enabled: &mut HashSet<*const Target>,
+            interactive: bool,
+        ) {
+            let interactive = interactive && !g.is_offstage();
             if let Some(t) = state.targets.get(&g.id) {
                 out.push(Rc::downgrade(t));
+                if interactive {
+                    enabled.insert(Rc::as_ptr(t));
+                }
             }
             for child in &g.children {
-                targets(&child.layout, state, out);
+                targets(&child.layout, state, out, enabled, interactive);
             }
         }
         let (all, enabled) = {
@@ -223,11 +233,9 @@ impl GestureFrame {
             let mut all = Vec::new();
             let mut enabled = HashSet::new();
             for root in &self.roots {
-                let start = all.len();
-                targets(&root.geometry, &state, &mut all);
-                if root.enabled && self.context.memory(|m| m.allows_interaction(root.layer)) {
-                    enabled.extend(all[start..].iter().map(Weak::as_ptr));
-                }
+                let interactive =
+                    root.enabled && self.context.memory(|m| m.allows_interaction(root.layer));
+                targets(&root.geometry, &state, &mut all, &mut enabled, interactive);
             }
             (all, enabled)
         };

@@ -68,7 +68,9 @@ impl ScrollKeyboard {
         reverse: bool,
         enabled: bool,
     ) {
-        let enabled = enabled && ui.is_enabled() && ui.is_rect_visible(ui.max_rect());
+        let enabled = enabled
+            && ui.is_enabled()
+            && (ui.is_rect_visible(ui.max_rect()) || crate::layout::ui_is_offstage(ui));
         if enabled {
             ui.interact(ui.max_rect(), id, egui::Sense::focusable_noninteractive());
             ui.memory_mut(|m| {

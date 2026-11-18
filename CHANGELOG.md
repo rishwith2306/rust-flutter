@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add retained Offstage subtrees with measured hidden children, preserved state/focused keyboard input, canceled pointer capture, clipped backend output and desktop accessibility hiding; keep animations active unless explicitly muted.
+
 - Add finite fixed-extent lazy ListView builders with bounded cached ranges, stable item keys, rebased row placement and existing viewport input; add a 10,002-row native gallery probe.
 - Make the gallery renderer pixel profile explicit with dithering disabled on both hosts; retain strict color/glyph gates and discard stale smoke result JSON before a run.
 - Add layout-time widget builders with keyed/inherited child retention, batched layout transactions, pure-query errors and bounded convergence; exercise scroll content construction through native probes.

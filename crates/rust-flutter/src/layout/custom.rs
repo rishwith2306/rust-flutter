@@ -15,6 +15,8 @@ pub struct BoxGeometry {
     /// Overrides the legacy self-hit flag when set.
     pub hit_test_behavior: Option<HitTestBehavior>,
     pub baselines: Baselines,
+    /// Keep layout/element activity but suppress raster output and pointer hits.
+    pub offstage: bool,
 }
 impl BoxGeometry {
     pub fn new(size: Vec2) -> Self {
@@ -24,6 +26,7 @@ impl BoxGeometry {
             hit_test_self: false,
             hit_test_behavior: None,
             baselines: Baselines::NONE,
+            offstage: false,
         }
     }
 }
@@ -294,6 +297,11 @@ impl CustomBox {
             children.nodes.is_empty(),
         )?;
         layout.baselines = geometry.baselines;
+        layout.offstage = geometry.offstage;
+        if geometry.offstage {
+            layout.paint_bounds = Rect::from_min_size(Pos2::ZERO, geometry.size);
+            layout.overflow = Insets::default();
+        }
         layout.paint_self = true;
         layout.hit_self = geometry.hit_test_self;
         layout.hit_behavior = geometry.hit_test_behavior;

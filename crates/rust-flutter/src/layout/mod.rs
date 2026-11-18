@@ -13,8 +13,8 @@ mod stack;
 mod ui;
 use egui::{Id, Pos2, Rect, Vec2};
 use std::{collections::HashSet, fmt, hash::Hash};
-pub(crate) use ui::show_layout_with_input;
 pub use ui::{PaintPhase, show_layout, show_layout_with_phases};
+pub(crate) use ui::{show_layout_with_input, ui_is_offstage};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutError {
@@ -756,6 +756,7 @@ pub struct PlacedBox {
 pub struct LayoutBox {
     leaf: bool,
     paint_self: bool,
+    offstage: bool,
     hit_self: bool,
     hit_behavior: Option<HitTestBehavior>,
     pub baselines: Baselines,
@@ -795,6 +796,7 @@ impl LayoutBox {
         Ok(Self {
             leaf,
             paint_self: leaf,
+            offstage: false,
             hit_self: leaf,
             hit_behavior: None,
             baselines: Baselines::NONE,
@@ -805,6 +807,11 @@ impl LayoutBox {
             overflow,
             paint_bounds: if clip == Clip::HardEdge { own } else { bounds },
         })
+    }
+    /// This subtree retains layout and backend keyboard activity but has no
+    /// raster output or pointer-hit participation.
+    pub fn is_offstage(&self) -> bool {
+        self.offstage
     }
     /// Topmost participating box at a local point. As with box hit testing, ancestors' bounds
     /// gate hits even when Clip::None permits painting outside them.

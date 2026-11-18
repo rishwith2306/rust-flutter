@@ -664,10 +664,35 @@ impl GestureBinding {
         } else {
             DispatchReport::default()
         };
-        if !focused || !ui.is_enabled() {
+        if !focused
+            || !ui.is_enabled()
+            || crate::layout::ui_is_offstage(ui)
+            || geometry.is_offstage()
+        {
             self.set_cursor(None);
             report.merge(self.cancel_all());
             return Ok(report);
+        }
+        fn hidden_targets(g: &LayoutBox, hidden: bool, ids: &mut Vec<Id>) {
+            let hidden = hidden || g.is_offstage();
+            if hidden {
+                ids.push(g.id);
+            }
+            for child in &g.children {
+                hidden_targets(&child.layout, hidden, ids);
+            }
+        }
+        let mut hidden = Vec::new();
+        hidden_targets(geometry, false, &mut hidden);
+        let targets = {
+            let state = self.0.state.borrow();
+            hidden
+                .into_iter()
+                .filter_map(|id| state.targets.get(&id).cloned())
+                .collect::<Vec<_>>()
+        };
+        for target in targets {
+            target.cancel();
         }
         let time = std::time::Duration::try_from_secs_f64(time).unwrap_or_default();
         let pointer = PointerId(0);

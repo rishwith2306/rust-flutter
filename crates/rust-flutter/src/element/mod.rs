@@ -3,6 +3,8 @@ mod inherited;
 mod layout_builder;
 pub use layout_builder::LayoutBuilder;
 mod notifier_builder;
+mod offstage;
+pub use offstage::Offstage;
 mod render_object;
 use render_object::{MountedRender, Pipeline};
 pub use render_object::{RenderBox, RenderContext, RenderHandle, RenderObjectWidget};

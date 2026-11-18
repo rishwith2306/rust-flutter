@@ -235,7 +235,7 @@ impl RenderBox for GestureButtonRenderBox {
         self.state.focus.set(Some(response.id));
         let frame = ui.ctx().cumulative_frame_nr();
         #[cfg(not(target_os = "android"))]
-        if response.enabled() {
+        if response.enabled() && !crate::layout::ui_is_offstage(ui) {
             ui.ctx().accesskit_node_builder(response.id, |node| {
                 node.add_action(egui::accesskit::Action::Click)
             });
@@ -243,16 +243,18 @@ impl RenderBox for GestureButtonRenderBox {
         if response.enabled() && self.state.non_pointer_frame.get() != Some(frame) {
             let mut activate = false;
             #[cfg(not(target_os = "android"))]
-            ui.input_mut(|i| {
-                i.consume_accesskit_action_requests(response.id, |request| {
-                    if request.action == egui::accesskit::Action::Click {
-                        activate = true;
-                        true
-                    } else {
-                        false
-                    }
-                })
-            });
+            if !crate::layout::ui_is_offstage(ui) {
+                ui.input_mut(|i| {
+                    i.consume_accesskit_action_requests(response.id, |request| {
+                        if request.action == egui::accesskit::Action::Click {
+                            activate = true;
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                });
+            }
             if response.has_focus() {
                 activate |= ui.input_mut(|i| {
                     i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)

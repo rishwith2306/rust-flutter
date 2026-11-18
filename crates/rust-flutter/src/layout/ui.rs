@@ -1,4 +1,10 @@
 use super::*;
+const OFFSTAGE_TAG: &str = "rust-flutter-offstage";
+pub(crate) fn ui_is_offstage(ui: &egui::Ui) -> bool {
+    ui.stack()
+        .iter()
+        .any(|entry| entry.tags().contains(OFFSTAGE_TAG))
+}
 /// Parent paint runs before or after all placed descendants, respectively.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PaintPhase {
@@ -39,7 +45,15 @@ pub(crate) fn show_layout_with_input(
     let (rect, response) = ui.allocate_exact_size(layout.size, egui::Sense::hover());
     input(ui, rect);
     let scope = ui.id().with(layout.id);
-    visit(ui, scope, layout, rect.min, ui.clip_rect(), &mut render);
+    visit(
+        ui,
+        scope,
+        layout,
+        rect.min,
+        ui.clip_rect(),
+        ui_is_offstage(ui),
+        &mut render,
+    );
     response
 }
 fn visit(
@@ -48,22 +62,41 @@ fn visit(
     layout: &LayoutBox,
     origin: Pos2,
     inherited_clip: Rect,
+    inherited_offstage: bool,
     render: &mut impl FnMut(Id, PaintPhase, &mut egui::Ui),
 ) {
     let rect = Rect::from_min_size(origin, layout.size);
-    let clip = if layout.clip == Clip::HardEdge {
+    let offstage = inherited_offstage || layout.offstage;
+    let clip = if offstage {
+        Rect::NOTHING
+    } else if layout.clip == Clip::HardEdge {
         inherited_clip.intersect(rect)
     } else {
         inherited_clip
     };
     let mut painting_ui = if layout.paint_self {
+        let mut info = egui::UiStackInfo::default();
+        if offstage {
+            info = info.with_tag(OFFSTAGE_TAG);
+        }
         let mut child = ui.new_child(
             egui::UiBuilder::new()
+                .ui_stack_info(info)
                 .id(scope.with(layout.id))
                 .max_rect(rect)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
         child.set_clip_rect(clip);
+        #[cfg(not(target_os = "android"))]
+        child
+            .ctx()
+            .accesskit_node_builder(child.unique_id(), |node| {
+                if offstage {
+                    node.set_hidden();
+                } else {
+                    node.clear_hidden();
+                }
+            });
         render(layout.id, PaintPhase::Background, &mut child);
         Some(child)
     } else {
@@ -76,6 +109,7 @@ fn visit(
             &child.layout,
             origin + child.offset,
             clip,
+            offstage,
             render,
         );
     }

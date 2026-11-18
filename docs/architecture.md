@@ -92,6 +92,13 @@ box reports the full extent and rebases realized row coordinates near the
 viewport. Variable-extent delegates, slivers, coordinated nested scrolling and
 full platform scroll physics remain unfinished.
 
+[Offstage](offstage.md) keeps a child mounted and measured while reporting the
+parent constraints' minimum size. Hidden layout flags suppress hit paths and
+cancel pointer capture; inherited UI tags and empty clips suppress raster output
+while allowing focused keyboard input. Backend callbacks and tickers continue.
+Desktop accessibility containers carry hidden metadata. This does not provide
+lazy-list keep-alive storage or the complete platform semantics/focus pipeline.
+
 `Services` stores implementations by Rust type. Store `Arc<dyn Trait>` to abstract
 an OS API. Missing services return `None`. This is dependency injection within the
 Rust process, not a JNI/Swift message bridge. Native implementations must be added

@@ -34,6 +34,9 @@ impl LayoutBox {
         HitTestResult { path, absorbed }
     }
     fn hit_path(&self, point: Pos2, offset: Vec2, result: &mut Vec<HitTestEntry>) -> bool {
+        if self.offstage {
+            return false;
+        }
         if !(point.x >= 0.0 && point.y >= 0.0 && point.x < self.size.x && point.y < self.size.y) {
             return false;
         }

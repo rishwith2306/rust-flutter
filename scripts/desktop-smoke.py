@@ -149,7 +149,7 @@ try:
                 assert xdo("mousemove", "--window", window, str(round(x)), str(round(y))).returncode == 0
                 assert xdo("click", "--repeat", str(abs(steps)), "--delay", "120", "5" if steps > 0 else "4").returncode == 0
             def component_key(key):
-                name = {"End": "End", "Home": "Home", "PageDown": "Next", "ArrowDown": "Down"}[key]
+                name = {"End": "End", "Home": "Home", "PageDown": "Next", "ArrowDown": "Down", "F8": "F8"}[key]
                 assert xdo("key", "--clearmodifiers", name).returncode == 0
             components = probe_components(component_capture, lambda x,y: click(window, round(x), round(y)), drag=component_drag, wheel=component_wheel, press_key=component_key)
             def view_report():

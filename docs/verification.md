@@ -1124,3 +1124,30 @@ baseline, animation, restoration, retained layout and scrollbar gates pass.
 This establishes the ordinary emulator APK/input path, not physical Android
 hardware or macOS window/input runtime. Automatic keep-alive, variable extents,
 slivers/grids, restoration, semantics and complete Flutter parity remain open.
+
+## Retained Offstage validation
+
+The Offstage shipment adds 13 headless tests; the complete all-feature workspace
+suite passes 496 tests locally. They cover hidden minimum-size/overflow/hit
+geometry, pure-query behavior, keyed state and disposal, clipped callbacks,
+shared/legacy pointer capture cancellation, overlapping roots, focused text and
+button input, hidden viewport keyboard/wheel behavior, inherited/layout-builder
+updates, desktop AccessKit hidden ancestors/actions and continued owned animation.
+Workspace Clippy, ARM64 Android framework/gallery Clippy, formatting, rustdoc and
+the runnable Offstage guide pass. Renderer archive/selection checks also pass.
+
+The Linux X11/Xvfb gallery probe uses OS F8/End/Home and wheel events. Hidden rows
+and scrollbar colors disappear; wheel input over the former viewport does not
+change its restored first-row pixels. The focused hidden viewport responds to
+End without painting rows; showing it restores rows 9998–10001 and Home returns
+to the original first-row pixels. Saved hidden/last-row screenshots were visually
+inspected. `desktop-result.json` records `lazy_list.offstage.passed`,
+`hidden_wheel_ignored`, `hidden_keyboard` and `exact_restore` as true. Existing
+strict RGB888, glyph, component, scrollbar, animation and restoration gates pass.
+
+The Android probe includes the same gates, but Android compilation alone is not
+runtime proof. Exact-revision CI results will be recorded after inspecting their
+artifacts. macOS window/input, physical devices, native IME continuity and
+VoiceOver/TalkBack remain unverified. Backend callbacks continue under an empty
+clip; this is not skipped traversal or a performance claim. Automatic lazy-list
+keep-alive and full Flutter parity remain unfinished. See [scope](offstage.md).
