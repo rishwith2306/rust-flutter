@@ -1,15 +1,18 @@
 //! UI-local scroll positions, metrics and controller attachments.
 //! Eager retained single-child viewports support captured primary-pointer pans.
 //! Wheel/point-scroll signals and interactive scrollbars use the shared binding.
-//! Focused viewports support keyboard scrolling. Lazy slivers and platform
+//! Focused viewports support keyboard scrolling. Fixed-extent lists build only
+//! their viewport/cache range. Lazy slivers and platform
 //! scroll physics remain unfinished.
 mod controller;
 mod keyboard;
+mod list;
 mod position;
 mod scrollbar;
 mod viewport;
 use crate::animation::AnimationError;
 pub use controller::{ScrollAttachment, ScrollController, WeakScrollController};
+pub use list::ListView;
 pub use position::{
     ScrollActivity, ScrollDimensions, ScrollMetrics, ScrollPosition, WeakScrollPosition,
 };
@@ -24,6 +27,10 @@ pub enum ScrollError {
     InvalidDimensions,
     InvalidDuration,
     InvalidScrollbarStyle,
+    InvalidItemExtent,
+    InvalidCacheExtent,
+    InvalidRealizedItemLimit,
+    ContentExtentOverflow,
     NoDimensions,
     NotDragging,
     Superseded,

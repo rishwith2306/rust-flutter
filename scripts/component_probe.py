@@ -50,6 +50,7 @@ def patch(path, rect, scale, width=96):
 
 def probe_baselines(path, trace, scale=1.0):
     """Compare rendered box offsets to the exact galley metrics used to paint."""
+    assert "gallery renderer dithering=false" in trace, "missing explicit gallery pixel profile"
     metrics = re.findall(r"baseline-demo small=([\d.-]+) large=([\d.-]+)", trace)
     assert metrics, "missing actual font baseline diagnostics"
     small_metric, large_metric = map(float, metrics[-1])
@@ -102,7 +103,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
     builder_widths = list(dict.fromkeys(float(width) for width in re.findall(r"layout-builder scroll width=([\d.eE+-]+) max_height=inf", trace)))
     assert builder_widths and all(math.isfinite(width) and width > 0 for width in builder_widths), "missing layout-time scroll child construction"
-    return {"layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"renderer_profile": {"dithering": False}, "layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
@@ -399,3 +400,58 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     bar_reset = await_bar("components-scrollbar-reset.png", lambda path: bounds(path, "#284b72") == scroll_view and bounds(path, "#b9c7d8") == thumb)
     exact_fill(bar_reset, scroll_view, "#284b72", scale)
     return {"scrollbar": {"passed": True, "thumb_drag": True, "track_page": True, "wheel_over_thumb": bar_wheel_verified, "initial_thumb": thumb}, "scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+
+
+def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):
+    """Drive the standalone 10,002-row gallery list through OS input/pixels."""
+    initial = capture("lazy-list-initial.png")
+    first = bounds(initial, "#17695b")
+    reset = bounds(initial, "#4d6552")
+    assert first and reset and abs(first[3] - 60 * scale) <= 2, (first, reset)
+    assert not bounds(initial, "#c99843"), "last item painted at initial offset"
+    exact_fill(initial, first, "#17695b", scale)
+
+    def await_state(name, predicate):
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            path = capture(name)
+            if predicate(path):
+                return path
+            time.sleep(0.1)
+        raise AssertionError(f"lazy list did not reach expected pixels: {name}")
+
+    x, y = center(first)
+    drag(x, y, x, y - 80 * scale)
+    dragged = await_state("lazy-list-dragged.png", lambda path: not bounds(path, "#17695b") and any(bounds(path, color) for color in ["#2e515c", "#644d6f", "#9e5f39", "#436c51"]))
+    for color in ["#2e515c", "#644d6f", "#9e5f39", "#436c51"]:
+        rect = bounds(dragged, color)
+        if rect:
+            assert rect[0] == first[0] and rect[2] == first[2], (rect, first)
+            assert rect[1] >= first[1] - 1 and rect[1] + rect[3] <= first[1] + 240 * scale + 1, "lazy row escaped viewport"
+    tap(*center(reset))
+    await_state("lazy-list-drag-reset.png", lambda path: bounds(path, "#17695b") == first)
+    tap(*center(first))
+    press_key("End")
+    end = await_state("lazy-list-end.png", lambda path: not bounds(path, "#17695b") and bool(bounds(path, "#c99843")))
+    last = bounds(end, "#c99843")
+    assert last and abs(last[1] - first[1] - 180 * scale) <= 2 and abs(last[3] - 60 * scale) <= 2, (first, last)
+    exact_fill(end, last, "#c99843", scale)
+    press_key("Home")
+    await_state("lazy-list-home.png", lambda path: bounds(path, "#17695b") == first and not bounds(path, "#c99843"))
+    wheel_verified = False
+    if wheel is not None:
+        wheel(*center(first), 4)
+        await_state("lazy-list-wheel.png", lambda path: not bounds(path, "#17695b") and any(bounds(path, color) for color in ["#2e515c", "#644d6f", "#9e5f39", "#436c51"]))
+        tap(*center(reset))
+        wheel_verified = True
+    final = await_state("lazy-list-reset.png", lambda path: bounds(path, "#17695b") == first and not bounds(path, "#c99843"))
+    exact_fill(final, first, "#17695b", scale)
+    return {"passed": True, "items": 10002, "viewport_points": 240, "drag": True, "end_home": True, "native_wheel": wheel_verified, "exact_reset": True}
+
+
+def probe_lazy_builds(trace):
+    batches = [tuple(map(int, row)) for row in re.findall(r"lazy-list built=(\d+) first=(\d+) last=(\d+) total=(\d+)", trace)]
+    assert batches, "missing lazy list build diagnostics"
+    assert all(total == 10002 and 1 <= count <= 9 and 0 <= first <= last < total and count == last - first + 1 for count, first, last, total in batches), batches
+    assert any(first == 0 for _, first, _, _ in batches) and any(last == 10001 for _, _, last, _ in batches), "lazy list never built both data endpoints"
+    return {"passed": True, "batches": len(batches), "max_built_per_pass": max(row[0] for row in batches), "last_index": max(row[2] for row in batches), "total_items": 10002}

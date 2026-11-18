@@ -1037,3 +1037,62 @@ full member-parity claim. Android probes now require the same layout-time scroll
 construction diagnostic, but runtime support for this revision remains pending
 exact CI evidence. macOS runtime remains unverified. See
 [layout builder semantics](layout-builders.md).
+
+### Layout builder CI runtime result
+
+Published code revision `00786fdcf1055ad0ffb5842a434f29c5ddc0796d` passes all four
+jobs in [run 44186454306](https://github.com/rishwith2306/rust-flutter/actions/runs/44186454306):
+Linux native checks, macOS build/tests, ARM Android compilation and Android
+runtime. Downloaded result files record layout_builder passed with content
+widths 984→884 on Linux and 395.4375 logical points on API 35 / x86_64 Android.
+The content height is unbounded in the builder, while the retained viewport
+clips it to 60 logical points (158 physical pixels on Android at scale 2.625).
+Existing touch/keyboard/wheel, scrollbar drag/page/wheel-over-thumb, exact reset,
+RGB888, glyph, baseline, animation and restoration gates pass. This establishes
+layout-time construction in the ordinary emulator APK; it does not establish
+macOS runtime or complete Flutter layout-callback/member compatibility.
+
+## Fixed-extent lazy lists
+
+The lazy ListView implementation passes 483 workspace tests, including eighteen
+new list tests. A million-item dataset with a 100-point viewport and cache zero
+builds only five 20-point rows; a large jump and the final offset each build only
+the new viewport range. Other tests cover fractional/partial rows, horizontal
+and reverse geometry, cached state and stable-key reorder, off-cache disposal,
+inherited context, resize/count reduction, initial offset clamping, tiny
+viewports at rounded large endpoints, empty and
+zero-area lists, invalid bounds/budgets and pan/wheel/keyboard/thumb interaction.
+Realized coordinates are rebased near the viewport while the content render box
+reports the full extent. Existing positions retain f32 precision limitations.
+
+The Linux X11/Xvfb native gallery probe passes with 10,002 fixed 60-point rows,
+a 240-point viewport and a 120-point cache. OS drag and wheel input move the
+content, End renders row 10,001 at offset 599880, Home restores the first row,
+and reset restores exact original pixels. The saved End screenshot was visually
+inspected and shows rows 9998–10001 within the clip, with the scrollbar thumb at
+the bottom. Thirteen nonempty build batches are recorded, with at most nine rows
+built in any one paint pass; the strict parser also requires both dataset
+endpoints. `desktop-result.json` records lazy_list passed, drag/end_home/wheel/
+exact_reset and the bounded build report. Existing component/scrollbar/layout,
+RGB888, glyph, animation and restoration gates also pass.
+
+The new Android probe uses the same lazy-list pixel and build-count gates, but
+cross-compilation or probe presence is not runtime proof for this shipment.
+Exact-revision CI artifacts remain to be inspected. Variable extents, infinite
+child delegates, slivers/grids, automatic keep-alive, restoration, semantics and
+complete ListView member compatibility remain unfinished; physical devices and
+macOS runtime remain unverified. See [list usage and scope](lazy-lists.md).
+
+### Gallery pixel profile for the lazy-list shipment
+
+A final local Linux capture with the previous default dithering enabled failed
+the unchanged exact-color gate. In a 30×30 interior patch of the solid scroll
+fill, 28 of 900 pixels differed by one blue level (six also by one red level).
+The gallery now explicitly disables renderer dithering in both native
+entrypoints. The same patch then contains 900 exact `(40,75,114)` pixels, and
+the full native probe passes. The shared probe requires the derived renderer
+configuration diagnostic and records `renderer_profile.dithering=false`.
+Exact RGB888 and 75% glyph-mask thresholds are unchanged. These gallery pixel
+results are scoped to that explicit profile; framework NativeOptions remain
+configurable and retain their existing default. Smoke scripts also remove an
+old result JSON at startup so a failed run cannot leave a prior success record.

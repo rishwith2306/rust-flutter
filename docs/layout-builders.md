@@ -65,7 +65,7 @@ stripes through this API; native probes require a positive constrained width and
 an unbounded content height, with widths 984→884 on Linux window resize. Runtime
 results are recorded separately in [verification](verification.md).
 
-This provides constraint-dependent composition. Lazy child delegates, ListView,
-slivers and the complete Flutter LayoutBuilder/ConstrainedLayoutBuilder member
+This provides constraint-dependent composition. [Fixed-extent lazy lists](lazy-lists.md) now use this foundation. Variable-extent
+child delegates, slivers and the complete Flutter LayoutBuilder/ConstrainedLayoutBuilder member
 surface remain unfinished. Reviewed the official
 [LayoutBuilder behavior](https://api.flutter.dev/flutter/widgets/LayoutBuilder-class.html).

@@ -30,6 +30,7 @@ pub struct SingleChildScrollView {
     dimensions: Rc<Cell<Option<ScrollDimensions>>>,
     keyboard: Rc<ScrollKeyboard>,
     keyboard_enabled: bool,
+    content_origin: Option<(f64, f64)>,
 }
 impl SingleChildScrollView {
     pub fn new(position: &ScrollPosition, binding: &GestureBinding) -> Result<Self, ScrollError> {
@@ -45,6 +46,7 @@ impl SingleChildScrollView {
             dimensions: Rc::new(Cell::new(None)),
             keyboard: Rc::new(ScrollKeyboard::default()),
             keyboard_enabled: true,
+            content_origin: None,
         })
     }
     pub fn axis(mut self, axis: Axis) -> Self {
@@ -58,6 +60,12 @@ impl SingleChildScrollView {
     /// Enable viewport focus and keyboard scrolling (default true).
     pub fn keyboard_scrolling(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
+        self
+    }
+    // Lazy content stores item coordinates near its realized range. Keep the
+    // viewport's full metrics while avoiding large f32 coordinate subtraction.
+    pub(super) fn rebased_origin(mut self, origin: f64, content_extent: f64) -> Self {
+        self.content_origin = Some((origin, content_extent));
         self
     }
     pub fn into_widget(self, child: Widget) -> Result<Widget, ScrollError> {
@@ -195,6 +203,17 @@ impl SingleChildScrollView {
         Ok(detector.into_widget(Widget::render_object(self, vec![child])))
     }
 }
+// The public offset/metrics are f32. Snap their rounded endpoint to the
+// exact fixed-item content edge so tiny viewports do not fall beyond the data.
+pub(super) fn rebased_offset(pixels: f32, content: f32, exact_content: f64, viewport: f32) -> f64 {
+    let model_extent = (content - viewport).max(0.0);
+    let logical_extent = (exact_content - f64::from(viewport)).max(0.0);
+    if pixels >= model_extent {
+        logical_extent
+    } else {
+        f64::from(pixels).clamp(0.0, logical_extent)
+    }
+}
 fn main(axis: Axis, size: egui::Vec2) -> f32 {
     if axis == Axis::Vertical {
         size.y
@@ -223,6 +242,7 @@ pub struct ScrollViewportRenderBox {
     dimensions: Rc<Cell<Option<ScrollDimensions>>>,
     keyboard: Rc<ScrollKeyboard>,
     keyboard_enabled: bool,
+    content_origin: Option<(f64, f64)>,
     lease: Option<Rc<()>>,
     subscription: Option<Subscription>,
     task: Option<Rc<ViewportTask>>,
@@ -230,6 +250,7 @@ pub struct ScrollViewportRenderBox {
 impl ScrollViewportRenderBox {
     fn bind(&mut self, config: &SingleChildScrollView, ctx: &RenderContext) {
         self.keyboard_enabled = config.keyboard_enabled;
+        self.content_origin = config.content_origin;
         self.axis = config.axis;
         self.reverse = config.reverse;
         config.dimensions.set(self.dimensions.get());
@@ -312,6 +333,7 @@ impl RenderObjectWidget for SingleChildScrollView {
             dimensions: self.dimensions.clone(),
             keyboard: self.keyboard.clone(),
             keyboard_enabled: self.keyboard_enabled,
+            content_origin: self.content_origin,
             lease: None,
             subscription: None,
             task: None,
@@ -370,6 +392,22 @@ impl RenderBox for ScrollViewportRenderBox {
             main(self.axis, size) - main(self.axis, content) + offset
         } else {
             -offset
+        };
+        let translation = if let Some((origin, exact_content)) = self.content_origin {
+            let logical_offset = rebased_offset(
+                self.position.pixels(),
+                main(self.axis, content),
+                exact_content,
+                main(self.axis, size),
+            );
+            let logical = if self.reverse {
+                f64::from(main(self.axis, size)) - exact_content + logical_offset
+            } else {
+                -logical_offset
+            };
+            (logical + origin) as f32
+        } else {
+            translation
         };
         children.place(
             0,

@@ -22,3 +22,5 @@ assets = Recursos incluidos
 layout = Diseño con restricciones
 
 components = Componentes con estado
+
+lazy-list = Lista diferida

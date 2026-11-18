@@ -15,7 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-from component_probe import probe_baselines, probe_components, native_formats
+from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds, native_formats
 from android_ime import ime_state
 from android_ready import focused_presentation, paused_since
 from android_wheel import wheel_result
@@ -38,6 +38,7 @@ if not adb:
 root = Path(__file__).resolve().parents[1]
 output = root / "target/smoke"
 output.mkdir(parents=True, exist_ok=True)
+(output / "android-result.json").unlink(missing_ok=True)
 package = "dev.rustflutter.gallery"
 surface_formats = []
 keyboard_states = []
@@ -278,6 +279,21 @@ components = probe_components(lambda name: screenshot("android-" + name),
     press_key=lambda key: device("shell", "input", "keyevent", {"End": "KEYCODE_MOVE_END", "Home": "KEYCODE_MOVE_HOME", "PageDown": "KEYCODE_PAGE_DOWN", "ArrowDown": "KEYCODE_DPAD_DOWN"}[key]))
 device("shell", "input", "keyevent", "4")
 wait_state(route="home")
+from component_probe import bounds, center
+home = screenshot("android-lazy-list-home-route.png")
+lazy_button = bounds(home, "#42658b")
+assert lazy_button, "missing lazy list route button"
+lx, ly = center(lazy_button)
+device("shell", "input", "tap", str(round(lx)), str(round(ly)))
+wait_state(route="lazy_list")
+time.sleep(0.5)
+lazy_list = probe_lazy_list(lambda name: screenshot("android-" + name),
+    lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))),
+    lambda x,y,end_x,end_y: device("shell", "input", "swipe", str(round(x)), str(round(y)), str(round(end_x)), str(round(end_y)), "400"),
+    lambda key: device("shell", "input", "keyevent", {"End": "KEYCODE_MOVE_END", "Home": "KEYCODE_MOVE_HOME"}[key]),
+    args.scale, wheel=wheel if args.wheel_instrumentation else None)
+device("shell", "input", "keyevent", "4")
+wait_state(route="home")
 pid = device("shell", "pidof", package).stdout.decode().strip()
 render_trace = device("logcat", "-d", f"--pid={pid}", "-s", "RustStdoutStderr:I").stdout.decode(errors="replace")
 render_layouts = re.findall(r"render-view layout=(\d+) size=([\d.]+)x([\d.]+)", render_trace)
@@ -289,6 +305,7 @@ render_queries = re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\
 assert len(render_queries) == 1 and render_queries[0][-1] == "true", render_queries
 baselines = probe_baselines(output / "android-components-initial.png", render_trace, args.scale)
 assert len(baselines["layout_builder"]["scroll_widths"]) == 1 and abs(baselines["layout_builder"]["scroll_widths"][0] - float(render_layouts[0][1])) <= 0.001, baselines["layout_builder"]
+lazy_list["builds"] = probe_lazy_builds(render_trace)
 render_objects = {"created": 1, "updated": 1, "layouts": render_layouts, "dry_queries": render_queries}
 result = {"passed": True, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
@@ -303,6 +320,7 @@ result = {"passed": True, "serial": args.serial,
           "asset_page_opened": True,
           "layout_state_after_touch": layout_value,
           "components": components,
+          "lazy_list": lazy_list,
           "wheel_injections": wheel_injections,
           "render_objects": render_objects,
           "baseline_alignment": baselines,

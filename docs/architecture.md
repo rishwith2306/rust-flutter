@@ -86,8 +86,11 @@ One shared `GestureBinding` routes hit paths, pointer arenas and wheel signals
 across painted roots. Keyboard shortcuts use viewport focus; scrollbar thumb
 drags carry command identities so synchronous application callbacks can supersede
 them safely. See [viewports](scroll-viewports.md) and [scrollbars](scrollbars.md).
-Lazy child construction, slivers, coordinated nested scrolling and full platform
-scroll physics remain unfinished.
+Fixed-extent [lazy lists](lazy-lists.md) build only a viewport/cache range,
+retaining overlapping keyed items in the same element tree. A content render
+box reports the full extent and rebases realized row coordinates near the
+viewport. Variable-extent delegates, slivers, coordinated nested scrolling and
+full platform scroll physics remain unfinished.
 
 `Services` stores implementations by Rust type. Store `Arc<dyn Trait>` to abstract
 an OS API. Missing services return `None`. This is dependency injection within the

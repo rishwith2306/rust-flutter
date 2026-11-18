@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add finite fixed-extent lazy ListView builders with bounded cached ranges, stable item keys, rebased row placement and existing viewport input; add a 10,002-row native gallery probe.
+- Make the gallery renderer pixel profile explicit with dithering disabled on both hosts; retain strict color/glyph gates and discard stale smoke result JSON before a run.
 - Add layout-time widget builders with keyed/inherited child retention, batched layout transactions, pure-query errors and bounded convergence; exercise scroll content construction through native probes.
 - Add retained proportional scrollbars with axis/reverse geometry, captured thumb drags, track paging and wheel fallthrough; protect drag ownership from callback-created commands.
 - Add focused retained viewport keyboard scrolling, Tab/blank-tap focus, child focus preservation and an opt-out; native probes now require key-driven movement and reset pixels.

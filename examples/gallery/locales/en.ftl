@@ -22,3 +22,5 @@ assets = Bundled assets
 layout = Constraint layout
 
 components = Stateful components
+
+lazy-list = Lazy list

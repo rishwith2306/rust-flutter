@@ -10,11 +10,12 @@ import select
 import subprocess
 import tempfile
 import time
-from component_probe import probe_baselines, probe_components
+from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds
 
 root = Path(__file__).resolve().parents[1]
 output = root / "target" / "smoke"
 output.mkdir(parents=True, exist_ok=True)
+(output / "desktop-result.json").unlink(missing_ok=True)
 xvfb_log = (output / "xvfb.log").open("w")
 read_fd, write_fd = os.pipe()
 server = subprocess.Popen(
@@ -171,7 +172,19 @@ try:
             render_queries=re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)",trace)
             assert len(render_queries)==2 and all(q[-1]=="true" for q in render_queries), render_queries
             render_objects={"created":1,"updated":2,"layouts":render_layouts,"dry_queries":render_queries}
-            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "baseline_alignment": baselines, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
+            assert xdo("key", "XF86Back").returncode == 0
+            wait_for(lambda: state_matches(route="home"), "components back request did not return home")
+            home = component_capture("lazy-list-home-route.png")
+            from component_probe import bounds, center
+            lazy_button = bounds(home, "#42658b")
+            assert lazy_button, "missing lazy list route button"
+            click(window, *map(round, center(lazy_button)))
+            wait_for(lambda: state_matches(route="lazy_list"), "lazy list page did not open")
+            time.sleep(0.5)
+            lazy_list = probe_lazy_list(component_capture, lambda x,y: click(window, round(x), round(y)), component_drag, component_key, wheel=component_wheel)
+            trace = (output / "gallery.log").read_text()
+            lazy_list["builds"] = probe_lazy_builds(trace)
+            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "lazy_list": lazy_list, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "baseline_alignment": baselines, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
             print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:
     if app is not None and app.poll() is None:

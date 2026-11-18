@@ -12,6 +12,24 @@ use rust_flutter::{
 };
 use serde::{Deserialize, Serialize};
 mod components;
+mod lazy_lists;
+
+// Use the same explicit pixel profile on desktop and Android. Dithering is
+// useful for gradients, but introduces noise into exact-color gallery probes.
+pub fn native_options() -> rust_flutter::NativeOptions {
+    let backend = if cfg!(target_os = "android") {
+        rust_flutter::GraphicsBackend::Gles
+    } else {
+        rust_flutter::GraphicsBackend::Auto
+    };
+    let mut options = rust_flutter::native_options(backend);
+    options.dithering = false;
+    println!(
+        "rust-flutter gallery renderer dithering={}",
+        options.dithering
+    );
+    options
+}
 
 static ASSETS: EmbeddedBundle =
     EmbeddedBundle::new(include!(concat!(env!("OUT_DIR"), "/assets.rs")));
@@ -25,6 +43,7 @@ enum Route {
     Assets,
     Layout,
     Components,
+    LazyList,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Snapshot {
@@ -49,6 +68,7 @@ pub struct Gallery {
     images: AssetImages<&'static EmbeddedBundle>,
     layout_demo: BoxNode,
     component_demo: Option<components::ComponentDemo>,
+    lazy_list_demo: Option<lazy_lists::LazyListDemo>,
 }
 impl Default for Gallery {
     fn default() -> Self {
@@ -70,6 +90,7 @@ impl Default for Gallery {
             images: AssetImages::new(&ASSETS),
             layout_demo: layout_demo(),
             component_demo: None,
+            lazy_list_demo: None,
         }
     }
 }
@@ -176,6 +197,11 @@ impl Application for Gallery {
         {
             demo.cancel_input();
         }
+        if *self.navigator.current() != Route::LazyList
+            && let Some(demo) = &self.lazy_list_demo
+        {
+            demo.cancel_input();
+        }
         match *self.navigator.current() {
             Route::Home => {
                 scroll(ui, "home", |ui| {
@@ -212,6 +238,15 @@ impl Application for Gallery {
                         if button(ui, self.tr("components")).clicked() {
                             self.navigator.push(Route::Components);
                         }
+                        if ui
+                            .add(
+                                egui::Button::new(self.tr("lazy-list"))
+                                    .fill(egui::Color32::from_rgb(66, 101, 139)),
+                            )
+                            .clicked()
+                        {
+                            self.navigator.push(Route::LazyList);
+                        }
                     });
                     card(ui, |ui| {
                         heading(ui, self.tr("background"));
@@ -237,6 +272,15 @@ impl Application for Gallery {
                         }
                     });
                 });
+            }
+            Route::LazyList => {
+                heading(ui, self.tr("lazy-list"));
+                self.lazy_list_demo
+                    .get_or_insert_with(|| lazy_lists::LazyListDemo::new(ui.ctx()))
+                    .show(ui);
+                if button(ui, self.tr("back")).clicked() {
+                    self.navigator.pop();
+                }
             }
             Route::Components => {
                 heading(ui, self.tr("components"));
@@ -378,8 +422,15 @@ fn layout_demo() -> BoxNode {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: rust_flutter::AndroidApp) {
-    rust_flutter::run_android(app, "Rust Flutter Gallery", Gallery::default())
-        .expect("Android runner failed");
+    rust_flutter::run_with_options(
+        "Rust Flutter Gallery",
+        rust_flutter::NativeOptions {
+            android_app: Some(app),
+            ..native_options()
+        },
+        Gallery::default(),
+    )
+    .expect("Android runner failed");
 }
 
 #[cfg(test)]
