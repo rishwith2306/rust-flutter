@@ -3,6 +3,7 @@ Uses injected pointer events and image patches, without component state backdoor
 Image operations require ImageMagick's convert. Coordinates are physical pixels.
 """
 import re
+import json
 import math
 import subprocess
 import time
@@ -430,7 +431,7 @@ def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):
             assert rect[1] >= first[1] - 1 and rect[1] + rect[3] <= first[1] + 240 * scale + 1, "lazy row escaped viewport"
     tap(*center(reset))
     await_state("lazy-list-drag-reset.png", lambda path: bounds(path, "#17695b") == first)
-    tap(*center(first))
+    tap(first[0] + first[2] / 2, first[1] + 90 * scale)
     press_key("End")
     end = await_state("lazy-list-end.png", lambda path: not bounds(path, "#17695b") and bool(bounds(path, "#c99843")))
     last = bounds(end, "#c99843")
@@ -450,7 +451,7 @@ def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):
     palette = ["#17695b", "#c99843", "#2e515c", "#644d6f", "#9e5f39", "#436c51", "#b9c7d8", "#4e5866"]
     def hidden(path):
         return not any(bounds(path, color) for color in palette)
-    tap(*center(first))
+    tap(first[0] + first[2] / 2, first[1] + 90 * scale)
     press_key("F8")
     await_state("lazy-list-offstage.png", hidden)
     if wheel is not None:
@@ -467,12 +468,34 @@ def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):
     press_key("Home")
     restored = await_state("lazy-list-offstage-home.png", lambda path: bounds(path, "#17695b") == first)
     exact_fill(restored, first, "#17695b", scale)
-    return {"passed": True, "items": 10002, "viewport_points": 240, "drag": True, "end_home": True, "native_wheel": wheel_verified, "exact_reset": True, "offstage": {"passed": True, "hidden_wheel_ignored": wheel_verified, "hidden_keyboard": True, "exact_restore": True}}
+    before = patch(restored, first, scale)
+    tap(*center(first))
+    clicked = await_state("lazy-list-kept-count.png", lambda path: patch(path, first, scale) != before)
+    counted = patch(clicked, first, scale)
+    # Focus the viewport through an ordinary row, preserving the row-owned count.
+    tap(first[0] + first[2] / 2, first[1] + 90 * scale)
+    press_key("End")
+    await_state("lazy-list-kept-away.png", lambda path: bounds(path, "#c99843") == last and not bounds(path, "#17695b"))
+    press_key("Home")
+    returned = await_state("lazy-list-kept-returned.png", lambda path: bounds(path, "#17695b") == first and patch(path, first, scale) == counted)
+    exact_fill(returned, first, "#17695b", scale)
+    return {"passed": True, "items": 10002, "viewport_points": 240, "drag": True, "end_home": True, "native_wheel": wheel_verified, "exact_reset": True, "offstage": {"passed": True, "hidden_wheel_ignored": wheel_verified, "hidden_keyboard": True, "exact_restore": True}, "keep_alive": {"passed": True, "local_counter_retained": True}}
 
 
 def probe_lazy_builds(trace):
-    batches = [tuple(map(int, row)) for row in re.findall(r"lazy-list built=(\d+) first=(\d+) last=(\d+) total=(\d+)", trace)]
+    batches = [(int(count), int(first), int(last), int(total), json.loads(indices)) for count, first, last, total, indices in re.findall(r"lazy-list built=(\d+) first=(\d+) last=(\d+) total=(\d+) indices=(\[[^\]\n]*\])", trace)]
     assert batches, "missing lazy list build diagnostics"
-    assert all(total == 10002 and 1 <= count <= 9 and 0 <= first <= last < total and count == last - first + 1 for count, first, last, total in batches), batches
-    assert any(first == 0 for _, first, _, _ in batches) and any(last == 10001 for _, _, last, _ in batches), "lazy list never built both data endpoints"
-    return {"passed": True, "batches": len(batches), "max_built_per_pass": max(row[0] for row in batches), "last_index": max(row[2] for row in batches), "total_items": 10002}
+    kept_batches = 0
+    for count, first, last, total, indices in batches:
+        assert total == 10002 and count == len(indices) and len(set(indices)) == count and all(0 <= i < total for i in indices), batches
+        ordered = sorted(indices)
+        assert first == ordered[0] and last == ordered[-1], batches
+        if ordered == list(range(first, last + 1)):
+            assert count <= 9, batches
+        else:
+            # Only row 0 is kept alive in the gallery. A configuration update
+            # may rebuild it plus the ordinary contiguous viewport/cache range.
+            assert ordered[0] == 0 and ordered[1:] == list(range(ordered[1], last + 1)) and count <= 10, batches
+            kept_batches += 1
+    assert any(first == 0 for _, first, _, _, _ in batches) and any(last == 10001 for _, _, last, _, _ in batches), "lazy list never built both data endpoints"
+    return {"passed": True, "batches": len(batches), "max_built_per_pass": max(row[0] for row in batches), "last_index": max(row[2] for row in batches), "total_items": 10002, "kept_item_build_batches": kept_batches}

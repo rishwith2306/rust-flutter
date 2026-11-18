@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Retain requested lazy item subtrees with counted owned/declarative keep-alive requests, key-index remapping, per-item build contexts and offstage keyboard activity; add a native row-owned counter retention probe.
+
 - Add retained Offstage subtrees with measured hidden children, preserved state/focused keyboard input, canceled pointer capture, clipped backend output and desktop accessibility hiding; keep animations active unless explicitly muted.
 
 - Add finite fixed-extent lazy ListView builders with bounded cached ranges, stable item keys, rebased row placement and existing viewport input; add a 10,002-row native gallery probe.

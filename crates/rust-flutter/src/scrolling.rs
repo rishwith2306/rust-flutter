@@ -5,8 +5,10 @@
 //! their viewport/cache range. Lazy slivers and platform
 //! scroll physics remain unfinished.
 mod controller;
+mod keep_alive;
 mod keyboard;
 mod list;
+pub use keep_alive::{KeepAlive, KeepAliveHandle};
 mod position;
 mod scrollbar;
 mod viewport;

@@ -1,8 +1,8 @@
 use rust_flutter::{
     egui,
-    element::{ElementTree, Widget},
-    gestures::GestureBinding,
-    layout::BoxConstraints,
+    element::{ElementTree, State, StateContext, StatefulWidget, Widget},
+    gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
+    layout::{BoxConstraints, HitTestBehavior},
     scrolling::{ListView, ScrollPosition, Scrollbar},
 };
 use std::{cell::RefCell, rc::Rc};
@@ -12,6 +12,7 @@ struct Batch {
     count: usize,
     first: Option<usize>,
     last: Option<usize>,
+    indices: Vec<usize>,
 }
 pub struct LazyListDemo {
     tree: ElementTree,
@@ -44,15 +45,18 @@ impl LazyListDemo {
         hidden: bool,
     ) -> Widget {
         let record = batch.clone();
+        let row_binding = binding.clone();
         let list = ListView::builder(position, binding, COUNT, 60.0, move |_, index| {
             let mut batch = record.borrow_mut();
             batch.count += 1;
+            batch.indices.push(index);
             batch.first = Some(batch.first.map_or(index, |old| old.min(index)));
             batch.last = Some(batch.last.map_or(index, |old| old.max(index)));
             drop(batch);
-            let color = if index == 0 {
-                egui::Color32::from_rgb(23, 105, 91)
-            } else if index == COUNT - 1 {
+            if index == 0 {
+                return Widget::keep_alive(true, Widget::stateful(KeptRow(row_binding.clone())));
+            }
+            let color = if index == COUNT - 1 {
                 egui::Color32::from_rgb(201, 152, 67)
             } else {
                 let (r, g, b) =
@@ -137,10 +141,11 @@ impl LazyListDemo {
         let batch = self.batch.borrow();
         if batch.count > 0 {
             println!(
-                "rust-flutter gallery lazy-list built={} first={} last={} total={COUNT}",
+                "rust-flutter gallery lazy-list built={} first={} last={} total={COUNT} indices={:?}",
                 batch.count,
                 batch.first.unwrap(),
-                batch.last.unwrap()
+                batch.last.unwrap(),
+                batch.indices
             );
         }
         drop(batch);
@@ -151,5 +156,52 @@ impl LazyListDemo {
             report.failures
         );
         ui.label(format!("Offset: {:.1}", self.position.pixels()));
+    }
+}
+
+// The count belongs to this mounted item, not to the gallery application model.
+struct KeptRow(GestureBinding);
+struct KeptRowState {
+    count: usize,
+}
+impl StatefulWidget for KeptRow {
+    type State = KeptRowState;
+    fn create_state(&self) -> Self::State {
+        KeptRowState { count: 0 }
+    }
+}
+impl State<KeptRow> for KeptRowState {
+    fn build(&mut self, widget: &KeptRow, context: &StateContext<Self>) -> Widget {
+        let count = self.count;
+        let handle = context.handle();
+        GestureDetector::new(
+            &widget.0,
+            GestureTargetConfig {
+                tap: Some((
+                    TapConfig::default(),
+                    TapCallbacks {
+                        on_tap: Some(Rc::new(move |_| {
+                            let _ = handle.update(|state| state.count += 1);
+                        })),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            },
+        )
+        .expect("valid kept-row tap target")
+        .behavior(HitTestBehavior::Opaque)
+        .into_widget(Widget::leaf(egui::vec2(100.0, 60.0), move |ui| {
+            let rect = ui.max_rect();
+            ui.painter()
+                .rect_filled(rect, 0.0, egui::Color32::from_rgb(23, 105, 91));
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                format!("Count: {count}"),
+                egui::FontId::proportional(18.0),
+                egui::Color32::WHITE,
+            );
+        }))
     }
 }

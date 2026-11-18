@@ -61,8 +61,9 @@ range, not the total item count. Default item identity is its index. Supply
 `.item_key(|index| Key::U64(stable_data_id))` when visible data can reorder. This
 key replaces the root key returned by the item builder. Duplicate keys follow
 normal element validation. Items that remain in the cache retain ordinary state;
-items leaving it are disposed. Automatic keep-alive and offscreen restoration
-are not implemented, so durable row values belong in application state.
+items leaving it are disposed unless [keep-alive](keep-alive.md) is requested.
+Complete automatic keep-alive APIs and offscreen restoration are not implemented;
+values that must survive disposal still belong in application state.
 
 The caller owns the position and binding. The list does not add a controller
 attachment or dispose those objects on unmount. It preserves the viewport's
@@ -82,8 +83,8 @@ Android emulator artifacts pass these gates at revision `85c7a6e`; see the
 Physical devices and macOS runtime remain unverified.
 
 This implements finite fixed-extent lazy lists. Variable/prototype extents,
-shrink wrapping, padding/separators, infinite delegates, slivers/grids, automatic
-keep-alive/repaint boundaries, semantics indexes, restoration and complete
+shrink wrapping, padding/separators, infinite delegates, slivers/grids, full
+keep-alive APIs/repaint boundaries, semantics indexes, restoration and complete
 ListView member compatibility remain unfinished. Reviewed the official
 [ListView builder](https://api.flutter.dev/flutter/widgets/ListView/ListView.builder.html);
 this Rust API is not a reproduction of its full constructor or cache-policy API.

@@ -1171,3 +1171,40 @@ scrollbar, animation, restoration and three-cycle recreation gates pass.
 These results establish the tested emulator/native input paths. macOS runtime,
 physical Android hardware, hidden native IME continuity and screen readers
 remain unverified; complete Flutter Offstage/member parity is not claimed.
+
+## Requested lazy-item retention validation
+
+The keep-alive shipment adds 13 headless tests, bringing the local all-feature
+workspace suite to 509 passing tests. They cover actual mounted state/element and
+handle identity across off-cache excursions, ordinary row disposal, independent
+requests and final release, declarative withdrawal while parked, key-index
+reordering/deletion, disabled/nested item scopes, per-item inherited/explicit
+rebuilds, focused hidden text editing, both axes/reverse, realized budgets and
+error recovery, and invalidation on unmount. Workspace and ARM64 Android
+framework/gallery Clippy, docs, formatting, renderer source/selection checks and
+the runnable keep-alive guide pass.
+
+The Linux X11/Xvfb native probe clicks a counter owned by row 0's component,
+compares the changed foreground glyph mask, scrolls to the final row with End,
+then returns with Home and requires the identical counter glyph mask. The saved
+return screenshot was inspected and shows Count: 1 at the original offset.
+`desktop-result.json` records `lazy_list.keep_alive.passed` and
+`local_counter_retained` as true. Existing Offstage, viewport/scrollbar, exact
+RGB888, glyph, animation, component and restoration gates also pass.
+
+This run records 21 nonempty lazy build batches and at most nine item builds per
+paint pass. One configuration refresh builds retained row 0 plus indices
+9996–10001. Diagnostics now include the exact item indices. The evidence parser
+requires unique indices, matching count/min/max, both dataset endpoints and a
+contiguous cache of at most nine rows; only an additional retained row 0 is
+allowed outside that range, capped at ten total. Five parser regression tests
+reject duplicates, mismatched counts, arbitrary holes, excess cached/retained
+work and missing endpoint/index evidence. These run in desktop CI on both hosts.
+
+Android has the same native counter/glyph probe, but cross-compilation is not
+runtime proof; exact-revision artifacts remain to be inspected. Fixed-extent
+retention uses measured/clipped Offstage subtrees rather than Flutter sliver
+buckets. Full automatic-client/notification/parent-data APIs, automatic editable
+focus requests, restoration, variable extents, native IME continuity, screen
+readers, physical devices and macOS runtime remain unfinished or unverified.
+See [retention policy and differences](keep-alive.md).

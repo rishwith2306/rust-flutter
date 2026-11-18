@@ -87,7 +87,10 @@ across painted roots. Keyboard shortcuts use viewport focus; scrollbar thumb
 drags carry command identities so synchronous application callbacks can supersede
 them safely. See [viewports](scroll-viewports.md) and [scrollbars](scrollbars.md).
 Fixed-extent [lazy lists](lazy-lists.md) build only a viewport/cache range,
-retaining overlapping keyed items in the same element tree. A content render
+retaining overlapping keyed items in the same element tree. [Keep-alive](keep-alive.md)
+requests retain selected off-cache items under Offstage; per-item build contexts
+keep their inherited and explicit rebuilds active. A list-owned registry counts
+requests and follows optional key-index mappings without scanning the dataset. A content render
 box reports the full extent and rebases realized row coordinates near the
 viewport. Variable-extent delegates, slivers, coordinated nested scrolling and
 full platform scroll physics remain unfinished.

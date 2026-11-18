@@ -54,7 +54,7 @@ and active animation lifetime. The Lazy List gallery has a hide/show button and
 F8 shortcut; F8 preserves viewport focus for native input checks. Runtime
 results are recorded in [verification](verification.md).
 
-This foundation does not implement lazy-list keep-alive buckets, automatic
-keep-alive clients, GlobalKey reparenting, SliverOffstage, the full Focus API,
+[Fixed-extent item retention](keep-alive.md) now uses this foundation. Complete
+sliver keep-alive buckets, automatic keep-alive clients, GlobalKey reparenting, SliverOffstage, the full Focus API,
 native IME continuity or complete Flutter member compatibility. Reviewed the
 [official Offstage behavior](https://api.flutter.dev/flutter/widgets/Offstage-class.html).
