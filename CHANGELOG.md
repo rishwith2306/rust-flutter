@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add retained LimitedBox constraints for unbounded axes, preserving parent minimums, keyed children, pure queries and reported baselines.
+
 - Keep gallery animation controls fully visible on compact screens by stacking the baseline demonstration; require full ticker-button bounds and exercise compact/wide native resizing.
 
 - Add retained AspectRatio layout with checked constraint fitting, pure queries, baseline forwarding and native ratio-child geometry checks.

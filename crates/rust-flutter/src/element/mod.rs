@@ -1,4 +1,6 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
+mod limited_box;
+pub use limited_box::LimitedBox;
 mod aspect_ratio;
 pub use aspect_ratio::AspectRatio;
 mod inherited;

@@ -1431,3 +1431,20 @@ ARM64 Android gallery Clippy checks. Android runtime validation of this updated
 compact layout remains pending exact-revision CI; the earlier green job is not
 proof for the correction. Full Flutter parity, physical devices and macOS
 window/input runtime remain unfinished or unverified.
+
+## LimitedBox conditional constraints
+
+The retained `LimitedBox` implementation passes seven focused integration tests:
+independent bounded/unbounded axes, parent minimum precedence, tight constraints,
+non-expanding maxima, matching dry/actual size and baseline queries, intrinsic
+forwarding, stable child identity after limit changes, zero/infinite/invalid
+limits, empty content and rejection of multiple children.
+
+Local validation passed: 572 workspace tests with all features and the lockfile,
+formatting, renderer patch/selection checks, workspace Clippy with warnings denied,
+workspace rustdoc, the guide's executable example, and ARM64 Android framework
+and gallery Clippy with warnings denied. Logs for this run are
+`/tmp/limited-box-{tests,clippy,doc,build,android}.log`. These are source and
+headless geometry checks; this change has no new native rendering or macOS
+runtime evidence. The [guide](limited-box.md) records the deliberate dry-baseline
+constraint policy and remaining compatibility limits.
