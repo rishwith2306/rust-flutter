@@ -31,8 +31,11 @@ def probe_form(capture, tap, type_text, scale=1.0):
     assert bounds(missing_terms, "#b34d45") and not bounds(missing_terms, "#3f875e"), "unaccepted terms were not rejected"
     terms = bounds(missing_terms, "#624d77")
     assert terms, "missing terms field"
+    assert bounds(missing_terms, "#ff8080"), "required terms error did not render"
     tap(terms[0] + 10 * scale, terms[1] + 10 * scale)
     accepted = settled("accepted")
+    assert bounds(accepted, "#624d77"), "terms field disappeared after interaction"
+    assert not bounds(accepted, "#ff8080"), "form-wide validation did not clear the error before resubmission"
     tap(*center(bounds(accepted, "#426b58")))
     saved = settled("saved")
     assert bounds(saved, "#3f875e") and not bounds(saved, "#b34d45"), "valid form did not save"
@@ -43,4 +46,4 @@ def probe_form(capture, tap, type_text, scale=1.0):
     tap(*center(bounds(cleared, "#426b58")))
     rejected_again = settled("rejected-again")
     assert bounds(rejected_again, "#b34d45") and not bounds(rejected_again, "#3f875e"), "reset form was not invalid again"
-    return {"passed": True, "empty_rejected": True, "text_rendered": True, "terms_required": True, "saved": True, "reset_rendered": True, "reset_invalid_again": True}
+    return {"passed": True, "empty_rejected": True, "text_rendered": True, "terms_required": True, "automatic_error_clear": True, "saved": True, "reset_rendered": True, "reset_invalid_again": True}

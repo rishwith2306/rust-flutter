@@ -1572,3 +1572,52 @@ macOS runtime, form-level automatic policies, focus/autofill/restoration,
 Material form controls, async validation, semantics announcements and complete
 Flutter member compatibility remain unfinished. The [form guide](forms.md)
 records controller lifetime, notification, callback and partial-operation policies.
+
+## Typed forms, allocated geometry and Wrap Android CI evidence
+
+All four jobs passed in [run 44818733590](https://github.com/rishwith2306/rust-flutter/actions/runs/44818733590)
+for source `27e6c2f566b55c5bc1f133933f023deb81dac9f5`: Linux checks/rendered
+interactions, macOS build checks, Android compilation and Android runtime. The
+runtime interaction step itself completed successfully. Downloaded artifacts are
+in `/tmp/forms-ci-android` for this session.
+
+`android-result.json` reports passed on API 35 / x86_64 at scale 2.625, with all
+seven initial form gates true: empty rejection, rendered text, required terms,
+save, rendered reset and invalidity after reset, plus overall form success.
+`android-form-saved.png` was visually inspected and shows Ada, accepted terms and
+Saved: Ada. The same result records Wrap with two columns at physical bounds
+(21,1513,368,21), (410,1513,367,21), (21,1544,368,21), and eleven exact allocated
+24-by-12 ratio samples. The recreation result separately reports three successful
+same-process Activity.recreate cycles. This resolves the earlier compact drag and
+translated-rectangle trace failures for that source. It does not establish macOS
+runtime or complete Flutter compatibility.
+
+## Form-wide automatic validation
+
+Seventeen additional focused tests cover related password/confirmation edits,
+all five form policies, initial/duplicate registration, unchanged-result feedback,
+reset/clear and policy switching, targeted unfocus, interaction latching for new
+members, nested/disabled fields, callback failure recovery, bounded deferred
+reentrant edits, membership/policy changes during validation, explicit recursion,
+observer notifications, changes outside an unfocus target, and resetting all
+initial values before field-level Always validators even when the group uses an
+interaction policy.
+
+Local checks passed: 626 locked all-feature workspace tests, formatting, renderer
+patch/selection verification, workspace Clippy with warnings denied, workspace
+rustdoc, both executable form-guide examples and ARM64 Android framework/gallery
+Clippy with warnings denied. Logs are `/tmp/form-policies-{tests,clippy,doc,
+android,build,gallery-build,desktop}.log` for this run. The [form guide](forms.md)
+records enabled-field filtering, event timing, partial-operation and deferred-pass
+policies. Full Flutter lifecycle/member matching remains unaudited.
+
+After the reset-order correction, the rebuilt ordinary gallery again passes the
+complete isolated Linux native smoke script. The shared form probe now requires
+the visible required-terms error to disappear after checking the box, before
+another Submit click; it preserves the submission, typed foreground-mask,
+rendered reset and invalid-again assertions. The result records
+`forms.automatic_error_clear: true` alongside the previous form gates. Existing
+RGB888, glyph, animation, scrolling, Wrap, ratio, lifecycle and restoration gates
+remain in place. Android runtime evidence above is for the preceding typed-form
+release; the new automatic policy and its stronger native assertion await the
+next CI run.

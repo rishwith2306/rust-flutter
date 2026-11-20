@@ -6,12 +6,19 @@ struct FormScope(FormController);
 #[derive(Clone, Default)]
 pub struct Form {
     pub controller: FormController,
+    pub autovalidate_mode: Option<AutovalidateMode>,
 }
 impl Form {
     pub fn new(controller: FormController) -> Self {
-        Self { controller }
+        Self {
+            controller,
+            autovalidate_mode: None,
+        }
     }
     pub fn into_widget(self, child: Widget) -> Widget {
+        if let Some(mode) = self.autovalidate_mode {
+            self.controller.set_autovalidate_mode(mode);
+        }
         Widget::inherited_with(
             FormScope(self.controller),
             |old, new| !old.0.same_source(&new.0),

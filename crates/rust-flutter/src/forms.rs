@@ -1,4 +1,6 @@
 //! Typed form state, owned field registrations and retained form scopes.
+mod automatic;
+use automatic::{AutoRequest, FieldEvent};
 mod field;
 mod widgets;
 use crate::notifier::{ChangeNotifier, Disposed, Listenable, Listener, Subscription};
@@ -48,10 +50,20 @@ pub(super) fn callback<T>(name: &'static str, f: impl FnOnce() -> T) -> Result<T
 }
 trait FieldOps {
     fn validate(&self) -> Result<bool, FormError>;
+    fn validate_auto(&self) -> Result<bool, FormError>;
+    fn interacted(&self) -> bool;
+    fn has_error(&self) -> bool;
+    fn enabled(&self) -> bool;
     fn save(&self) -> Result<(), FormError>;
-    fn reset(&self) -> Result<(), FormError>;
+    fn reset(&self, defer_auto: bool) -> Result<(), FormError>;
+    fn after_reset(&self) -> Result<(), FormError>;
     fn clear_error(&self);
     fn revision(&self) -> u64;
+}
+enum FormCommand {
+    Save,
+    Reset,
+    ClearErrors,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormFieldId(u64);
@@ -60,6 +72,7 @@ struct Entry {
     field: Weak<dyn FieldOps>,
     requests: usize,
     _subscription: Subscription,
+    _events: Subscription,
 }
 struct FormInner {
     entries: RefCell<Vec<Entry>>,
@@ -67,6 +80,11 @@ struct FormInner {
     epoch: Cell<u64>,
     busy: Cell<bool>,
     notifier: ChangeNotifier,
+    mode: Cell<AutovalidateMode>,
+    interacted: Cell<bool>,
+    pending: RefCell<Option<AutoRequest>>,
+    auto_running: Cell<bool>,
+    auto_failure: Cell<Option<FormError>>,
 }
 #[derive(Clone)]
 pub struct FormController(Rc<FormInner>);
@@ -83,6 +101,11 @@ impl FormController {
             epoch: Cell::new(0),
             busy: Cell::new(false),
             notifier: ChangeNotifier::new(),
+            mode: Cell::new(AutovalidateMode::Disabled),
+            interacted: Cell::new(false),
+            pending: RefCell::new(None),
+            auto_running: Cell::new(false),
+            auto_failure: Cell::new(None),
         }))
     }
     pub fn field_count(&self) -> usize {
@@ -135,13 +158,21 @@ impl FormController {
                 }
             }))
             .expect("form field source is live");
+        let weak = Rc::downgrade(&self.0);
+        let events = field.subscribe_form_events(Rc::new(move |event| {
+            if let Some(form) = weak.upgrade() {
+                FormController(form).field_event(Some(id), event);
+            }
+        }));
         self.0.entries.borrow_mut().push(Entry {
             id,
             field: source,
             requests: 1,
             _subscription: subscription,
+            _events: events,
         });
         self.0.epoch.set(self.0.epoch.get().wrapping_add(1));
+        self.field_event(Some(id), FieldEvent::Membership);
         let _ = self.0.notifier.notify_listeners();
         FormRegistration {
             form: Rc::downgrade(&self.0),
@@ -163,53 +194,85 @@ impl FormController {
         Ok(self.validate_granularly()?.is_empty())
     }
     pub fn validate_granularly(&self) -> Result<Vec<FormFieldId>, FormError> {
+        if self.0.busy.get() || self.0.auto_running.get() {
+            return Err(FormError::Reentrant);
+        }
+        self.0.interacted.set(true);
+        self.validate_internal(false, None)
+    }
+    fn validate_internal(
+        &self,
+        automatic: bool,
+        targets: Option<&[FormFieldId]>,
+    ) -> Result<Vec<FormFieldId>, FormError> {
         let _guard = Guard::enter(&self.0.busy)?;
         let epoch = self.0.epoch.get();
+        let fields = self.snapshot();
+        let revisions: Vec<_> = fields.iter().map(|(_, field)| field.revision()).collect();
         let mut invalid = vec![];
-        let mut revisions = vec![];
-        for (id, field) in self.snapshot() {
-            if self.contains(id) {
-                let valid = field.validate()?;
+        for (id, field) in &fields {
+            if self.contains(*id)
+                && (!automatic || field.enabled())
+                && targets.is_none_or(|ids| ids.contains(id))
+            {
+                let valid = if automatic {
+                    field.validate_auto()?
+                } else {
+                    field.validate()?
+                };
                 if !valid {
-                    invalid.push(id);
+                    invalid.push(*id);
                 }
-                revisions.push((field.clone(), field.revision()));
             }
         }
-        if epoch != self.0.epoch.get() || revisions.iter().any(|(f, r)| f.revision() != *r) {
+        if epoch != self.0.epoch.get()
+            || fields
+                .iter()
+                .zip(revisions)
+                .any(|((_, f), r)| f.revision() != r)
+        {
             return Err(FormError::Superseded);
         }
         Ok(invalid)
     }
-    fn command(
-        &self,
-        operation: impl Fn(&dyn FieldOps) -> Result<(), FormError>,
-    ) -> Result<(), FormError> {
+    fn command(&self, command: FormCommand) -> Result<(), FormError> {
+        if self.0.auto_running.get() {
+            return Err(FormError::Reentrant);
+        }
         let _guard = Guard::enter(&self.0.busy)?;
         let epoch = self.0.epoch.get();
-        for (id, field) in self.snapshot() {
-            if self.contains(id) {
-                operation(&*field)?;
+        let fields = self.snapshot();
+        for (id, field) in &fields {
+            if self.contains(*id) {
+                match command {
+                    FormCommand::Save => field.save()?,
+                    FormCommand::Reset => field.reset(true)?,
+                    FormCommand::ClearErrors => field.clear_error(),
+                }
+            }
+        }
+        if matches!(command, FormCommand::Reset) {
+            for (id, field) in &fields {
+                if self.contains(*id) {
+                    field.after_reset()?;
+                }
             }
         }
         if epoch != self.0.epoch.get() {
-            Err(FormError::Superseded)
-        } else {
-            Ok(())
+            return Err(FormError::Superseded);
         }
+        drop(_guard);
+        self.flush_validation()
     }
-    /// Saving does not implicitly validate.
+    /// Saving does not request validation; deferred automatic requests may flush.
     pub fn save(&self) -> Result<(), FormError> {
-        self.command(|f| f.save())
+        self.command(FormCommand::Save)
     }
     pub fn reset(&self) -> Result<(), FormError> {
-        self.command(|f| f.reset())
+        self.command(FormCommand::Reset)
     }
     pub fn clear_errors(&self) -> Result<(), FormError> {
-        self.command(|f| {
-            f.clear_error();
-            Ok(())
-        })
+        self.command(FormCommand::ClearErrors)
     }
 }
 impl Listenable for FormController {
@@ -252,6 +315,7 @@ impl Drop for FormRegistration {
             let changed = removed.is_some();
             drop(removed);
             if changed {
+                FormController(form.clone()).field_event(Some(self.id), FieldEvent::Membership);
                 let _ = form.notifier.notify_listeners();
             }
         }

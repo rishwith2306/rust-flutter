@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add form-wide automatic validation policies, related-field revalidation, reset batching, unfocus targets and bounded deferred passes with observable failures; require native error clearing before resubmission.
+
 - Add retained typed forms with nearest-scope owned registration, validation/save/reset, field auto-validation, error/interaction state and callback supersession guards; add a gallery form and shared native input probe.
 - Record the gallery aspect-ratio child’s allocated constraints before screen translation, avoiding f32 endpoint-cancellation noise in geometry traces while retaining strict pixel checks.
 

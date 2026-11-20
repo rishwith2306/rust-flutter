@@ -14,6 +14,7 @@ pub struct FormDemo {
 impl FormDemo {
     pub fn new(ctx: &egui::Context) -> Self {
         let form = FormController::new();
+        form.set_autovalidate_mode(AutovalidateMode::OnUserInteraction);
         let saved = Rc::new(RefCell::new(String::new()));
         let result = saved.clone();
         let mut name = FormField::new(String::new(), |_, field| {
@@ -86,7 +87,10 @@ impl FormDemo {
         }
     }
     pub fn show(&mut self, ui: &mut egui::Ui) {
-        ui.label("Typed fields share validation, save and reset through their form.");
+        ui.label("Editing a field revalidates related fields after interaction.");
+        if let Some(error) = self.form.last_auto_failure() {
+            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
+        }
         if let Ok(c) = BoxConstraints::tight_for(Some(ui.available_width().min(480.0)), None)
             && let Err(error) = self.tree.show(ui, c)
         {

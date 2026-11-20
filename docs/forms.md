@@ -46,10 +46,55 @@ on FormField. Always runs during field builds, edits and reset. Interaction mode
 use that field's interaction state; the error-only mode also requires a current
 published error. OnUnfocus requires an adapter to call `did_unfocus`, for example
 when an egui response reports `lost_focus()`. Disabled fields skip automatic
-validation. There is no form-wide automatic validation policy or framework Focus
-node integration yet. Clearing errors in Always mode can make them reappear on
+validation. Form-wide policies are described below; a framework Focus node is not yet
+integrated. Clearing errors in Always mode can make them reappear on
 the next builder pass; unchanged automatic results do not cause a rebuild loop.
 Validators should be side-effect-free because builds may validate repeatedly.
+
+Form-wide policies use the same enum:
+
+```rust
+use rust_flutter::forms::{AutovalidateMode, FormController};
+let form = FormController::new();
+form.set_autovalidate_mode(AutovalidateMode::OnUserInteraction);
+```
+
+Always validates on membership, configuration and value changes, including
+initial registration. OnUserInteraction validates related fields after any user
+edit; explicit form validation also marks the form as interacted. New fields
+join that active policy. OnUserInteractionIfError additionally requires an
+already published field error, so it stops checking after all errors clear.
+OnUnfocus validates only the departing field when its adapter calls
+`did_unfocus`. Disabled performs no group auto-validation. Field-level policies
+remain independent and may cause additional validator calls.
+
+Set `Form.autovalidate_mode` to `Some(mode)` to override the controller policy
+when constructing that scope; None preserves the controller's existing setting.
+Group automatic passes skip disabled fields. Explicit form validation still
+includes them. This enabled-field policy follows the public FormField contract;
+exact lifecycle behavior of Flutter's form-wide implementation still requires a
+pinned SDK comparison. Field errors becoming visible are notifications, not new
+user edits, and cannot recursively trigger another group pass.
+
+Form reset batches all initial-value changes before field-level Always checks
+and a pending group pass. In
+Always mode it then revalidates; interaction modes become pristine until another
+edit. Clear resets interaction too, with the same Always policy. Save does not
+request validation itself. Completing a command can flush an automatic pass
+already deferred by an earlier event or requested by one of its callbacks. Commands take effect in registration order, as described below.
+
+Automatic callbacks that mutate values/membership or change the form policy are
+detected as Superseded.
+At most one automatic pass runs per event; further requests during that pass
+remain pending. A later event or `flush_validation()` can process them, and
+callbacks cannot cause a synchronous retry loop. `last_auto_failure()` exposes
+the most recent automatic pass's infrastructure failure; a successful subsequent
+automatic pass clears it. It is distinct from ordinary invalid-field errors and
+is not a bool validity result. Inspect it when responding to automatically
+validated input. Recursive explicit commands and flushes return Reentrant while
+a pass is active. Changes to unrelated registered values also supersede a pass,
+including an unfocus-only pass, so cross-field reads cannot silently use stale
+controller revisions. Interior mutations still need `did_change` reporting.
 
 `force_error_text` publishes an externally supplied error and skips the validator
 when checking validity. `is_valid` checks without publishing errors or changing
@@ -86,7 +131,8 @@ The implementation was reviewed against official [FormState](https://api.flutter
 [FormFieldState](https://api.flutter.dev/flutter/widgets/FormFieldState-class.html),
 [AutovalidateMode](https://api.flutter.dev/flutter/widgets/AutovalidateMode.html) and
 [form source](https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/widgets/form.dart).
-It remains partial: form-wide policies, TextFormField/Material controls, async
+It remains partial: full form-wide lifecycle/member compatibility,
+TextFormField/Material controls, async
 validation, autofill, restoration, navigation vetoes, semantics announcements,
 focus management and full member compatibility are unfinished. See
 [verification](verification.md) for actual headless and native evidence.

@@ -36,6 +36,8 @@ pub(super) struct FieldCore<T> {
     revision: Cell<u64>,
     busy: Cell<bool>,
     notifier: ChangeNotifier,
+    events: ChangeNotifier,
+    event_stack: RefCell<Vec<FieldEvent>>,
 }
 #[derive(Clone)]
 pub struct FormFieldController<T: Clone + 'static>(pub(super) Rc<FieldCore<T>>);
@@ -71,7 +73,23 @@ impl<T: Clone + 'static> FormFieldController<T> {
             revision: Cell::new(0),
             busy: Cell::new(false),
             notifier: ChangeNotifier::new(),
+            events: ChangeNotifier::new(),
+            event_stack: RefCell::new(vec![]),
         }))
+    }
+    pub(super) fn subscribe_form_events(&self, listener: Rc<dyn Fn(FieldEvent)>) -> Subscription {
+        let weak = Rc::downgrade(&self.0);
+        self.0
+            .events
+            .subscribe(Rc::new(move || {
+                if let Some(core) = weak.upgrade() {
+                    let event = core.event_stack.borrow().last().copied();
+                    if let Some(event) = event {
+                        listener(event);
+                    }
+                }
+            }))
+            .expect("live field event source")
     }
     pub fn downgrade(&self) -> WeakFormFieldController<T> {
         WeakFormFieldController(Rc::downgrade(&self.0))
@@ -92,6 +110,7 @@ impl<T: Clone + 'static> FormFieldController<T> {
         let old = std::mem::replace(&mut self.0.settings.borrow_mut().validator, validator);
         self.0.bump();
         drop(old);
+        self.0.event(FieldEvent::Configured);
     }
     pub(super) fn configure(&self, settings: Settings<T>) {
         let force_changed = self.0.settings.borrow().force_error != settings.force_error;
@@ -103,6 +122,7 @@ impl<T: Clone + 'static> FormFieldController<T> {
         self.0.bump();
         drop(old);
         self.0.notify();
+        self.0.event(FieldEvent::Configured);
     }
     /// A user edit marks interaction even when the new value compares equal.
     pub fn did_change(&self, value: T) -> Result<(), FormError> {
@@ -114,6 +134,7 @@ impl<T: Clone + 'static> FormFieldController<T> {
         };
         self.0.bump();
         drop(old);
+        self.0.event(FieldEvent::Edited);
         if self.0.auto_validate(false) {
             let result = self.validate().map(|_| ());
             if matches!(result, Err(FormError::Reentrant | FormError::Superseded)) {
@@ -127,6 +148,7 @@ impl<T: Clone + 'static> FormFieldController<T> {
     }
     /// Adapters call this when their control loses focus.
     pub fn did_unfocus(&self) -> Result<(), FormError> {
+        self.0.event(FieldEvent::Unfocused);
         if self.0.auto_validate(true) {
             self.validate().map(|_| ())
         } else {
@@ -144,7 +166,7 @@ impl<T: Clone + 'static> FormFieldController<T> {
         self.0.save()
     }
     pub fn reset(&self) -> Result<(), FormError> {
-        self.0.reset()
+        self.0.reset(false)
     }
     pub fn clear_error(&self) {
         self.0.clear_error();
@@ -158,6 +180,11 @@ impl<T: Clone + 'static> FormFieldController<T> {
     }
 }
 impl<T: Clone + 'static> FieldCore<T> {
+    fn event(&self, event: FieldEvent) {
+        self.event_stack.borrow_mut().push(event);
+        let _ = self.events.notify_listeners();
+        self.event_stack.borrow_mut().pop();
+    }
     fn bump(&self) {
         self.revision.set(self.revision.get().wrapping_add(1));
     }
@@ -228,6 +255,18 @@ impl<T: Clone + 'static> FieldCore<T> {
     }
 }
 impl<T: Clone + 'static> FieldOps for FieldCore<T> {
+    fn validate_auto(&self) -> Result<bool, FormError> {
+        self.check(true, false)
+    }
+    fn interacted(&self) -> bool {
+        self.data.borrow().has_interacted_by_user
+    }
+    fn has_error(&self) -> bool {
+        self.data.borrow().error_text.is_some()
+    }
+    fn enabled(&self) -> bool {
+        self.settings.borrow().enabled
+    }
     fn revision(&self) -> u64 {
         self.revision.get()
     }
@@ -243,7 +282,7 @@ impl<T: Clone + 'static> FieldOps for FieldCore<T> {
         }
         Ok(())
     }
-    fn reset(&self) -> Result<(), FormError> {
+    fn reset(&self, defer_auto: bool) -> Result<(), FormError> {
         let _guard = Guard::enter(&self.busy)?;
         let (initial, on_reset) = {
             let s = self.settings.borrow();
@@ -270,6 +309,14 @@ impl<T: Clone + 'static> FieldOps for FieldCore<T> {
             return Err(FormError::Superseded);
         }
         drop(_guard);
+        self.event(FieldEvent::Reset);
+        if defer_auto {
+            Ok(())
+        } else {
+            self.after_reset()
+        }
+    }
+    fn after_reset(&self) -> Result<(), FormError> {
         if self.auto_validate(false) {
             self.validate().map(|_| ())
         } else {
@@ -283,6 +330,7 @@ impl<T: Clone + 'static> FieldOps for FieldCore<T> {
         data.has_interacted_by_user = false;
         drop(data);
         self.notify();
+        self.event(FieldEvent::Cleared);
     }
 }
 impl<T: Clone + 'static> Listenable for FormFieldController<T> {
