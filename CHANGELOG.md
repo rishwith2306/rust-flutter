@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add generic AlwaysStoppedAnimation values and checked ReverseAnimation views that reverse value/status while retaining owned listener cleanup and typed tween composition.
+
 - Retry failed transition subscriptions when the same source is rebound, restoring future animation notifications while retaining child state.
 
 - Add retained SizeTransition, AlignTransition and DecoratedBoxTransition with owned source links, typed sample errors, pure size queries and child-preserving layout/paint updates; add Alignment interpolation and native clipped-marker checks.

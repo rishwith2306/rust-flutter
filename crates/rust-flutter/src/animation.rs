@@ -7,6 +7,8 @@ pub use derived::{Animation, CurvedAnimation, WeakCurvedAnimation};
 mod implicit;
 mod listeners;
 mod transitions;
+mod views;
+pub use views::{AlwaysStoppedAnimation, ReverseAnimation, WeakReverseAnimation};
 mod tweens;
 pub use controller::{
     AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,

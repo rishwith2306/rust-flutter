@@ -83,7 +83,7 @@ rendered endpoints and frozen geometry, plus nonlinear diagnostic samples in
 both directions. Results are recorded in [verification](verification.md).
 
 [Typed tween driving and weighted sequences](value-tweens.md) now use this
-foundation. Full Animation members, Proxy/Reverse/TrainHopping families, the
+foundation. [Constant and reverse views](animation-views.md) are also available. Full Animation members, Proxy/TrainHopping families, the
 curve catalog, further tween specializations, transition widgets and complete
 member compatibility remain unfinished. Reviewed the official
 [Animation contract](https://api.flutter.dev/flutter/animation/Animation-class.html),

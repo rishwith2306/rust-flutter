@@ -1363,3 +1363,21 @@ tests. Workspace and ARM64 Android framework/gallery Clippy, formatting, rustdoc
 renderer source/selection checks and the Linux X11/Xvfb native interaction smoke
 pass. Exact-revision Android/macOS CI results remain separate evidence; this
 regression does not establish full Flutter parity or additional runtime targets.
+
+## Constant and reverse animation view validation
+
+The animation-view shipment adds six headless tests, bringing the local
+all-feature workspace suite to 559 passing tests. Tests cover arbitrary constant
+values and listener non-retention, exact four-way reverse status mapping, status
+callbacks, explicit/drop subscription cleanup, finite overshoot, invalid and
+disposed parents, double reversal, typed tween composition and real controller
+frames. These views reuse the already tested DrivenAnimation forwarding and
+checked-sampling implementation.
+
+Workspace and ARM64 Android framework/gallery Clippy pass with warnings denied.
+Formatting, rustdoc, the runnable animation-view guide and renderer source/
+selection checks pass. These pure source tests establish no additional device
+runtime claim; current gallery/native gates remain covered separately by CI.
+Rust owned disposal/subscription behavior, f32 precision, incomplete lazy-listener
+and diagnostic/member APIs, and the remaining animation families are documented
+in [animation views](animation-views.md). Full Flutter parity remains unfinished.
