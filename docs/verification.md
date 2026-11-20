@@ -1381,3 +1381,26 @@ runtime claim; current gallery/native gates remain covered separately by CI.
 Rust owned disposal/subscription behavior, f32 precision, incomplete lazy-listener
 and diagnostic/member APIs, and the remaining animation families are documented
 in [animation views](animation-views.md). Full Flutter parity remains unfinished.
+
+## Aspect-ratio layout validation
+
+The AspectRatio shipment adds six headless tests; the complete local all-feature
+workspace suite passes 565 tests. They cover bounded fitting and tight child
+constraints, either/both unbounded axes, tight/conflicting limits, pure queries
+without wet measurement, intrinsic fallback, baseline and child identity across
+updates, invalid ratios, zero constraints and extreme finite values.
+Workspace and ARM64 Android framework/gallery Clippy, formatting, rustdoc, the
+runnable guide and renderer source/selection checks pass.
+
+The Linux X11/Xvfb gallery gives the green transition child a fixed height and
+unbounded width; AspectRatio selects 24×12 logical points. The native trace gate
+verifies every one of 1172 ratio-child samples is exactly that size, while the
+existing pixel gate verifies clipped 12→24→12 widths and frozen muting geometry.
+`desktop-result.json` records `baseline_alignment.aspect_ratio.passed` as true.
+Existing strict RGB888/glyph, typed/curved animation, retained transition,
+component/scrollbar, lazy-list/keep-alive, Offstage and restoration gates pass.
+
+Android has the same ratio-child gate, but cross-compilation is not runtime
+proof. Exact-revision CI results remain to be inspected. Full member/diagnostic
+and precision compatibility, macOS window/input runtime and physical devices
+remain unverified or unfinished. See [aspect-ratio policy](aspect-ratio.md).

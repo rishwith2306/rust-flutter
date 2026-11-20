@@ -107,6 +107,9 @@ def probe_baselines(path, trace, scale=1.0):
             if abs(parent - value) > 0.01:
                 nonlinear_directions.add(status)
     assert nonlinear_directions == {"Forward", "Reverse"}, nonlinear_directions
+    aspect_samples = re.findall(r"aspect-ratio width=([\d.eE+-]+) height=([\d.eE+-]+)", trace)
+    assert aspect_samples, "missing aspect-ratio child geometry"
+    assert all(float(width) == 24 and float(height) == 12 for width, height in aspect_samples), aspect_samples
     typed_samples = re.findall(r"typed-tween width=([\d.eE+-]+) height=([\d.eE+-]+)", trace)
     assert len(typed_samples) == len(curved_samples), "missing typed Vec2 animation samples"
     for (width, height), (_, _, _, curved_width) in zip(typed_samples, curved_samples):
@@ -123,7 +126,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
     builder_widths = list(dict.fromkeys(float(width) for width in re.findall(r"layout-builder scroll width=([\d.eE+-]+) max_height=inf", trace)))
     assert builder_widths and all(math.isfinite(width) and width > 0 for width in builder_widths), "missing layout-time scroll child construction"
-    return {"typed_tween": {"passed": True, "samples": len(typed_samples), "value_type": "Vec2"}, "curved_animation": {"passed": True, "samples": len(curved_samples), "nonlinear_forward_reverse": True}, "renderer_profile": {"dithering": False}, "layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"aspect_ratio": {"passed": True, "samples": len(aspect_samples)}, "typed_tween": {"passed": True, "samples": len(typed_samples), "value_type": "Vec2"}, "curved_animation": {"passed": True, "samples": len(curved_samples), "nonlinear_forward_reverse": True}, "renderer_profile": {"dithering": False}, "layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}

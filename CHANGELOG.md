@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add retained AspectRatio layout with checked constraint fitting, pure queries, baseline forwarding and native ratio-child geometry checks.
+
 - Add generic AlwaysStoppedAnimation values and checked ReverseAnimation views that reverse value/status while retaining owned listener cleanup and typed tween composition.
 
 - Retry failed transition subscriptions when the same source is rebound, restoring future animation notifications while retaining child state.

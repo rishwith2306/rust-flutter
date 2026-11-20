@@ -1,4 +1,6 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
+mod aspect_ratio;
+pub use aspect_ratio::AspectRatio;
 mod inherited;
 mod layout_builder;
 pub use layout_builder::LayoutBuilder;
