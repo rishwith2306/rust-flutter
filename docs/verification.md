@@ -1348,3 +1348,18 @@ Flutter AnimatedWidget build API. Directional alignment, broader transition
 families, compositor/semantics integration and complete member compatibility
 remain unfinished; macOS window/input runtime and physical devices remain
 unverified. See [transition policy](transitions.md).
+
+### Transition subscription recovery regression
+
+A transition whose initial source subscription failed could refresh a value on
+same-source rebinding without restoring its listener. The binding now retries
+subscription whenever its previous attempt left no owned subscription, including
+when source identity matches. A regression starts with a rejected subscription,
+reopens and rebinds that source, then verifies subsequent notified geometry,
+retained child state and exact subscription cleanup on unmount.
+
+The all-feature workspace suite passes 553 tests locally, including 12 transition
+tests. Workspace and ARM64 Android framework/gallery Clippy, formatting, rustdoc,
+renderer source/selection checks and the Linux X11/Xvfb native interaction smoke
+pass. Exact-revision Android/macOS CI results remain separate evidence; this
+regression does not establish full Flutter parity or additional runtime targets.

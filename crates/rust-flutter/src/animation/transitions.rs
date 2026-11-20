@@ -105,7 +105,7 @@ impl<P: Animation<T> + Clone, T: Copy + TweenValue + 'static> SourceLink<P, T> {
         }
     }
     fn bind(&mut self, source: &P, ctx: &RenderContext) {
-        if self.source.same_source(source) {
+        if self.source.same_source(source) && self.subscription.is_some() {
             self.source = source.clone();
             self.shared.refresh(source, &self.handle, self.layout);
         } else {

@@ -558,3 +558,35 @@ fn existing_controller_and_tween_drive_transition_layout_without_rebuilding_chil
     factor.dispose().unwrap();
     controller.dispose().unwrap();
 }
+
+#[test]
+fn rebinding_same_source_retries_a_failed_subscription_and_preserves_child_state() {
+    let source = Source::new(0.5_f32);
+    source.closed.set(true);
+    let counts = Rc::new(Counts::default());
+    let mut tree = ElementTree::new(
+        &egui::Context::default(),
+        SizeTransition::new(source.clone()).into_widget(Widget::stateful(Child(counts.clone()))),
+    )
+    .unwrap();
+    assert!(matches!(
+        tree.layout(loose()),
+        Err(ElementError::Layout(LayoutError::Animation(
+            AnimationError::Disposed
+        )))
+    ));
+    assert_eq!(source.live.get(), 0);
+    source.closed.set(false);
+    tree.update(
+        SizeTransition::new(source.clone()).into_widget(Widget::stateful(Child(counts.clone()))),
+    )
+    .unwrap();
+    assert_eq!(tree.layout(loose()).unwrap().size.y, 20.0);
+    assert_eq!(source.live.get(), 1);
+    source.set(0.75);
+    assert_eq!(tree.layout(loose()).unwrap().size.y, 30.0);
+    assert_eq!(counts.disposed.get(), 0);
+    tree.unmount();
+    assert_eq!(counts.disposed.get(), 1);
+    assert_eq!(source.live.get(), 0);
+}

@@ -58,7 +58,8 @@ layout invalidation, so unrelated layout changes can remeasure the tree.
 Sources are sampled after subscription, including synchronously firing sources.
 Reentrant source notifications keep the newest sample. Widget configuration
 updates refresh the sample and rebind changed source identities, canceling old
-links. Unmount releases subscriptions without disposing externally owned
+links. If an earlier subscription failed, rebinding retries subscription even
+when source identity is unchanged, so recovery restores future notifications. Unmount releases subscriptions without disposing externally owned
 animations. Mutable mapping edits still follow their notification contract:
 notify the parent or update the widget configuration to refresh the sample.
 
@@ -69,7 +70,7 @@ it can be reported before painting. Fixing/replacing the source can recover
 without disposing child state. Initial source and static configuration errors
 are checked during layout/query processing.
 
-Eleven headless tests cover constraints, clipping/hits, factors, axes, translated
+Twelve headless tests cover constraints, clipping/hits, factors, axes, translated
 baselines and pure queries, unchanged child identity/build counts, source swaps,
 alignment overflow, decoration paint ordering and layout reuse, error recovery,
 synchronous/reentrant sources and actual controller/tween playback. The gallery
