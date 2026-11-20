@@ -604,25 +604,32 @@ impl State<CurvedMarker> for CurvedMarkerState {
         let mut transition = SizeTransition::new(factor);
         transition.axis = Axis::Horizontal;
         transition.fixed_cross_axis_size_factor = Some(1.0);
-        let ratio_child = AspectRatio::new(2.0).unwrap().into_widget(Widget::leaf(
-            egui::vec2(24.0, 12.0),
-            |ui| {
+        let ratio_child = AspectRatio::new(2.0)
+            .unwrap()
+            .into_widget(Widget::layout_builder(|_, constraints| {
+                // Record allocated geometry before translation into a screen Rect;
+                // subtracting translated f32 endpoints introduces cancellation noise.
+                debug_assert!(constraints.is_tight());
                 #[cfg(debug_assertions)]
                 eprintln!(
                     "rust-flutter gallery aspect-ratio width={} height={}",
-                    ui.max_rect().width(),
-                    ui.max_rect().height()
+                    constraints.max().x,
+                    constraints.max().y
                 );
-                #[cfg(debug_assertions)]
-                eprintln!(
-                    "rust-flutter gallery fractional-child width={} height={}",
-                    ui.max_rect().width(),
-                    ui.max_rect().height()
-                );
-                ui.painter()
-                    .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(82, 157, 133));
-            },
-        ));
+                Widget::leaf(constraints.max(), |ui| {
+                    #[cfg(debug_assertions)]
+                    eprintln!(
+                        "rust-flutter gallery fractional-child width={} height={}",
+                        ui.max_rect().width(),
+                        ui.max_rect().height()
+                    );
+                    ui.painter().rect_filled(
+                        ui.max_rect(),
+                        0.0,
+                        egui::Color32::from_rgb(82, 157, 133),
+                    );
+                })
+            }));
         let clipped = transition.into_widget(Widget::constrained(
             BoxConstraints::tight_for(None, Some(12.0)).unwrap(),
             LimitedBox::new(48.0, f32::INFINITY).unwrap().into_widget(

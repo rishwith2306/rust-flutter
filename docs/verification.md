@@ -1518,3 +1518,22 @@ near the primary marker's edge. The application-pan callbacks, tap rejection,
 feedback and size gates remain unchanged. This revised input passes Linux;
 Android runtime verification remains pending the next CI run. No macOS runtime
 or full Flutter parity claim follows from these checks. See [Wrap scope](wrap.md).
+
+## Allocated aspect-ratio trace and Android Wrap follow-up
+
+[Run 44815708265](https://github.com/rishwith2306/rust-flutter/actions/runs/44815708265)
+passed Linux, macOS build checks and Android compilation. Android runtime passed
+the component drag probe after starting inside the shared detector's derived
+marker, and reached the later baseline/geometry analysis. That analysis failed
+because the painted egui Rect width was sometimes 23.999992 or 24.000008 rather
+than exactly 24 after translating f32 rectangle endpoints. This did not represent
+a changed allocated child size.
+
+The gallery now obtains the AspectRatio child's actual tight constraints through
+a retained LayoutBuilder before screen translation and records those allocated
+dimensions. The native parser still requires exactly 24 by 12 for that trace;
+existing fractional screen-rectangle checks and all strict RGB888/glyph gates
+remain unchanged. The current Linux native smoke passes, with twelve allocated
+ratio samples. The complete Android runtime run remains unverified until the
+corrected trace passes CI; the earlier failure is not relabeled as a successful
+run. Downloaded evidence is in `/tmp/wrap-ci-android` for this session.
