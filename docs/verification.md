@@ -1404,3 +1404,30 @@ Android has the same ratio-child gate, but cross-compilation is not runtime
 proof. Exact-revision CI results remain to be inspected. Full member/diagnostic
 and precision compatibility, macOS window/input runtime and physical devices
 remain unverified or unfinished. See [aspect-ratio policy](aspect-ratio.md).
+
+### Retained transition CI runtime result and compact-gallery correction
+
+Published transition revision `1c5450e9a5eb0d4094e077725a0e6839ac537cd3` passes
+all four jobs in [run 44810028591](https://github.com/rishwith2306/rust-flutter/actions/runs/44810028591).
+Downloaded Linux and Android result files record `components.size_transition`
+passed and frozen. Linux records initial/expanded widths 12/24 and muted width
+13. API 35 / x86_64 Android at scale 2.625 records 31/63 and muted width 36.
+Contraction, exact RGB888/glyph, typed/curved animations, components, scrollbars,
+lazy-list/keep-alive, Offstage, restoration and three-cycle recreation gates pass.
+
+Visual inspection of that Android expanded screenshot found an additional gallery
+issue: the ticker button was partly clipped at the right edge, despite its
+interaction checks passing. The baseline demonstration now switches to stacked
+label/control rows below 480 logical points, with a minimum height rather than
+an inflexible 44-point height. The same element positions/types are retained
+when the flex axis changes. The native shared gate now requires the complete
+80×24-point ticker swatch, rather than accepting a partly visible button.
+
+A new Linux OS-window resize probe visits 430×740, checks the complete ticker
+button and the baseline/animation gates, then restores 900×650 before continuing.
+The inspected compact screenshot shows the entire Ticking label on the second
+row. The full Linux smoke passes, as do all 565 workspace tests and workspace/
+ARM64 Android gallery Clippy checks. Android runtime validation of this updated
+compact layout remains pending exact-revision CI; the earlier green job is not
+proof for the correction. Full Flutter parity, physical devices and macOS
+window/input runtime remain unfinished or unverified.

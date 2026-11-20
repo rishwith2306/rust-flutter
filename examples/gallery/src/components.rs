@@ -679,8 +679,15 @@ impl State<TickerDemo> for TickerDemoState {
     }
 }
 fn baseline_example(ctx: &egui::Context, binding: &GestureBinding) -> Widget {
+    let ctx = ctx.clone();
+    let binding = binding.clone();
+    Widget::layout_builder(move |_, constraints| {
+        baseline_contents(&ctx, &binding, constraints.max().x < 480.0)
+    })
+}
+fn baseline_contents(ctx: &egui::Context, binding: &GestureBinding, compact: bool) -> Widget {
     let mut baselines = Vec::new();
-    let mut children: Vec<FlexItem> = [
+    let children: Vec<FlexItem> = [
         (16.0, "Ag small", egui::Color32::from_rgb(49, 83, 123)),
         (28.0, "Ag large", egui::Color32::from_rgb(103, 81, 47)),
     ]
@@ -721,17 +728,34 @@ fn baseline_example(ctx: &egui::Context, binding: &GestureBinding) -> Widget {
         )
     })
     .collect();
-    children.push(FlexItem::fixed(Widget::stateful(TickerDemo {
-        binding: binding.clone(),
-    })));
     #[cfg(debug_assertions)]
     eprintln!(
         "rust-flutter gallery baseline-demo small={} large={}",
         baselines[0], baselines[1]
     );
-    let mut style = FlexStyle::new(Axis::Horizontal);
-    style.cross_alignment = CrossAxisAlignment::Baseline(TextBaseline::Alphabetic);
-    style.spacing = 16.0;
+    let mut labels = FlexStyle::new(Axis::Horizontal);
+    labels.main_size = rust_flutter::layout::MainAxisSize::Min;
+    labels.cross_alignment = CrossAxisAlignment::Baseline(TextBaseline::Alphabetic);
+    labels.spacing = 16.0;
+    let labels = Widget::flex(labels, children);
+    let mut style = FlexStyle::new(if compact {
+        Axis::Vertical
+    } else {
+        Axis::Horizontal
+    });
+    style.main_size = rust_flutter::layout::MainAxisSize::Min;
+    style.cross_alignment = if compact {
+        CrossAxisAlignment::Start
+    } else {
+        CrossAxisAlignment::Baseline(TextBaseline::Alphabetic)
+    };
+    style.spacing = if compact { 8.0 } else { 16.0 };
+    let children = vec![
+        FlexItem::fixed(labels),
+        FlexItem::fixed(Widget::stateful(TickerDemo {
+            binding: binding.clone(),
+        })),
+    ];
     rust_flutter::text::DefaultTextStyle {
         style: rust_flutter::text::TextStyle {
             font_size: Some(16.0),
@@ -986,10 +1010,12 @@ impl ComponentDemo {
                 let _ = self.observable.set(0);
             }
         });
-        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0))
-            && let Err(error) =
-                self.observable_tree
-                    .show_in_gesture_frame(ui, constraints, &mut gestures)
+        if let Ok(constraints) = BoxConstraints::new(
+            egui::vec2(ui.available_width(), 44.0),
+            egui::vec2(ui.available_width(), f32::INFINITY),
+        ) && let Err(error) =
+            self.observable_tree
+                .show_in_gesture_frame(ui, constraints, &mut gestures)
         {
             ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
         }
@@ -1029,7 +1055,10 @@ impl ComponentDemo {
                 ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
             }
         }
-        if let Ok(constraints) = BoxConstraints::tight(egui::vec2(ui.available_width(), 44.0)) {
+        if let Ok(constraints) = BoxConstraints::new(
+            egui::vec2(ui.available_width(), 44.0),
+            egui::vec2(ui.available_width(), f32::INFINITY),
+        ) {
             let geometry = self.baseline_tree.layout(constraints);
             let response = self
                 .baseline_tree

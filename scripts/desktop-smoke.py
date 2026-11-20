@@ -10,7 +10,7 @@ import select
 import subprocess
 import tempfile
 import time
-from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds
+from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds, bounds
 
 root = Path(__file__).resolve().parents[1]
 output = root / "target" / "smoke"
@@ -172,6 +172,15 @@ try:
             render_queries=re.findall(r"render-view query dry=([\d.]+)x([\d.]+) actual=([\d.]+)x([\d.]+) matched=(true|false)",trace)
             assert len(render_queries)==2 and all(q[-1]=="true" for q in render_queries), render_queries
             render_objects={"created":1,"updated":2,"layouts":render_layouts,"dry_queries":render_queries}
+            assert xdo("windowsize", window, "430", "740").returncode == 0
+            wait_for(lambda: (v if (v := view_report()) and v[1:3] == ("430", "740") else None), "compact view did not resize")
+            compact = component_capture("desktop-components-compact.png")
+            ticker_rect = bounds(compact, "#3e6c72")
+            assert ticker_rect and abs(ticker_rect[2] - 80) <= 2 and abs(ticker_rect[3] - 24) <= 2, ticker_rect
+            probe_baselines(compact, (output / "gallery.log").read_text())
+            components["compact_layout"] = {"passed": True, "window_width": 430, "ticker_size": list(ticker_rect[2:])}
+            assert xdo("windowsize", window, "900", "650").returncode == 0
+            wait_for(lambda: (v if (v := view_report()) and v[1:3] == ("900", "650") else None), "wide view did not restore")
             assert xdo("key", "XF86Back").returncode == 0
             wait_for(lambda: state_matches(route="home"), "components back request did not return home")
             home = component_capture("lazy-list-home-route.png")

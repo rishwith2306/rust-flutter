@@ -269,6 +269,7 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     assert not bounds(contracted, "#e3bd42"), "animation broke foreground painting"
     ticker = bounds(contracted, "#3e6c72")
     assert ticker, "ticker mode control is missing"
+    assert abs(ticker[2] - 80 * scale) <= 2 and abs(ticker[3] - 24 * scale) <= 2, f"ticker control is clipped: {ticker}"
     tap(*center(smaller))
     time.sleep(0.35)
     tap(*center(ticker))

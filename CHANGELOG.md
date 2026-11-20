@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Keep gallery animation controls fully visible on compact screens by stacking the baseline demonstration; require full ticker-button bounds and exercise compact/wide native resizing.
+
 - Add retained AspectRatio layout with checked constraint fitting, pure queries, baseline forwarding and native ratio-child geometry checks.
 
 - Add generic AlwaysStoppedAnimation values and checked ReverseAnimation views that reverse value/status while retaining owned listener cleanup and typed tween composition.
