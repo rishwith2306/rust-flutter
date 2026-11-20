@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add eager retained Wrap rows/columns with run and child alignment, direction-aware placement, clipping, pure sizing/intrinsic/baseline queries and native responsive swatch checks; start compact native pan probes deeper inside their shared detector to avoid system back gestures.
+
 - Add retained FractionallySizedBox with checked tight fractional child constraints, aligned overflow, intrinsic/baseline queries and child retention; compose it with LimitedBox in the native gallery probe.
 
 - Add retained LimitedBox constraints for unbounded axes, preserving parent minimums, keyed children, pure queries and reported baselines.

@@ -815,6 +815,26 @@ fn scroll_example(
         .into_widget(view)
         .expect("valid scrollbar child")
 }
+fn wrap_example() -> Widget {
+    Wrap {
+        spacing: 8.0,
+        run_spacing: 4.0,
+        ..Wrap::default()
+    }
+    .into_widget(
+        [(182, 108, 59), (75, 119, 158), (124, 152, 80)]
+            .into_iter()
+            .enumerate()
+            .map(|(index, (r, g, b))| {
+                Widget::leaf(egui::vec2(140.0, 8.0), move |ui| {
+                    ui.painter()
+                        .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(r, g, b));
+                })
+                .keyed(index as u64)
+            })
+            .collect(),
+    )
+}
 pub(super) struct ComponentDemo {
     tree: ElementTree,
     reversed: bool,
@@ -827,6 +847,7 @@ pub(super) struct ComponentDemo {
     view_tree: ElementTree,
     last_view_query: Option<egui::Vec2>,
     baseline_tree: ElementTree,
+    wrap_tree: ElementTree,
     scroll_tree: ElementTree,
     scroll_position: rust_flutter::scrolling::ScrollPosition,
     scroll_controller: rust_flutter::scrolling::ScrollController,
@@ -893,6 +914,7 @@ impl ComponentDemo {
             last_view_query: None,
             baseline_tree: ElementTree::new(ctx, baseline_example(ctx, &binding))
                 .expect("valid baseline demo"),
+            wrap_tree: ElementTree::new(ctx, wrap_example()).expect("valid wrap demo"),
             baseline_scale: ctx.pixels_per_point(),
             binding,
             view_tree: ElementTree::new(ctx, Widget::stateful(ViewReport))
@@ -1082,6 +1104,12 @@ impl ComponentDemo {
                     egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(78, 164, 168)),
                 );
             }
+        }
+        if let Ok(constraints) =
+            BoxConstraints::loose(egui::vec2(ui.available_width(), f32::INFINITY))
+            && let Err(error) = self.wrap_tree.show(ui, constraints)
+        {
+            ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
         }
         ui.horizontal(|ui| {
             ui.label("Retained scroll: drag upward");

@@ -1481,3 +1481,40 @@ edge, while preserving the same drag distance and all feedback/geometry gates.
 The revised input passes Linux; Android runtime verification of this correction
 is pending a new CI run. This is not a claim of macOS runtime or full Flutter
 compatibility. See the [fractional sizing policy](fractional-sizing.md).
+
+## Wrap rows and columns
+
+Thirteen focused integration tests cover main-axis run packing and resize,
+exact-fit/zero/oversized children, retained render identity, RTL/up placement,
+vertical runs, all six main/run alignment modes, cross alignment, intrinsic
+queries, highest translated actual/dry baselines, conditional overflow clipping,
+unbounded main axes, empty children, invalid and negative spacing, numeric and
+baseline overflow, pure-query isolation, and real egui pointer activation of a
+child button before and after reflow.
+
+Local validation passed: 594 locked workspace tests with all features, formatting,
+renderer patch/selection checks, workspace Clippy with warnings denied, workspace
+rustdoc, the guide's executable example and ARM64 Android framework/gallery
+Clippy with warnings denied. Logs are `/tmp/wrap-{tests,clippy,doc,android,build,
+gallery-build,desktop}.log` for this run.
+
+The rebuilt gallery passes the isolated Linux Xvfb smoke script, including all
+existing exact RGB888, foreground glyph, interaction, animation, view, scroll,
+keep-alive and restoration gates. Native Wrap swatches measure 140 by 8 pixels
+with horizontal steps of 148 and vertical steps of 12 at scale 1. The wide
+screenshot has bars at (8,450), (156,450), (304,450); the 430-by-740 compact
+screenshot has bars at (8,530), (156,530), (8,542). The latter was visually
+inspected. Results and screenshots are in `target/smoke/desktop-result.json` and
+`target/smoke/desktop-components-compact.png`.
+
+The preceding [fractional-sizing CI run 44814414725](https://github.com/rishwith2306/rust-flutter/actions/runs/44814414725)
+passed Linux, macOS build checks and Android compilation, but Android runtime
+again returned to the home route during the compact drag probe. Artifacts in
+`/tmp/fractional-ci-android` show the same result after moving within the small
+primary marker. That adjustment was insufficient. The probe now starts at the
+derived marker (previous physical center about 173.5 pixels / 66 logical points
+from the left), which shares the same enclosing GestureDetector, instead of
+near the primary marker's edge. The application-pan callbacks, tap rejection,
+feedback and size gates remain unchanged. This revised input passes Linux;
+Android runtime verification remains pending the next CI run. No macOS runtime
+or full Flutter parity claim follows from these checks. See [Wrap scope](wrap.md).

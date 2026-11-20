@@ -1,4 +1,6 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
+mod wrap;
+pub use wrap::{Wrap, WrapAlignment, WrapCrossAlignment};
 mod fractionally_sized_box;
 pub use fractionally_sized_box::FractionallySizedBox;
 mod limited_box;
