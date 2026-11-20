@@ -109,6 +109,11 @@ def probe_baselines(path, trace, scale=1.0):
     assert nonlinear_directions == {"Forward", "Reverse"}, nonlinear_directions
     aspect_samples = re.findall(r"aspect-ratio width=([\d.eE+-]+) height=([\d.eE+-]+)", trace)
     assert aspect_samples, "missing aspect-ratio child geometry"
+    fractional_samples = re.findall(r"fractional-child width=([\d.eE+-]+) height=([\d.eE+-]+)", trace)
+    assert fractional_samples, "missing LimitedBox/fractional child geometry"
+    for width, height in fractional_samples:
+        assert abs(float(width) - 24) < 0.001 and abs(float(height) - 12) < 0.001, (width, height)
+
     assert all(float(width) == 24 and float(height) == 12 for width, height in aspect_samples), aspect_samples
     typed_samples = re.findall(r"typed-tween width=([\d.eE+-]+) height=([\d.eE+-]+)", trace)
     assert len(typed_samples) == len(curved_samples), "missing typed Vec2 animation samples"
@@ -126,7 +131,7 @@ def probe_baselines(path, trace, scale=1.0):
     assert not bounds(path, "#e3bd42"), "opaque child painted above its foreground decoration"
     builder_widths = list(dict.fromkeys(float(width) for width in re.findall(r"layout-builder scroll width=([\d.eE+-]+) max_height=inf", trace)))
     assert builder_widths and all(math.isfinite(width) and width > 0 for width in builder_widths), "missing layout-time scroll child construction"
-    return {"aspect_ratio": {"passed": True, "samples": len(aspect_samples)}, "typed_tween": {"passed": True, "samples": len(typed_samples), "value_type": "Vec2"}, "curved_animation": {"passed": True, "samples": len(curved_samples), "nonlinear_forward_reverse": True}, "renderer_profile": {"dithering": False}, "layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
+    return {"fractional_sizing": {"passed": True, "samples": len(fractional_samples), "limited_width": 48, "width_factor": 0.5}, "aspect_ratio": {"passed": True, "samples": len(aspect_samples)}, "typed_tween": {"passed": True, "samples": len(typed_samples), "value_type": "Vec2"}, "curved_animation": {"passed": True, "samples": len(curved_samples), "nonlinear_forward_reverse": True}, "renderer_profile": {"dithering": False}, "layout_builder": {"passed": True, "scroll_widths": builder_widths}, "spring_controller": {"passed": True, "samples": len(spring_samples)}, "pan_end": {"passed": True, "details": ends}, "gesture_binding": {"passed": True, "taps": binding_taps, "pans": binding_pans, "shared_frames": shared_frames}, "arena_tap_winners": arena_taps, "arena_drag_winners": arena_drags, "implicit_completions": implicit_completions, "animation_intermediate_frames": sum(0.0 < value < 1.0 for value in animation_values), "foreground_decoration": {"passed": True, "bounds": foreground, "covered_child": True},
             "passed": True, "small_baseline": small_metric, "large_baseline": large_metric,
             "small_pixel_y": small_y, "large_pixel_y": large_y, "line_pixel_y": line_y,
             "tolerance_physical_pixels": 2.0}
@@ -297,6 +302,10 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     time.sleep(0.15)
     assert drag is not None, "native arena probe requires drag injection"
     start_x, start_y = center(final_marker)
+    # The compact marker starts 8 logical points from the screen edge. Its
+    # center is inside Android's back-swipe region; start 4 points inside its
+    # right edge so this exercises the application's pan recognizer.
+    start_x = max(start_x, final_marker[0] + final_marker[2] - 4 * scale)
     drag(start_x, start_y, start_x + 80 * scale, start_y)
     dragged = settle("components-arena-drag.png")
     drag_marker = bounds(dragged, "#834eb3")

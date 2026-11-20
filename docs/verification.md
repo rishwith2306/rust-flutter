@@ -1448,3 +1448,36 @@ and gallery Clippy with warnings denied. Logs for this run are
 headless geometry checks; this change has no new native rendering or macOS
 runtime evidence. The [guide](limited-box.md) records the deliberate dry-baseline
 constraint policy and remaining compatibility limits.
+
+## FractionallySizedBox and compact native drag input
+
+Nine focused tests cover tight fractional child constraints under loose/tight
+parents, physical alignment including values outside the unit square, overflow
+without a clip, translated real/dry baselines, absent/zero/invalid factors,
+unbounded and overflowing dimensions with recovery, intrinsic argument/result
+mapping and numeric failures, empty content, multiple-child errors, and retained
+child identity when factors are removed.
+
+Local checks passed: 581 locked workspace tests with all features, formatting,
+renderer patch/selection verification, workspace Clippy with warnings denied,
+workspace rustdoc, the executable guide example and ARM64 Android framework and
+gallery Clippy with warnings denied. Logs are `/tmp/fractional-{tests,clippy,doc,
+android,build,gallery-build,desktop}.log` for this run.
+
+The rebuilt ordinary gallery passes `scripts/desktop-smoke.py` on isolated Linux
+Xvfb. The green marker now composes a 48-point LimitedBox maximum with a 0.5
+fractional width and an AspectRatio child. The native probe requires 24 by 12
+logical child dimensions and retains the exact RGB888, glyph, animation endpoint,
+muting, scrolling and compact/wide resize gates. Results are in
+`target/smoke/desktop-result.json`; the compact view was visually inspected.
+
+The earlier compact-layout [CI run 44812570371](https://github.com/rishwith2306/rust-flutter/actions/runs/44812570371)
+passed Linux, macOS build checks and Android compilation but failed Android
+runtime after its drag injection. Its downloaded screenshots show the contracted
+marker at physical bounds (21,1442,63,63), followed by the home route rather than
+an expanded marker. The compact marker's center lies in Android's system back
+swipe edge. The probe now begins four logical points inside the marker's right
+edge, while preserving the same drag distance and all feedback/geometry gates.
+The revised input passes Linux; Android runtime verification of this correction
+is pending a new CI run. This is not a claim of macOS runtime or full Flutter
+compatibility. See the [fractional sizing policy](fractional-sizing.md).

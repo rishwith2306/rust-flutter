@@ -613,13 +613,23 @@ impl State<CurvedMarker> for CurvedMarkerState {
                     ui.max_rect().width(),
                     ui.max_rect().height()
                 );
+                #[cfg(debug_assertions)]
+                eprintln!(
+                    "rust-flutter gallery fractional-child width={} height={}",
+                    ui.max_rect().width(),
+                    ui.max_rect().height()
+                );
                 ui.painter()
                     .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(82, 157, 133));
             },
         ));
         let clipped = transition.into_widget(Widget::constrained(
             BoxConstraints::tight_for(None, Some(12.0)).unwrap(),
-            ratio_child,
+            LimitedBox::new(48.0, f32::INFINITY).unwrap().into_widget(
+                FractionallySizedBox::new(Some(0.5), None)
+                    .unwrap()
+                    .into_widget(ratio_child),
+            ),
         ));
         let mut row = FlexStyle::new(Axis::Horizontal);
         row.main_size = rust_flutter::layout::MainAxisSize::Min;

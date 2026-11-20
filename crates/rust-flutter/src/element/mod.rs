@@ -1,4 +1,6 @@
 //! Declarative widgets, keyed element reconciliation and typed component state.
+mod fractionally_sized_box;
+pub use fractionally_sized_box::FractionallySizedBox;
 mod limited_box;
 pub use limited_box::LimitedBox;
 mod aspect_ratio;
