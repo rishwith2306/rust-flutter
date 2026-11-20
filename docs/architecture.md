@@ -122,3 +122,8 @@ The pinned wgpu-hal Android EGL patch requests RGBA8 native presentation even
 without sRGB window-surface support. Generated app manifests select the reviewed
 source explicitly; see `renderer-patches.md` for origin, verification and manual
 consumer setup. This does not replace wgpu or establish full color management.
+
+[Retained transitions](transitions.md) bind animation sources directly to render
+objects. Size/alignment changes invalidate layout; valid decoration changes
+request paint only. Cached checked samples keep user source callbacks outside
+paint, preserve children and expose failures through typed layout errors.

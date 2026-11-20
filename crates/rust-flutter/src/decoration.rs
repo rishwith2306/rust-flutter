@@ -42,7 +42,7 @@ impl BoxDecoration {
         }
         Ok(())
     }
-    fn paint(self, ui: &mut egui::Ui) {
+    pub(crate) fn paint(self, ui: &mut egui::Ui) {
         ui.painter().rect(
             ui.max_rect(),
             self.corner_radius,

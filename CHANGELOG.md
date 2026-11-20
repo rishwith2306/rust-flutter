@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add retained SizeTransition, AlignTransition and DecoratedBoxTransition with owned source links, typed sample errors, pure size queries and child-preserving layout/paint updates; add Alignment interpolation and native clipped-marker checks.
+
 - Add typed driven animations, shared mutable value/curve tweens, callback/constant mappings, function composition and weighted sequences; preserve custom normalized interpolation contracts and validate explicit extrapolation; drive the gallery marker with a Vec2 tween.
 
 - Add a generic Animation value/status contract, checked cubic/flipped curves and derived CurvedAnimation with latched forward/reverse easing, owned subscription cleanup and reentrant sample guards; exercise derived marker geometry in native probes.

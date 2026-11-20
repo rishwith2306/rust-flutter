@@ -6,6 +6,7 @@ pub use curves::{Cubic, FlippedCurve, ParametricCurve};
 pub use derived::{Animation, CurvedAnimation, WeakCurvedAnimation};
 mod implicit;
 mod listeners;
+mod transitions;
 mod tweens;
 pub use controller::{
     AnimationConfig, AnimationController, AnimationError, AnimationOutcome, AnimationRun,
@@ -13,6 +14,7 @@ pub use controller::{
 };
 pub use implicit::{TweenAnimationBuilder, TweenAnimationState, TweenValue};
 use std::time::Duration;
+pub use transitions::{AlignTransition, DecoratedBoxTransition, SizeTransition};
 pub use tweens::{
     Animatable, AnimationDrive, CallbackAnimatable, ChainedAnimatable, ConstantTween, CurveTween,
     DrivenAnimation, SequenceItem, TweenSequence, ValueTween, WeakCurveTween, WeakDrivenAnimation,

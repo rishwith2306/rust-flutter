@@ -3,7 +3,7 @@ use super::{AnimationConfig, AnimationController, AnimationError, AnimationStatu
 use crate::{
     decoration::BoxDecoration,
     element::{BuildContext, State, StateContext, StatefulWidget, Widget},
-    layout::Insets,
+    layout::{Alignment, Insets},
     notifier::{Listenable, Subscription},
 };
 use std::{
@@ -34,7 +34,7 @@ pub trait TweenValue: Clone + PartialEq + 'static {
             ));
         }
         let value = self.interpolate(target, progress);
-        value.validate()?;
+        TweenValue::validate(&value)?;
         Ok(value)
     }
 }
@@ -51,7 +51,7 @@ macro_rules! unbounded_interpolation {
                 ));
             }
             let value = self.interpolate(target, progress);
-            value.validate()?;
+            TweenValue::validate(&value)?;
             Ok(value)
         }
     };
@@ -123,6 +123,18 @@ impl TweenValue for egui::Color32 {
         let b = b.to_array();
         let channel = |i| lerp(f32::from(a[i]), f32::from(b[i]), t).round() as u8;
         Self::from_rgba_premultiplied(channel(0), channel(1), channel(2), channel(3))
+    }
+}
+impl TweenValue for Alignment {
+    unbounded_interpolation!();
+    fn interpolate(&self, target: &Self, t: f32) -> Self {
+        Self {
+            x: lerp(self.x, target.x, t),
+            y: lerp(self.y, target.y, t),
+        }
+    }
+    fn validate(&self) -> Result<(), AnimationError> {
+        finite(self.x.is_finite() && self.y.is_finite())
     }
 }
 impl TweenValue for Insets {

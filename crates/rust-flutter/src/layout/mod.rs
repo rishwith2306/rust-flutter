@@ -21,6 +21,7 @@ pub enum LayoutError {
     InvalidConstraints,
     InvalidSize,
     InvalidConfiguration(&'static str),
+    Animation(crate::animation::AnimationError),
     UnsupportedQuery(&'static str),
     UnboundedSize,
     UnboundedFlex,
@@ -35,6 +36,7 @@ impl fmt::Display for LayoutError {
             Self::InvalidConstraints => f.write_str("box constraints must satisfy 0 <= min <= max on each axis"),
             Self::InvalidSize => f.write_str("box sizes must be nonnegative and must not contain NaN"),
             Self::InvalidConfiguration(reason) => f.write_str(reason),
+            Self::Animation(error) => write!(f,"animation sample failed: {error}"),
             Self::UnsupportedQuery(reason) => write!(f,"size query is unsupported: {reason}"),
             Self::UnboundedSize => f.write_str("layout needs a finite size; constrain the unbounded axis"),
             Self::UnboundedFlex => f.write_str("flex cannot expand in an unbounded main axis; constrain it or use loose flex with MainAxisSize::Min"),
@@ -45,7 +47,14 @@ impl fmt::Display for LayoutError {
         }
     }
 }
-impl std::error::Error for LayoutError {}
+impl std::error::Error for LayoutError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Animation(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 /// Normalized min/max extents in logical points. Infinity is permitted; NaN is not.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -182,7 +191,7 @@ impl Alignment {
     pub const TOP_LEFT: Self = Self { x: -1.0, y: -1.0 };
     pub const CENTER: Self = Self { x: 0.0, y: 0.0 };
     pub const BOTTOM_RIGHT: Self = Self { x: 1.0, y: 1.0 };
-    fn offset(self, space: Vec2) -> Result<Vec2, LayoutError> {
+    pub(crate) fn offset(self, space: Vec2) -> Result<Vec2, LayoutError> {
         if !self.x.is_finite() || !self.y.is_finite() {
             return Err(LayoutError::InvalidConfiguration(
                 "alignment must be finite",

@@ -1320,3 +1320,31 @@ Nullable endpoints, integer/step/reverse/flipped variants, wider geometry/theme
 specializations and complete Flutter member/precision compatibility remain
 unfinished; physical devices and macOS window/input runtime remain unverified.
 See [typed tween policy and scope](value-tweens.md).
+
+## Retained transition validation
+
+The transition shipment adds 11 headless tests; the all-feature workspace suite
+passes 552 tests locally. Coverage includes size factors and clipping/hits,
+axis/alignment/cross-axis factors, tight and unbounded constraints, pure queries
+and translated baselines, retained child identity and unchanged build counts,
+source replacement and cleanup, alignment overflow, decoration paint ordering
+and child-layout reuse, typed sample failures/recovery, disposed sources,
+synchronous/reentrant source notifications and controller/tween playback.
+
+Workspace and ARM64 Android framework/gallery Clippy pass with warnings denied.
+Formatting, rustdoc, the runnable transition guide and renderer source/selection
+checks pass. The Linux X11/Xvfb native probe records green clipped-marker widths
+12→24→12 pixels at scale 1 and unchanged muted geometry at width 14. The expanded
+screenshot was inspected and shows the green marker alongside the existing
+implicit, spring and typed markers. `desktop-result.json` records
+`components.size_transition.passed` and `frozen` as true. Existing strict
+RGB888/glyph, typed/curved animation, component/scrollbar, lazy-list/keep-alive,
+Offstage, muting and restoration gates also pass.
+
+The shared Android probe includes the same size-transition gates; compilation
+is not runtime proof and exact-revision CI artifacts remain to be inspected.
+These widgets use retained render-object source bindings, rather than the full
+Flutter AnimatedWidget build API. Directional alignment, broader transition
+families, compositor/semantics integration and complete member compatibility
+remain unfinished; macOS window/input runtime and physical devices remain
+unverified. See [transition policy](transitions.md).

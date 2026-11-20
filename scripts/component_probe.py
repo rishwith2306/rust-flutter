@@ -220,6 +220,16 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
         pixel = subprocess.check_output(["convert", str(path), "-alpha", "off", "-crop", f"1x1+{int(x)}+{int(y)}", "-depth", "8", "rgb:-"], timeout=15)
         assert pixel == bytes.fromhex("8e6fb2"), pixel.hex()
         return rect
+    def transition_bounds(path, expected=None):
+        rect = bounds(path, "#529d85")
+        assert rect, "missing retained size transition"
+        if expected is not None:
+            assert abs(rect[2] - expected * scale) <= 1, (rect, expected)
+        x, y = center(rect)
+        pixel = subprocess.check_output(["convert", str(path), "-alpha", "off", "-crop", f"1x1+{int(x)}+{int(y)}", "-depth", "8", "rgb:-"], timeout=15)
+        assert pixel == bytes.fromhex("529d85"), pixel.hex()
+        return rect
+    initial_transition = transition_bounds(burst, 12)
     initial_curved = curved_bounds(burst, 12)
     initial_spring = spring_bounds(burst, 12)
     marker = bounds(burst, "#834eb3")
@@ -243,6 +253,7 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     exact_fill(expanded, larger, "#834eb3", scale)
     expanded_spring = spring_bounds(expanded, 24)
     expanded_curved = curved_bounds(expanded, 24)
+    expanded_transition = transition_bounds(expanded, 24)
     # Wait for the endpoint before reversing so a nearly-complete screenshot
     # cannot shorten the reverse trip through a partially finished first run.
     time.sleep(0.15)
@@ -251,6 +262,7 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     time.sleep(0.15)
     contracted_spring = spring_bounds(contracted, 12)
     contracted_curved = curved_bounds(contracted, 12)
+    transition_bounds(contracted, 12)
     assert not bounds(contracted, "#e3bd42"), "animation broke foreground painting"
     ticker = bounds(contracted, "#3e6c72")
     assert ticker, "ticker mode control is missing"
@@ -261,6 +273,7 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     paused = capture("components-animation-muted.png")
     paused_spring = spring_bounds(paused)
     paused_curved = curved_bounds(paused)
+    paused_transition = transition_bounds(paused)
     paused_marker = bounds(paused, "#834eb3")
     assert paused_marker and 24 * scale + 2 < paused_marker[2] < 48 * scale - 2, paused_marker
     time.sleep(2.2)
@@ -269,10 +282,12 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
     assert frozen_marker == paused_marker, (paused_marker, frozen_marker)
     assert spring_bounds(frozen) == paused_spring, "muted spring geometry changed"
     assert curved_bounds(frozen) == paused_curved, "muted derived geometry changed"
+    assert transition_bounds(frozen) == paused_transition, "muted retained transition changed"
     tap(*center(bounds(frozen, "#3e6c72")))
     resumed, resumed_marker = await_width("components-animation-unmuted.png", 48)
     spring_bounds(resumed, 24)
     curved_bounds(resumed, 24)
+    transition_bounds(resumed, 24)
     tap(*center(resumed_marker))
     contracted, final_marker = await_width("components-animation-restored.png", 24)
     time.sleep(0.15)
@@ -434,7 +449,7 @@ def probe_components(capture, tap, scale=1.0, drag=None, wheel=None, press_key=N
         bar_wheel_verified = True
     bar_reset = await_bar("components-scrollbar-reset.png", lambda path: bounds(path, "#284b72") == scroll_view and bounds(path, "#b9c7d8") == thumb)
     exact_fill(bar_reset, scroll_view, "#284b72", scale)
-    return {"typed_tween": {"passed": True, "initial_size_pixels": list(initial_curved[2:]), "expanded_size_pixels": list(expanded_curved[2:]), "contracted_size_pixels": list(contracted_curved[2:])}, "curved_animation": {"passed": True, "initial_width": initial_curved[2], "expanded_width": expanded_curved[2], "contracted_width": contracted_curved[2], "muted_width": paused_curved[2], "frozen": True}, "scrollbar": {"passed": True, "thumb_drag": True, "track_page": True, "wheel_over_thumb": bar_wheel_verified, "initial_thumb": thumb}, "scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
+    return {"size_transition": {"passed": True, "initial_width": initial_transition[2], "expanded_width": expanded_transition[2], "muted_width": paused_transition[2], "frozen": True}, "typed_tween": {"passed": True, "initial_size_pixels": list(initial_curved[2:]), "expanded_size_pixels": list(expanded_curved[2:]), "contracted_size_pixels": list(contracted_curved[2:])}, "curved_animation": {"passed": True, "initial_width": initial_curved[2], "expanded_width": expanded_curved[2], "contracted_width": contracted_curved[2], "muted_width": paused_curved[2], "frozen": True}, "scrollbar": {"passed": True, "thumb_drag": True, "track_page": True, "wheel_over_thumb": bar_wheel_verified, "initial_thumb": thumb}, "scroll_viewport": {"passed": True, "height": scroll_view[3], "drag_scroll": True, "cross_axis_no_scroll": True, "controller_reset": True, "hard_clip": True, "native_wheel": wheel_verified, "native_keyboard": keyboard_verified}, "spring_controller": {"passed": True, "initial_width": initial_spring[2], "expanded_width": expanded_spring[2], "contracted_width": contracted_spring[2], "muted_width": paused_spring[2]}, "gesture_arena": {"passed": True, "drag_feedback": True, "release_feedback": True, "tap_rejected_on_drag": True, "tap_after_drag": True}, "animation": {"passed": True, "initial_width": marker[2], "expanded_width": larger[2], "contracted_width": smaller[2], "muted_width": paused_marker[2], "frozen_width": frozen_marker[2], "catch_up_width": resumed_marker[2], "restored_width": final_marker[2], "ticker_mode": True}, "passed": True, "inherited_step": True, "inherited_aspect": True, "notifier_burst": True, "exact_rgb888_fills": True, "scope": "injected clicks, keyed swap, removal/reinsertion, inherited step change preserving local state, then one click matching the original two-click result; A-only aspect update preserves both counts, then A remains interactive while B count stays unchanged; observable reset and three-change burst match the three-click counter; clicked frame-driven expansion and reverse reach rendered endpoints; exact trimmed foreground glyph masks at a 75% intensity threshold"}
 
 
 def probe_lazy_list(capture, tap, drag, press_key, scale=1.0, wheel=None):

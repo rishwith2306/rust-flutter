@@ -567,29 +567,51 @@ impl State<CurvedMarker> for CurvedMarkerState {
     fn build(&mut self, _: &CurvedMarker, _: &StateContext<Self>) -> Widget {
         #[cfg(debug_assertions)]
         let weak = self.curve.as_ref().unwrap().downgrade();
-        Widget::value_listenable_builder(self.size.as_ref().unwrap().clone(), move |_, size| {
-            #[cfg(debug_assertions)]
-            if let Some(curve) = weak.upgrade() {
-                eprintln!(
-                    "rust-flutter gallery curved parent={} value={} status={:?} width={}",
-                    curve.parent().value(),
-                    curve.value(),
-                    curve.status(),
-                    size.x
-                );
-                eprintln!(
-                    "rust-flutter gallery typed-tween width={} height={}",
-                    size.x, size.y
-                );
-            }
-            Widget::leaf(size, |ui| {
-                ui.painter().rect_filled(
-                    ui.max_rect(),
-                    0.0,
-                    egui::Color32::from_rgb(142, 111, 178),
-                );
-            })
-        })
+        let typed = Widget::value_listenable_builder(
+            self.size.as_ref().unwrap().clone(),
+            move |_, size| {
+                #[cfg(debug_assertions)]
+                if let Some(curve) = weak.upgrade() {
+                    eprintln!(
+                        "rust-flutter gallery curved parent={} value={} status={:?} width={}",
+                        curve.parent().value(),
+                        curve.value(),
+                        curve.status(),
+                        size.x
+                    );
+                    eprintln!(
+                        "rust-flutter gallery typed-tween width={} height={}",
+                        size.x, size.y
+                    );
+                }
+                Widget::leaf(size, |ui| {
+                    ui.painter().rect_filled(
+                        ui.max_rect(),
+                        0.0,
+                        egui::Color32::from_rgb(142, 111, 178),
+                    );
+                })
+            },
+        );
+        use rust_flutter::animation::{AnimationDrive, SizeTransition, ValueTween};
+        let factor = self
+            .curve
+            .as_ref()
+            .unwrap()
+            .clone()
+            .drive(ValueTween::new(0.5_f32, 1.0).unwrap())
+            .unwrap();
+        let mut transition = SizeTransition::new(factor);
+        transition.axis = Axis::Horizontal;
+        transition.fixed_cross_axis_size_factor = Some(1.0);
+        let clipped = transition.into_widget(Widget::leaf(egui::vec2(24.0, 12.0), |ui| {
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(82, 157, 133));
+        }));
+        let mut row = FlexStyle::new(Axis::Horizontal);
+        row.main_size = rust_flutter::layout::MainAxisSize::Min;
+        row.spacing = 8.0;
+        Widget::flex(row, vec![FlexItem::fixed(typed), FlexItem::fixed(clipped)])
     }
     fn dispose(&mut self) {
         if let Some(size) = self.size.take() {
