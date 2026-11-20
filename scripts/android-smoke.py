@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+from form_probe import probe_form
 from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds, native_formats
 from android_ime import ime_state
 from android_ready import focused_presentation, paused_since
@@ -307,7 +308,16 @@ baselines = probe_baselines(output / "android-components-initial.png", render_tr
 assert len(baselines["layout_builder"]["scroll_widths"]) == 1 and abs(baselines["layout_builder"]["scroll_widths"][0] - float(render_layouts[0][1])) <= 0.001, baselines["layout_builder"]
 lazy_list["builds"] = probe_lazy_builds(render_trace)
 render_objects = {"created": 1, "updated": 1, "layouts": render_layouts, "dry_queries": render_queries}
-result = {"passed": True, "serial": args.serial,
+form_home = screenshot("android-form-home.png")
+form_button = bounds(form_home, "#6b5b95")
+assert form_button, "missing form route button"
+x, y = center(form_button)
+device("shell", "input", "tap", str(round(x)), str(round(y)))
+wait_state(route="form")
+forms = probe_form(lambda name: screenshot("android-" + name),
+    lambda x,y: device("shell", "input", "tap", str(round(x)), str(round(y))),
+    lambda value: device("shell", "input", "text", value), args.scale)
+result = {"passed": True, "forms": forms, "serial": args.serial,
           "android_release": device("shell", "getprop", "ro.build.version.release").stdout.decode().strip(),
           "sdk": device("shell", "getprop", "ro.build.version.sdk").stdout.decode().strip(),
           "abi": device("shell", "getprop", "ro.product.cpu.abi").stdout.decode().strip(),

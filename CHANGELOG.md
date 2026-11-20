@@ -2,6 +2,9 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add retained typed forms with nearest-scope owned registration, validation/save/reset, field auto-validation, error/interaction state and callback supersession guards; add a gallery form and shared native input probe.
+- Record the gallery aspect-ratio child’s allocated constraints before screen translation, avoiding f32 endpoint-cancellation noise in geometry traces while retaining strict pixel checks.
+
 - Add eager retained Wrap rows/columns with run and child alignment, direction-aware placement, clipping, pure sizing/intrinsic/baseline queries and native responsive swatch checks; start compact native pan probes deeper inside their shared detector to avoid system back gestures.
 
 - Add retained FractionallySizedBox with checked tight fractional child constraints, aligned overflow, intrinsic/baseline queries and child retention; compose it with LimitedBox in the native gallery probe.

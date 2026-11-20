@@ -10,6 +10,7 @@ import select
 import subprocess
 import tempfile
 import time
+from form_probe import probe_form
 from component_probe import probe_baselines, probe_components, probe_lazy_list, probe_lazy_builds, bounds
 
 root = Path(__file__).resolve().parents[1]
@@ -193,7 +194,15 @@ try:
             lazy_list = probe_lazy_list(component_capture, lambda x,y: click(window, round(x), round(y)), component_drag, component_key, wheel=component_wheel)
             trace = (output / "gallery.log").read_text()
             lazy_list["builds"] = probe_lazy_builds(trace)
-            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "lazy_list": lazy_list, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "baseline_alignment": baselines, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
+            assert xdo("key", "XF86Back").returncode == 0
+            wait_for(lambda: state_matches(route="home"), "lazy list did not return home before forms")
+            form_home = component_capture("form-home.png")
+            form_button = bounds(form_home, "#6b5b95")
+            assert form_button, "missing form route button"
+            click(window, *map(round, center(form_button)))
+            wait_for(lambda: state_matches(route="form"), "form page did not open")
+            forms = probe_form(component_capture, lambda x,y: click(window, round(x), round(y)), lambda value: xdo("type", "--clearmodifiers", value))
+            (output / "desktop-result.json").write_text(json.dumps({"passed": True, "forms": forms, "state_after_restart": data, "bundled_asset_pixels": badge_pixels, "layout_after_resize": layout_state, "layout_flex_pixel_widths": widths, "components": components, "lazy_list": lazy_list, "inherited_view_metrics": view_metrics, "render_objects": render_objects, "baseline_alignment": baselines, "platform": "Linux X11/Xvfb", "scope": "GPU rendering, pointer, keyboard text, private state persistence, restart, assets, constraint layout and retained components"}, indent=2))
             print("PASS: gallery input/restoration/assets, resized layout, keyed component state and selective inherited view updates")
 finally:
     if app is not None and app.poll() is None:

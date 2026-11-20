@@ -12,6 +12,7 @@ use rust_flutter::{
 };
 use serde::{Deserialize, Serialize};
 mod components;
+mod forms;
 mod lazy_lists;
 
 // Use the same explicit pixel profile on desktop and Android. Dithering is
@@ -44,6 +45,7 @@ enum Route {
     Layout,
     Components,
     LazyList,
+    Form,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Snapshot {
@@ -68,6 +70,7 @@ pub struct Gallery {
     images: AssetImages<&'static EmbeddedBundle>,
     layout_demo: BoxNode,
     component_demo: Option<components::ComponentDemo>,
+    form_demo: Option<forms::FormDemo>,
     lazy_list_demo: Option<lazy_lists::LazyListDemo>,
 }
 impl Default for Gallery {
@@ -90,6 +93,7 @@ impl Default for Gallery {
             images: AssetImages::new(&ASSETS),
             layout_demo: layout_demo(),
             component_demo: None,
+            form_demo: None,
             lazy_list_demo: None,
         }
     }
@@ -247,6 +251,15 @@ impl Application for Gallery {
                         {
                             self.navigator.push(Route::LazyList);
                         }
+                        if ui
+                            .add(
+                                egui::Button::new(self.tr("forms"))
+                                    .fill(egui::Color32::from_rgb(107, 91, 149)),
+                            )
+                            .clicked()
+                        {
+                            self.navigator.push(Route::Form);
+                        }
                     });
                     card(ui, |ui| {
                         heading(ui, self.tr("background"));
@@ -272,6 +285,15 @@ impl Application for Gallery {
                         }
                     });
                 });
+            }
+            Route::Form => {
+                heading(ui, self.tr("forms"));
+                self.form_demo
+                    .get_or_insert_with(|| forms::FormDemo::new(ui.ctx()))
+                    .show(ui);
+                if button(ui, self.tr("back")).clicked() {
+                    self.navigator.pop();
+                }
             }
             Route::LazyList => {
                 heading(ui, self.tr("lazy-list"));

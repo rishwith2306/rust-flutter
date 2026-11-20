@@ -1537,3 +1537,38 @@ remain unchanged. The current Linux native smoke passes, with twelve allocated
 ratio samples. The complete Android runtime run remains unverified until the
 corrected trace passes CI; the earlier failure is not relabeled as a successful
 run. Downloaded evidence is in `/tmp/wrap-ci-android` for this session.
+
+## Typed retained forms
+
+Fifteen focused tests cover explicit and passive validation, published errors and
+interaction, clear/reset, mixed value types, granular IDs, counted registration
+ownership, weak lifetimes, callback panic recovery, recursive/superseded results,
+later-field mutation of an earlier field, registration removal during validation,
+synchronous observers, nearest nested scopes and rebinding, latest initial values
+and save/reset callbacks, all five field auto modes, disabled automatic versus
+explicit validation, forced errors, finite automatic rebuild convergence, visible
+automatic callback failure, and real egui pointer/text input followed by reset.
+
+Local checks passed: 609 locked workspace tests with all features, formatting,
+renderer patch/selection verification, workspace Clippy with warnings denied,
+workspace rustdoc, the executable form guide and ARM64 Android framework/gallery
+Clippy with warnings denied. Logs are `/tmp/forms-{tests,clippy,doc,android,build,
+gallery-build,desktop}.log` for this run.
+
+The ordinary rebuilt gallery passes the complete isolated Linux native smoke
+script, preserving the previous rendering and input gates and adding the Forms
+route. Through actual clicks and keyboard text, the shared form probe rejects an
+empty submission, checks that typed text changes the rendered input, rejects
+missing terms, toggles the checkbox, observes the saved status, resets, compares
+the empty/reset foreground glyph masks, and verifies rejection again. The input
+and saved text use explicit white foregrounds. `target/smoke/desktop-result.json`
+records all seven form gates as true. `target/smoke/form-saved.png` was visually
+inspected and shows the entered name and saved result. No controller-state
+mutation hook drives the native interaction.
+
+The same shared probe is wired into Android smoke, but its runtime result is
+pending CI; local Android compilation does not prove IME/device interaction.
+macOS runtime, form-level automatic policies, focus/autofill/restoration,
+Material form controls, async validation, semantics announcements and complete
+Flutter member compatibility remain unfinished. The [form guide](forms.md)
+records controller lifetime, notification, callback and partial-operation policies.
