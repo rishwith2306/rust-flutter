@@ -51,6 +51,27 @@ integrated. Clearing errors in Always mode can make them reappear on
 the next builder pass; unchanged automatic results do not cause a rebuild loop.
 Validators should be side-effect-free because builds may validate repeatedly.
 
+`TextFormField` supplies a retained egui text editor attached to the same
+typed form model. Choose either `TextFormField::new(initial)` or
+`TextFormField::with_controller(controller)`, then configure its decoration,
+validator and save/change/submit callbacks. A controller exposes an atomic
+`TextEditingValue` containing UTF-8 text, optional selection and composing
+ranges expressed as UTF-16 offsets. Invalid offsets, including offsets inside
+a surrogate pair, are rejected without changing state. Replacing text clears
+selection and composition; use `set_value` for an atomic edit. Reset restores
+the form's initial text and clears editor selection/composition. Selection-only
+updates do not mark the form as user-interacted. The controller is externally
+owned when supplied by the application and remains alive after the field is
+removed; internally created controllers are disposed with the field.
+
+This field currently supports single-line and multiline input, labels, hints,
+read-only/disabled states, password display, character limits, selection,
+reset, focus retention in lazy lists and UTF-16 controller offsets. It is an
+egui backend adapter, not Flutter's Material `TextFormField` or `EditableText`:
+platform IME composition, autofill, restoration, accessibility semantics,
+advanced bidi/shaping and Flutter's complete selection/keyboard behavior still
+need implementation and macOS/Android device verification.
+
 Form-wide policies use the same enum:
 
 ```rust

@@ -1,7 +1,13 @@
 //! Typed form state, owned field registrations and retained form scopes.
 mod automatic;
 use automatic::{AutoRequest, FieldEvent};
+mod editing;
+pub use editing::{
+    TextAffinity, TextEditingController, TextEditingError, TextEditingValue, TextRange,
+    TextSelection, WeakTextEditingController,
+};
 mod field;
+mod text_field;
 mod widgets;
 use crate::notifier::{ChangeNotifier, Disposed, Listenable, Listener, Subscription};
 pub use field::{
@@ -11,6 +17,7 @@ use std::{
     cell::{Cell, RefCell},
     rc::{Rc, Weak},
 };
+pub use text_field::{TextFieldDecoration, TextFormField, TextFormFieldState};
 pub use widgets::{Form, FormField, FormFieldState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

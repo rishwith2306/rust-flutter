@@ -194,7 +194,10 @@ try:
             lazy_list = probe_lazy_list(component_capture, lambda x,y: click(window, round(x), round(y)), component_drag, component_key, wheel=component_wheel)
             trace = (output / "gallery.log").read_text()
             lazy_list["builds"] = probe_lazy_builds(trace)
-            assert xdo("key", "XF86Back").returncode == 0
+            # The lazy viewport owns keyboard focus, so XF86Back can be
+            # consumed as an input key instead of reaching route navigation.
+            # Exercise the page's visible Back control to leave the list.
+            click(window, 60, 385)
             wait_for(lambda: state_matches(route="home"), "lazy list did not return home before forms")
             form_home = component_capture("form-home.png")
             form_button = bounds(form_home, "#6b5b95")

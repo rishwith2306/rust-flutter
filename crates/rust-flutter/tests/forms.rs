@@ -2,6 +2,7 @@ use rust_flutter::{
     egui,
     element::*,
     forms::*,
+    layout::BoxConstraints,
     notifier::{Listenable, ValueListenable},
 };
 use std::{
@@ -394,4 +395,80 @@ fn automatic_validator_failure_is_visible_and_settles() {
         (0..8).any(|_| !tree.flush().unwrap()),
         "automatic callback failure did not settle"
     );
+}
+
+#[test]
+fn text_editing_values_validate_utf16_ranges_atomically_and_notify_once() {
+    let controller = TextEditingController::from_value(TextEditingValue {
+        text: "A😀é".into(),
+        selection: Some(TextSelection {
+            base_offset: 1,
+            extent_offset: 3,
+            affinity: TextAffinity::Downstream,
+        }),
+        composing: Some(TextRange { start: 3, end: 4 }),
+    })
+    .unwrap();
+    let calls = Rc::new(Cell::new(0));
+    let seen = calls.clone();
+    let _subscription = controller
+        .subscribe(Rc::new(move || seen.set(seen.get() + 1)))
+        .unwrap();
+    assert_eq!(controller.value().selection.unwrap().extent_offset, 3);
+    assert_eq!(
+        controller.set_selection(Some(TextSelection::collapsed(2))),
+        Err(TextEditingError::InvalidOffset)
+    );
+    assert_eq!(controller.text(), "A😀é");
+    assert_eq!(calls.get(), 0);
+    controller
+        .set_selection(Some(TextSelection::collapsed(4)))
+        .unwrap();
+    assert_eq!(calls.get(), 1);
+    assert!(controller.set_text("new").unwrap());
+    assert_eq!(controller.value().selection, None);
+    assert_eq!(controller.value().composing, None);
+    controller.dispose().unwrap();
+    assert_eq!(controller.set_text("late"), Err(TextEditingError::Disposed));
+}
+
+#[test]
+fn text_form_field_keeps_controller_and_form_value_in_sync_across_reset() {
+    let context = egui::Context::default();
+    let controller = TextEditingController::new("");
+    let form = FormController::new();
+    let saved = Rc::new(RefCell::new(String::new()));
+    let result = saved.clone();
+    let widget = TextFormField::with_controller(controller.clone())
+        .validator(|s| s.trim().is_empty().then(|| "Required".into()))
+        .on_saved(move |s| *result.borrow_mut() = s.to_owned())
+        .into_widget()
+        .unwrap();
+    let mut tree = ElementTree::new(&context, Form::new(form.clone()).into_widget(widget)).unwrap();
+    let frame = |tree: &mut ElementTree, ctx: &egui::Context| {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(320.0, 160.0),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    tree.show(ui, BoxConstraints::tight(egui::vec2(320.0, 160.0)).unwrap())
+                        .unwrap();
+                });
+            },
+        );
+    };
+    frame(&mut tree, &context);
+    controller.set_text("Ada").unwrap();
+    assert!(form.validate().unwrap());
+    form.save().unwrap();
+    assert_eq!(saved.borrow().as_str(), "Ada");
+    form.reset().unwrap();
+    assert_eq!(controller.text(), "");
+    controller.set_text("Grace").unwrap();
+    assert!(form.validate().unwrap());
 }

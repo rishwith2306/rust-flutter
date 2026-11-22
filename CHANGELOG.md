@@ -2,6 +2,12 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add `TextEditingController` with validated UTF-16 selection/composition offsets
+  and a retained `TextFormField` adapter for forms, including reset, callbacks,
+  validation feedback, read-only/password modes and lazy-list focus retention.
+  The adapter uses egui and does not claim Material `EditableText` or platform
+  IME/accessibility parity.
+
 - Add form-wide automatic validation policies, related-field revalidation, reset batching, unfocus targets and bounded deferred passes with observable failures; require native error clearing before resubmission.
 
 - Add retained typed forms with nearest-scope owned registration, validation/save/reset, field auto-validation, error/interaction state and callback supersession guards; add a gallery form and shared native input probe.

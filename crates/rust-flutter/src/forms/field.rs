@@ -124,6 +124,13 @@ impl<T: Clone + 'static> FormFieldController<T> {
         self.0.notify();
         self.0.event(FieldEvent::Configured);
     }
+    pub(super) fn replace_bound_value(&self, value: T) {
+        let old = std::mem::replace(&mut self.0.data.borrow_mut().value, value);
+        self.0.bump();
+        drop(old);
+        self.0.notify();
+        self.0.event(FieldEvent::Configured);
+    }
     /// A user edit marks interaction even when the new value compares equal.
     pub fn did_change(&self, value: T) -> Result<(), FormError> {
         let old = {

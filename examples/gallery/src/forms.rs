@@ -1,7 +1,9 @@
 use rust_flutter::{
     egui,
     element::{ElementTree, FlexItem, FlexStyle, Widget},
-    forms::{AutovalidateMode, Form, FormController, FormField},
+    forms::{
+        AutovalidateMode, Form, FormController, FormField, TextFieldDecoration, TextFormField,
+    },
     layout::{Axis, BoxConstraints, CrossAxisAlignment, MainAxisSize},
 };
 use std::{cell::RefCell, rc::Rc};
@@ -17,32 +19,16 @@ impl FormDemo {
         form.set_autovalidate_mode(AutovalidateMode::OnUserInteraction);
         let saved = Rc::new(RefCell::new(String::new()));
         let result = saved.clone();
-        let mut name = FormField::new(String::new(), |_, field| {
-            Widget::leaf(egui::vec2(240.0, 76.0), move |ui| {
-                ui.label("Name");
-                let mut value = field.current_value();
-                let response = ui.add(
-                    egui::TextEdit::singleline(&mut value)
-                        .desired_width(ui.available_width())
-                        .background_color(egui::Color32::from_rgb(38, 59, 78))
-                        .text_color(egui::Color32::WHITE),
-                );
-                if response.changed() {
-                    let _ = field.did_change(value);
-                }
-                if response.lost_focus() {
-                    let _ = field.did_unfocus();
-                }
-                if let Some(error) = field.error_text() {
-                    ui.colored_label(egui::Color32::LIGHT_RED, error);
-                }
-                if let Some(error) = field.snapshot().validation_failure {
-                    ui.colored_label(egui::Color32::LIGHT_RED, error.to_string());
-                }
+        let mut name = TextFormField::new("")
+            .decoration(TextFieldDecoration {
+                label: Some("Name".into()),
+                text_color: Some(egui::Color32::WHITE),
+                background_color: Some(egui::Color32::from_rgb(38, 59, 78)),
+                ..Default::default()
             })
-        })
-        .validator(|name| name.trim().is_empty().then(|| "Enter your name".into()))
-        .on_saved(move |name| *result.borrow_mut() = name.clone());
+            .validator(|name| name.trim().is_empty().then(|| "Enter your name".into()))
+            .on_saved(move |name| *result.borrow_mut() = name.to_owned());
+        name.preferred_width = 240.0;
         name.autovalidate_mode = AutovalidateMode::OnUserInteraction;
         let terms = FormField::new(false, |_, field| {
             Widget::leaf(egui::vec2(240.0, 56.0), move |ui| {
@@ -73,7 +59,7 @@ impl FormDemo {
             Form::new(form.clone()).into_widget(Widget::flex(
                 column,
                 vec![
-                    FlexItem::fixed(name.into_widget()),
+                    FlexItem::fixed(name.into_widget().expect("valid name text field")),
                     FlexItem::fixed(terms.into_widget()),
                 ],
             )),
