@@ -15,7 +15,7 @@ use rust_flutter::{
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSwitch,
         CupertinoSlidingSegment, CupertinoSlidingSegmentedControl,
         CupertinoTabBar, CupertinoTabDestination, CupertinoTextField,
-        CupertinoThemeData,
+        CupertinoTabScaffold, CupertinoThemeData,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -96,7 +96,22 @@ let page = CupertinoPageScaffold::new(content)
     .theme(theme)
     .into_widget();
 let app = CupertinoApp::new(page).theme(theme).into_widget();
+let tabs_app = CupertinoTabScaffold::new(
+    &binding,
+    vec![
+        CupertinoTabDestination::new("⌂", "Home"),
+        CupertinoTabDestination::new("⚙", "Settings"),
+    ],
+    0,
+    |_, index| match index {
+        0 => Widget::empty(),
+        _ => Widget::empty(),
+    },
+)?
+.theme(theme)
+.into_widget();
 # let _: Widget = app;
+# let _: Widget = tabs_app;
 ```
 
 The default theme uses the familiar blue accent for light and dark palettes.
@@ -104,9 +119,10 @@ Applications can provide custom primary, text, disabled, and background colors
 through `CupertinoThemeData`. The page scaffold expands its body below an
 optional navigation and tab bars, centers the title between equal
 leading/trailing slots, and applies measured safe-area insets around all three
-regions. The tab bar is controlled: the owner updates its selected index after
-the callback. It currently retains the page body as one child; separate tab
-stacks and offstage page retention are not built in. Native translucency,
+regions. The standalone tab bar is controlled: the owner updates its selected
+index after the callback. `CupertinoTabScaffold` manages selection, keeps each
+tab subtree mounted, hides inactive pages, and mutes their tickers. Per-tab
+navigation stacks and state restoration are not built in. Native translucency,
 scroll-under blur, large-title transitions, and status-bar tap-to-scroll remain
 unfinished. System appearance integration remains explicit application work.
 The initial text field uses the shared

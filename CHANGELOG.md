@@ -1,6 +1,6 @@
 # Changelog
 
-- Start a retained Cupertino design layer with inherited theme data, `CupertinoApp`, `CupertinoPageScaffold`, `CupertinoNavigationBar`, controlled `CupertinoTabBar`, edge-to-edge/notched `CupertinoListTile`, edge-to-edge/inset-grouped `CupertinoListSection`, regular/filled `CupertinoButton`, `CupertinoSwitch`, range `CupertinoSlider`, `CupertinoActivityIndicator`, tap/sliding `CupertinoSegmentedControl` variants, and basic `CupertinoTextField` widgets.
+- Start a retained Cupertino design layer with inherited theme data, `CupertinoApp`, `CupertinoPageScaffold`, `CupertinoNavigationBar`, controlled `CupertinoTabBar` and `CupertinoTabScaffold`, edge-to-edge/notched `CupertinoListTile`, edge-to-edge/inset-grouped `CupertinoListSection`, regular/filled `CupertinoButton`, `CupertinoSwitch`, range `CupertinoSlider`, `CupertinoActivityIndicator`, tap/sliding `CupertinoSegmentedControl` variants, and basic `CupertinoTextField` widgets.
 
 ## Unreleased — 0.1.0 development
 

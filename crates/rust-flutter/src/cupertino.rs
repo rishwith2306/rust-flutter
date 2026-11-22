@@ -30,6 +30,8 @@ mod sliding_segmented;
 pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
 mod tab_bar;
 pub use tab_bar::{CupertinoTabBar, CupertinoTabDestination};
+mod tab_scaffold;
+pub use tab_scaffold::CupertinoTabScaffold;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
