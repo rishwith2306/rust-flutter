@@ -127,7 +127,10 @@ pub mod prelude {
         AppContext, AppEvent, Application, EventResponse, LifecycleEvent,
         animation::*,
         focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
-        material::{Brightness, ColorScheme, FilledButton, OutlinedButton, TextButton, ThemeData},
+        material::{
+            AppBar, Brightness, ColorScheme, FilledButton, OutlinedButton, Scaffold, TextButton,
+            ThemeData,
+        },
         navigation::Navigator,
         state::Signal,
         widgets::*,

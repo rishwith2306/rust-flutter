@@ -1,0 +1,149 @@
+use super::ThemeData;
+use crate::{
+    decoration::{BoxDecoration, DecoratedBox},
+    egui::Color32,
+    element::{FlexItem, FlexStyle, Widget},
+    layout::{Axis, BoxConstraints, CrossAxisAlignment, Insets},
+    text::{DefaultTextStyle, Text, TextStyle},
+};
+
+/// A 56-point Material top bar with a title, optional leading slot and actions.
+pub struct AppBar {
+    title: String,
+    leading: Option<Widget>,
+    actions: Vec<Widget>,
+    background_color: Color32,
+    foreground_color: Color32,
+}
+
+impl AppBar {
+    pub fn new(title: impl Into<String>) -> Self {
+        let scheme = ThemeData::default().color_scheme;
+        Self {
+            title: title.into(),
+            leading: None,
+            actions: Vec::new(),
+            background_color: scheme.surface,
+            foreground_color: scheme.on_surface,
+        }
+    }
+
+    pub fn leading(mut self, widget: Widget) -> Self {
+        self.leading = Some(widget);
+        self
+    }
+
+    pub fn action(mut self, widget: Widget) -> Self {
+        self.actions.push(widget);
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = color;
+        self
+    }
+
+    pub fn foreground_color(mut self, color: Color32) -> Self {
+        self.foreground_color = color;
+        self
+    }
+
+    pub fn theme(mut self, theme: ThemeData) -> Self {
+        self.background_color = theme.color_scheme.surface;
+        self.foreground_color = theme.color_scheme.on_surface;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        let title = DefaultTextStyle {
+            style: TextStyle {
+                font_size: Some(22.0),
+                color: Some(self.foreground_color),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+        .provide(Text::new(self.title).into_widget());
+        let mut items = Vec::with_capacity(2 + self.actions.len());
+        if let Some(leading) = self.leading {
+            let width = BoxConstraints::tight_for(Some(56.0), None)
+                .expect("finite app bar leading width is valid");
+            items.push(FlexItem::fixed(Widget::constrained(width, leading)));
+        }
+        items.push(FlexItem::expanded(title, 1));
+        items.extend(self.actions.into_iter().map(FlexItem::fixed));
+        let mut style = FlexStyle::new(Axis::Horizontal);
+        style.cross_alignment = CrossAxisAlignment::Center;
+        let row = Widget::flex(style, items);
+        let row = Widget::padding(
+            Insets {
+                left: 16.0,
+                right: 16.0,
+                ..Default::default()
+            },
+            row,
+        );
+        let height =
+            BoxConstraints::tight_for(None, Some(56.0)).expect("finite app bar height is valid");
+        DecoratedBox::new(BoxDecoration::solid(self.background_color))
+            .into_widget(Widget::constrained(height, row))
+    }
+}
+
+/// A Material page shell with optional top and bottom bars.
+///
+/// The body expands to the available height. Safe-area handling, drawers,
+/// floating buttons, sheets and keyboard insets are explicit compositions and
+/// are not provided by this initial scaffold.
+pub struct Scaffold {
+    body: Widget,
+    app_bar: Option<Widget>,
+    bottom_navigation_bar: Option<Widget>,
+    background_color: Color32,
+}
+
+impl Scaffold {
+    pub fn new(body: Widget) -> Self {
+        Self {
+            body,
+            app_bar: None,
+            bottom_navigation_bar: None,
+            background_color: ThemeData::default().color_scheme.surface,
+        }
+    }
+
+    pub fn app_bar(mut self, app_bar: Widget) -> Self {
+        self.app_bar = Some(app_bar);
+        self
+    }
+
+    pub fn bottom_navigation_bar(mut self, bar: Widget) -> Self {
+        self.bottom_navigation_bar = Some(bar);
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = color;
+        self
+    }
+
+    pub fn theme(mut self, theme: ThemeData) -> Self {
+        self.background_color = theme.color_scheme.surface;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        let mut children = Vec::with_capacity(3);
+        if let Some(app_bar) = self.app_bar {
+            children.push(FlexItem::fixed(app_bar));
+        }
+        children.push(FlexItem::expanded(self.body, 1));
+        if let Some(bottom) = self.bottom_navigation_bar {
+            children.push(FlexItem::fixed(bottom));
+        }
+        let mut style = FlexStyle::new(Axis::Vertical);
+        style.cross_alignment = CrossAxisAlignment::Stretch;
+        DecoratedBox::new(BoxDecoration::solid(self.background_color))
+            .into_widget(Widget::flex(style, children))
+    }
+}

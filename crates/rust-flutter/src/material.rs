@@ -8,7 +8,9 @@ use crate::{
 };
 
 mod button;
+mod scaffold;
 pub use button::{FilledButton, OutlinedButton, TextButton};
+pub use scaffold::{AppBar, Scaffold};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
@@ -251,5 +253,41 @@ mod tests {
                     .unwrap();
             });
         });
+    }
+
+    #[test]
+    fn scaffold_lays_out_app_bar_body_and_bottom_slot() {
+        let context = egui::Context::default();
+        let body_painted = Rc::new(std::cell::Cell::new(false));
+        let bottom_painted = Rc::new(std::cell::Cell::new(false));
+        let body_flag = body_painted.clone();
+        let bottom_flag = bottom_painted.clone();
+        let theme = ThemeData {
+            color_scheme: ColorScheme::dark(),
+            ..ThemeData::default()
+        };
+        let scaffold =
+            crate::material::Scaffold::new(Widget::leaf(egui::vec2(100.0, 100.0), move |_| {
+                body_flag.set(true)
+            }))
+            .app_bar(
+                crate::material::AppBar::new("Home")
+                    .theme(theme)
+                    .into_widget(),
+            )
+            .bottom_navigation_bar(Widget::leaf(egui::vec2(300.0, 60.0), move |_| {
+                bottom_flag.set(true);
+            }))
+            .theme(theme)
+            .into_widget();
+        let mut tree = ElementTree::new(&context, scaffold).unwrap();
+        let _ = context.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                tree.show(ui, BoxConstraints::tight(egui::vec2(320.0, 480.0)).unwrap())
+                    .unwrap();
+            });
+        });
+        assert!(body_painted.get());
+        assert!(bottom_painted.get());
     }
 }
