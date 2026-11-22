@@ -13,7 +13,6 @@ use rust_flutter::{
     scrolling::{ScrollPosition, SingleChildScrollView},
     text::Text,
 };
-use std::{cell::RefCell, rc::Rc};
 
 /// A focused runnable catalog for the retained Cupertino controls.
 pub fn showcase() -> Widget {
@@ -25,10 +24,8 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let binding = GestureBinding::new();
     let theme = CupertinoThemeData::default();
     let page_binding = binding.clone();
-    let back_controller = Rc::new(RefCell::new(None::<CupertinoModalPopupController>));
-    let build_controller = back_controller.clone();
+    let back_dispatcher = rust_flutter::navigation::BackDispatcher::new();
     let popup = CupertinoModalPopup::new(&binding, move |controller, selected| {
-        *build_controller.borrow_mut() = Some(controller.clone());
         let tabs = showcase_tabs(page_binding.clone(), theme, controller.clone());
         let panel = match selected {
             Some(0) => Some((alert_panel(&page_binding, theme, controller), None)),
@@ -40,16 +37,10 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
         };
         (tabs, panel)
     })
+    .back_dispatcher(&back_dispatcher)
     .into_widget();
     let root = CupertinoApp::new(popup).theme(theme).into_widget();
-    let on_back = move || {
-        let controller = back_controller.borrow().clone();
-        if let Some(controller) = controller.filter(CupertinoModalPopupController::is_presented) {
-            controller.dismiss().is_ok()
-        } else {
-            false
-        }
-    };
+    let on_back = back_dispatcher.handler();
     (root, on_back)
 }
 

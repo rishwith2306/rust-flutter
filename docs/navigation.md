@@ -29,15 +29,16 @@ the retained route view, which rebuilds the current page while preserving
 matching keyed state in the tree. The controller is UI-local; it is not a
 thread-safe navigation service.
 
-Connect the stack to native back requests with `run_widget_with_back_handler`.
-Return `true` after a page was popped; return `false` at the root to let the
-host close the app:
+Use a shared `BackDispatcher` for route stacks and modal overlays. The newest
+live handler receives Back first; it returns `true` when it handled the event.
+`NavigatorController::register_back_handler` pops one page and returns false at
+the root. Keep the subscription alive for as long as the route stack is active:
 
 ```rust
 use rust_flutter::{
     element::{BuildContext, Widget},
     material::MaterialApp,
-    navigation::NavigatorController,
+    navigation::{BackDispatcher, NavigatorController},
 };
 
 let navigator = NavigatorController::new("home");
@@ -48,12 +49,17 @@ let root = MaterialApp::new(navigator.view(|_: &BuildContext, route| {
         _ => Widget::empty(),
     }
 })).into_widget();
-let back_stack = navigator.clone();
-let handle_back = move || {
-    back_stack.pop().ok().flatten().is_some()
-};
+let back = BackDispatcher::new();
+let _route_back = navigator.register_back_handler(&back);
+let handle_back = back.handler();
 # let _ = (root, handle_back);
 ```
+
+Pass `handle_back` to `run_widget_with_back_handler` or
+`run_widget_with_options_and_back`. `MaterialDialogHost`,
+`ModalBottomSheetHost` and `CupertinoModalPopup` can receive the same dispatcher
+with `.back_dispatcher(&back)`. Their live overlays register after the route
+handler and therefore dismiss before the current page is popped.
 
 `MaterialApp::with_navigator` combines the route view and inherited theme:
 
@@ -98,6 +104,5 @@ An empty name, duplicate route name, or unregistered initial route returns a
 `RouteConfigurationError`. Later pushes to unknown names display the default
 fallback; `with_named_routes_and_fallback` accepts an app-specific fallback.
 
-Pass a clone of the same controller to the back handler shown above. Page
-transitions, deep links, route restoration and declarative Router integration
-remain future work.
+Page transitions, deep links, route restoration and declarative Router
+integration remain future work.

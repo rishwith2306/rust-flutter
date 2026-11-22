@@ -11,6 +11,7 @@ use crate::{
         Alignment, Axis, BoxConstraints, Clip, CrossAxisAlignment, HitTestBehavior, Insets,
         MainAxisAlignment, Positioned, StackFit,
     },
+    navigation::{BackDispatcher, BackSubscription},
     text::{DefaultTextStyle, TextStyle},
 };
 use std::{any::Any, cell::Cell, cell::RefCell, rc::Rc};
@@ -137,6 +138,7 @@ pub struct MaterialDialogHost {
     result: Rc<RefCell<Option<Box<dyn Any>>>>,
     barrier_dismissible: bool,
     barrier_color: Color32,
+    back_dispatcher: Option<BackDispatcher>,
 }
 
 impl MaterialDialogHost {
@@ -151,6 +153,7 @@ impl MaterialDialogHost {
             result: Rc::new(RefCell::new(None)),
             barrier_dismissible: true,
             barrier_color: Color32::from_rgba_unmultiplied(0, 0, 0, 112),
+            back_dispatcher: None,
         }
     }
 
@@ -163,6 +166,13 @@ impl MaterialDialogHost {
         self.barrier_dismissible = dismissible;
         self
     }
+
+    /// Dismiss the dialog when this host receives Back. Register the app's
+    /// navigator with the same dispatcher before mounting the overlay host.
+    pub fn back_dispatcher(mut self, dispatcher: &BackDispatcher) -> Self {
+        self.back_dispatcher = Some(dispatcher.clone());
+        self
+    }
     pub fn into_widget(self) -> Widget {
         Widget::stateful(self)
     }
@@ -170,6 +180,8 @@ impl MaterialDialogHost {
 
 pub struct MaterialDialogState {
     selected: Option<u8>,
+    back_dispatcher: Option<BackDispatcher>,
+    back_subscription: Option<BackSubscription>,
 }
 
 #[derive(Clone)]
@@ -228,7 +240,11 @@ impl MaterialDialogController {
 impl StatefulWidget for MaterialDialogHost {
     type State = MaterialDialogState;
     fn create_state(&self) -> Self::State {
-        MaterialDialogState { selected: None }
+        MaterialDialogState {
+            selected: None,
+            back_dispatcher: None,
+            back_subscription: None,
+        }
     }
 }
 
@@ -239,6 +255,23 @@ impl State<MaterialDialogHost> for MaterialDialogState {
             selected: widget.selected.clone(),
             result: widget.result.clone(),
         };
+        let same_dispatcher = match (&self.back_dispatcher, &widget.back_dispatcher) {
+            (Some(current), Some(next)) => current.same_source(next),
+            (None, None) => true,
+            _ => false,
+        };
+        if !same_dispatcher {
+            self.back_subscription = None;
+            self.back_dispatcher = widget.back_dispatcher.clone();
+        }
+        if self.back_subscription.is_none()
+            && let Some(dispatcher) = &widget.back_dispatcher
+        {
+            let back_controller = controller.clone();
+            self.back_subscription = Some(dispatcher.register(move || {
+                back_controller.is_presented() && back_controller.dismiss().is_ok()
+            }));
+        }
         widget.selected.set(self.selected);
         let (page, dialog) = (widget.builder)(controller.clone(), self.selected);
         let mut layers = vec![StackItem::new(page)];

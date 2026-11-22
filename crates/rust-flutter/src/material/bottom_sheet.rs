@@ -13,6 +13,7 @@ use crate::{
     layout::{
         Alignment, Axis, BoxConstraints, Clip, HitTestBehavior, Insets, Positioned, StackFit,
     },
+    navigation::{BackDispatcher, BackSubscription},
 };
 use std::{any::Any, cell::Cell, cell::RefCell, rc::Rc};
 
@@ -31,6 +32,7 @@ pub struct ModalBottomSheetHost {
     max_height: f32,
     enable_drag: bool,
     show_drag_handle: bool,
+    back_dispatcher: Option<BackDispatcher>,
     theme: ThemeData,
 }
 
@@ -49,6 +51,7 @@ impl ModalBottomSheetHost {
             max_height: 640.0,
             enable_drag: true,
             show_drag_handle: true,
+            back_dispatcher: None,
             theme: ThemeData::default(),
         }
     }
@@ -81,6 +84,13 @@ impl ModalBottomSheetHost {
         self
     }
 
+    /// Dismiss the sheet when this host receives Back. Register the app's
+    /// navigator with the same dispatcher before mounting the overlay host.
+    pub fn back_dispatcher(mut self, dispatcher: &BackDispatcher) -> Self {
+        self.back_dispatcher = Some(dispatcher.clone());
+        self
+    }
+
     pub fn theme(mut self, theme: ThemeData) -> Self {
         self.theme = theme;
         self
@@ -93,6 +103,8 @@ impl ModalBottomSheetHost {
 
 pub struct ModalBottomSheetState {
     is_presented: bool,
+    back_dispatcher: Option<BackDispatcher>,
+    back_subscription: Option<BackSubscription>,
 }
 
 #[derive(Clone)]
@@ -156,6 +168,8 @@ impl StatefulWidget for ModalBottomSheetHost {
     fn create_state(&self) -> Self::State {
         ModalBottomSheetState {
             is_presented: false,
+            back_dispatcher: None,
+            back_subscription: None,
         }
     }
 }
@@ -167,6 +181,23 @@ impl State<ModalBottomSheetHost> for ModalBottomSheetState {
             is_presented: widget.is_presented.clone(),
             result: widget.result.clone(),
         };
+        let same_dispatcher = match (&self.back_dispatcher, &widget.back_dispatcher) {
+            (Some(current), Some(next)) => current.same_source(next),
+            (None, None) => true,
+            _ => false,
+        };
+        if !same_dispatcher {
+            self.back_subscription = None;
+            self.back_dispatcher = widget.back_dispatcher.clone();
+        }
+        if self.back_subscription.is_none()
+            && let Some(dispatcher) = &widget.back_dispatcher
+        {
+            let back_controller = controller.clone();
+            self.back_subscription = Some(dispatcher.register(move || {
+                back_controller.is_presented() && back_controller.dismiss().is_ok()
+            }));
+        }
         widget.is_presented.set(self.is_presented);
         let (page, sheet) = (widget.builder)(controller.clone(), self.is_presented);
         let mut layers = vec![StackItem::new(page)];

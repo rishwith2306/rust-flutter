@@ -20,22 +20,20 @@ pub fn showcase() -> Widget {
 pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let binding = GestureBinding::new();
     let theme = ThemeData::default();
-    let back_controller = Rc::new(RefCell::new(None::<MaterialDialogController>));
+    let back_dispatcher = rust_flutter::navigation::BackDispatcher::new();
     let sheet_back_controller = Rc::new(RefCell::new(None::<ModalBottomSheetController>));
     let current_sheet_controller = sheet_back_controller.clone();
     let result = Rc::new(Cell::new(None::<bool>));
     let dialog_host = {
         let binding = binding.clone();
-        let back_controller = back_controller.clone();
+        let back_dispatcher = back_dispatcher.clone();
         let result = result.clone();
         let sheet_controller = current_sheet_controller.clone();
         Rc::new(move || {
             let page_binding = binding.clone();
-            let build_controller = back_controller.clone();
             let build_result = result.clone();
             let current_sheet_controller = sheet_controller.clone();
             MaterialDialogHost::new(&binding, move |controller, selected| {
-                *build_controller.borrow_mut() = Some(controller.clone());
                 if let Ok(Some(value)) = controller.take_result::<bool>() {
                     build_result.set(Some(value));
                 }
@@ -73,6 +71,7 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
                 });
                 (page, dialog)
             })
+            .back_dispatcher(&back_dispatcher)
             .into_widget()
         })
     };
@@ -104,22 +103,11 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
         });
         (page, sheet)
     })
+    .back_dispatcher(&back_dispatcher)
     .theme(theme)
     .into_widget();
     let root = MaterialApp::new(host).theme(theme).into_widget();
-    let on_back = move || {
-        let sheet_controller = sheet_back_controller.borrow().clone();
-        if let Some(controller) = sheet_controller.filter(ModalBottomSheetController::is_presented)
-        {
-            return controller.dismiss().is_ok();
-        }
-        let controller = back_controller.borrow().clone();
-        if let Some(controller) = controller.filter(MaterialDialogController::is_presented) {
-            controller.dismiss().is_ok()
-        } else {
-            false
-        }
-    };
+    let on_back = back_dispatcher.handler();
     (root, on_back)
 }
 

@@ -385,7 +385,7 @@ An action may use `controller.dismiss_with_result(value)`; the page can then
 read that value with `controller.take_result::<T>()`. The host can disable
 scrim dismissal with `.barrier_dismissible(false)` and set its scrim color.
 It still has no route transition, alert icon, or automatic scrolling, and
-Android back handling must be wired by the app. Flutter's
+system Back can be connected through the shared `BackDispatcher`. Flutter's
 [AlertDialog API](https://api.flutter.dev/flutter/material/AlertDialog-class.html)
 is displayed with `showDialog`, which also owns route and result delivery.
 
@@ -412,7 +412,9 @@ let host = ModalBottomSheetHost::new(&binding, |controller, is_presented| {
 # let _ = host;
 ```
 
-The host shows a drag handle by default. Dragging down at least 72 logical points
+Pass `.back_dispatcher(&back)` to connect this sheet to a shared
+`BackDispatcher`; Back dismisses this overlay before a registered route handler
+gets the request. The host shows a drag handle by default. Dragging down at least 72 logical points
 or releasing it downward at fling speed dismisses the sheet; `.enable_drag(false)`
 disables this, and `.show_drag_handle(false)` hides the handle. The handle owns
 the drag recognizer, so vertical scrolling inside the sheet remains available.

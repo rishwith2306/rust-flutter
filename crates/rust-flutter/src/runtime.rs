@@ -99,7 +99,15 @@ impl<A: Application> Runtime<A> {
         self.initialize(ctx);
         let focused = ctx.input(|i| i.raw.focused);
         self.focus_changed(ctx, focused);
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::BrowserBack)) {
+        let back_requested = ctx.input_mut(|input| {
+            let browser_back = input.consume_key(egui::Modifiers::NONE, egui::Key::BrowserBack);
+            #[cfg(target_os = "macos")]
+            let escape = input.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
+            #[cfg(not(target_os = "macos"))]
+            let escape = false;
+            browser_back || escape
+        });
+        if back_requested {
             let response = self.app.on_event(ctx, AppEvent::BackRequested);
             #[cfg(target_os = "android")]
             if response == EventResponse::Continue {

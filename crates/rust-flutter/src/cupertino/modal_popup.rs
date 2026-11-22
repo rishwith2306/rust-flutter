@@ -4,6 +4,7 @@ use crate::{
     element::{StackItem, StackStyle, State, StateContext, StateHandle, StatefulWidget, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{Alignment, Clip, HitTestBehavior, Positioned, StackFit},
+    navigation::{BackDispatcher, BackSubscription},
 };
 use std::{cell::Cell, rc::Rc};
 
@@ -23,6 +24,7 @@ pub struct CupertinoModalPopup {
     selected: Rc<Cell<Option<u8>>>,
     alignment: Alignment,
     barrier_color: Color32,
+    back_dispatcher: Option<BackDispatcher>,
 }
 
 impl CupertinoModalPopup {
@@ -40,6 +42,7 @@ impl CupertinoModalPopup {
             selected: Rc::new(Cell::new(None)),
             alignment: Alignment::CENTER,
             barrier_color: Color32::from_rgba_unmultiplied(0, 0, 0, 112),
+            back_dispatcher: None,
         }
     }
 
@@ -55,6 +58,12 @@ impl CupertinoModalPopup {
         self
     }
 
+    /// Dismiss the popup when this host receives Back.
+    pub fn back_dispatcher(mut self, dispatcher: &BackDispatcher) -> Self {
+        self.back_dispatcher = Some(dispatcher.clone());
+        self
+    }
+
     pub fn into_widget(self) -> Widget {
         Widget::stateful(self)
     }
@@ -62,6 +71,8 @@ impl CupertinoModalPopup {
 
 pub struct ModalState {
     selected: Option<u8>,
+    back_dispatcher: Option<BackDispatcher>,
+    back_subscription: Option<BackSubscription>,
 }
 
 /// Handle used by page buttons and popup actions to present or dismiss a panel.
@@ -94,7 +105,11 @@ impl StatefulWidget for CupertinoModalPopup {
     type State = ModalState;
 
     fn create_state(&self) -> Self::State {
-        ModalState { selected: None }
+        ModalState {
+            selected: None,
+            back_dispatcher: None,
+            back_subscription: None,
+        }
     }
 }
 
@@ -104,6 +119,23 @@ impl State<CupertinoModalPopup> for ModalState {
             state: context.handle(),
             selected: widget.selected.clone(),
         };
+        let same_dispatcher = match (&self.back_dispatcher, &widget.back_dispatcher) {
+            (Some(current), Some(next)) => current.same_source(next),
+            (None, None) => true,
+            _ => false,
+        };
+        if !same_dispatcher {
+            self.back_subscription = None;
+            self.back_dispatcher = widget.back_dispatcher.clone();
+        }
+        if self.back_subscription.is_none()
+            && let Some(dispatcher) = &widget.back_dispatcher
+        {
+            let back_controller = controller.clone();
+            self.back_subscription = Some(dispatcher.register(move || {
+                back_controller.is_presented() && back_controller.dismiss().is_ok()
+            }));
+        }
         widget.selected.set(self.selected);
         let (page, popup) = (widget.builder)(controller.clone(), self.selected);
         let mut layers = vec![StackItem::new(page)];

@@ -274,7 +274,7 @@ pub mod prelude {
             NavigationDestination, OutlinedButton, Radio, Scaffold, Slider, Switch, TextButton,
             TextField, ThemeData,
         },
-        navigation::{Navigator, NavigatorController},
+        navigation::{BackDispatcher, BackSubscription, Navigator, NavigatorController},
         state::Signal,
         widgets::*,
     };
