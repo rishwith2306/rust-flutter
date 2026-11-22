@@ -6,7 +6,9 @@ use crate::{
     egui::{self, Color32},
     element::{BuildContext, DependencyError, Widget},
     navigation::NavigatorController,
+    text::Text,
 };
+use std::{collections::HashMap, rc::Rc};
 
 mod button;
 mod card;
@@ -241,6 +243,52 @@ pub struct MaterialApp {
     theme: ThemeData,
 }
 
+type UnknownRouteBuilder = dyn Fn(&BuildContext, &str) -> Widget;
+
+/// A named route and the page builder used for it by [`MaterialApp`].
+pub struct NamedRoute {
+    name: String,
+    builder: Rc<dyn Fn(&BuildContext) -> Widget>,
+}
+
+impl NamedRoute {
+    pub fn new(
+        name: impl Into<String>,
+        builder: impl Fn(&BuildContext) -> Widget + 'static,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            builder: Rc::new(builder),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RouteConfigurationError {
+    EmptyName,
+    DuplicateName(String),
+    InitialRouteMissing(String),
+}
+
+impl std::fmt::Display for RouteConfigurationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyName => write!(formatter, "Material route name must not be empty"),
+            Self::DuplicateName(name) => {
+                write!(formatter, "duplicate Material route name '{name}'")
+            }
+            Self::InitialRouteMissing(name) => {
+                write!(
+                    formatter,
+                    "initial Material route '{name}' is not registered"
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for RouteConfigurationError {}
+
 impl MaterialApp {
     pub fn new(home: Widget) -> Self {
         Self {
@@ -255,6 +303,48 @@ impl MaterialApp {
         builder: impl Fn(&BuildContext, &R) -> Widget + 'static,
     ) -> Self {
         Self::new(navigator.view(builder))
+    }
+
+    /// Create an app backed by a string route table and an existing route
+    /// controller. Unknown pushed names render a visible fallback page.
+    pub fn with_named_routes(
+        navigator: &NavigatorController<String>,
+        routes: impl IntoIterator<Item = NamedRoute>,
+    ) -> Result<Self, RouteConfigurationError> {
+        Self::with_named_routes_and_fallback(navigator, routes, |_, name| {
+            Text::new(format!("No page is registered for route '{name}'")).into_widget()
+        })
+    }
+
+    /// Create an app with a named route table and a custom unknown-route page.
+    pub fn with_named_routes_and_fallback(
+        navigator: &NavigatorController<String>,
+        routes: impl IntoIterator<Item = NamedRoute>,
+        unknown_route: impl Fn(&BuildContext, &str) -> Widget + 'static,
+    ) -> Result<Self, RouteConfigurationError> {
+        let mut table = HashMap::new();
+        for route in routes {
+            if route.name.trim().is_empty() {
+                return Err(RouteConfigurationError::EmptyName);
+            }
+            if table.insert(route.name.clone(), route.builder).is_some() {
+                return Err(RouteConfigurationError::DuplicateName(route.name));
+            }
+        }
+        let initial = navigator
+            .current()
+            .ok_or_else(|| RouteConfigurationError::InitialRouteMissing(String::new()))?;
+        if !table.contains_key(&initial) {
+            return Err(RouteConfigurationError::InitialRouteMissing(initial));
+        }
+        let table = Rc::new(table);
+        let unknown_route: Rc<UnknownRouteBuilder> = Rc::new(unknown_route);
+        let home = navigator.view(move |context, name| {
+            table
+                .get(name)
+                .map_or_else(|| unknown_route(context, name), |builder| builder(context))
+        });
+        Ok(Self::new(home))
     }
 
     pub fn theme(mut self, theme: ThemeData) -> Self {

@@ -73,5 +73,31 @@ let root = MaterialApp::with_navigator(&navigator, |_: &BuildContext, _route| {
 # let _ = root;
 ```
 
+For string-based routing, register a checked table of named page builders. The
+controller still owns navigation state, so pushing a route name updates the
+retained view:
+
+```rust
+use rust_flutter::{
+    element::{BuildContext, Widget},
+    material::{MaterialApp, NamedRoute},
+    navigation::NavigatorController,
+};
+
+let navigator = NavigatorController::new("home".to_owned());
+let routes = vec![
+    NamedRoute::new("home", |_: &BuildContext| Widget::empty()),
+    NamedRoute::new("settings", |_: &BuildContext| Widget::empty()),
+];
+let app = MaterialApp::with_named_routes(&navigator, routes)?;
+let _ = navigator.push("settings".to_owned());
+# let _ = app;
+```
+
+An empty name, duplicate route name, or unregistered initial route returns a
+`RouteConfigurationError`. Later pushes to unknown names display the default
+fallback; `with_named_routes_and_fallback` accepts an app-specific fallback.
+
 Pass a clone of the same controller to the back handler shown above. Page
-transitions, deep links, named route tables and restoration remain future work.
+transitions, deep links, route restoration and declarative Router integration
+remain future work.

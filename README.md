@@ -133,7 +133,8 @@ fn main() -> Result<(), rust_flutter::Error> {
 `run_widget` mounts one retained `ElementTree` and keeps it alive across native
 frames. On Android, pass the platform `AndroidApp` to
 `run_widget_android(activity, title, root)`. `MaterialApp` currently provides
-the inherited theme; route setup and other Material app services are still
+the inherited theme and supports `NavigatorController` views and named route
+tables; system theme selection and other Material app services remain
 incomplete.
 
 Generated apps include the required renderer override. Existing/manual consumers
