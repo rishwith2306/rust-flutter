@@ -13,7 +13,7 @@ use crate::{
     },
     text::{DefaultTextStyle, TextStyle},
 };
-use std::{cell::Cell, rc::Rc};
+use std::{any::Any, cell::Cell, cell::RefCell, rc::Rc};
 
 /// Material alert dialog surface. Put it inside [`MaterialDialogHost`] to show
 /// it modally with a dismissible scrim.
@@ -134,6 +134,8 @@ pub struct MaterialDialogHost {
     binding: GestureBinding,
     builder: Rc<DialogBuilder>,
     selected: Rc<Cell<Option<u8>>>,
+    result: Rc<RefCell<Option<Box<dyn Any>>>>,
+    barrier_dismissible: bool,
     barrier_color: Color32,
 }
 
@@ -146,12 +148,19 @@ impl MaterialDialogHost {
             binding: binding.clone(),
             builder: Rc::new(builder),
             selected: Rc::new(Cell::new(None)),
+            result: Rc::new(RefCell::new(None)),
+            barrier_dismissible: true,
             barrier_color: Color32::from_rgba_unmultiplied(0, 0, 0, 112),
         }
     }
 
     pub fn barrier_color(mut self, color: Color32) -> Self {
         self.barrier_color = color;
+        self
+    }
+
+    pub fn barrier_dismissible(mut self, dismissible: bool) -> Self {
+        self.barrier_dismissible = dismissible;
         self
     }
     pub fn into_widget(self) -> Widget {
@@ -167,6 +176,7 @@ pub struct MaterialDialogState {
 pub struct MaterialDialogController {
     state: StateHandle<MaterialDialogState>,
     selected: Rc<Cell<Option<u8>>>,
+    result: Rc<RefCell<Option<Box<dyn Any>>>>,
 }
 
 impl MaterialDialogController {
@@ -174,7 +184,11 @@ impl MaterialDialogController {
         self.selected.get().is_some()
     }
     pub fn present(&self, id: u8) -> Result<(), crate::element::Unmounted> {
-        self.state.update(move |state| state.selected = Some(id))?;
+        let previous = self.result.borrow_mut().take();
+        if let Err(error) = self.state.update(move |state| state.selected = Some(id)) {
+            *self.result.borrow_mut() = previous;
+            return Err(error);
+        }
         self.selected.set(Some(id));
         Ok(())
     }
@@ -182,6 +196,32 @@ impl MaterialDialogController {
         self.state.update(|state| state.selected = None)?;
         self.selected.set(None);
         Ok(())
+    }
+
+    pub fn dismiss_with_result<T: 'static>(
+        &self,
+        result: T,
+    ) -> Result<(), crate::element::Unmounted> {
+        let previous = self.result.borrow_mut().replace(Box::new(result));
+        if let Err(error) = self.state.update(|state| state.selected = None) {
+            *self.result.borrow_mut() = previous;
+            return Err(error);
+        }
+        self.selected.set(None);
+        Ok(())
+    }
+
+    pub fn take_result<T: 'static>(&self) -> Result<Option<T>, &'static str> {
+        let Some(result) = self.result.borrow_mut().take() else {
+            return Ok(None);
+        };
+        match result.downcast::<T>() {
+            Ok(result) => Ok(Some(*result)),
+            Err(result) => {
+                *self.result.borrow_mut() = Some(result);
+                Err("Material dialog result type does not match the requested type")
+            }
+        }
     }
 }
 
@@ -197,33 +237,37 @@ impl State<MaterialDialogHost> for MaterialDialogState {
         let controller = MaterialDialogController {
             state: context.handle(),
             selected: widget.selected.clone(),
+            result: widget.result.clone(),
         };
         widget.selected.set(self.selected);
         let (page, dialog) = (widget.builder)(controller.clone(), self.selected);
         let mut layers = vec![StackItem::new(page)];
         if let Some(dialog) = dialog {
             let dismiss = controller;
-            let barrier = GestureDetector::new(
-                &widget.binding,
-                GestureTargetConfig {
-                    tap: Some((
-                        TapConfig::default(),
-                        TapCallbacks {
-                            on_tap: Some(Rc::new(move |_| {
-                                let _ = dismiss.dismiss();
-                            })),
-                            ..Default::default()
-                        },
-                    )),
-                    ..Default::default()
-                },
-            )
-            .expect("live Material dialog gesture binding")
-            .behavior(HitTestBehavior::Opaque)
-            .into_widget(
-                DecoratedBox::new(BoxDecoration::solid(widget.barrier_color))
-                    .into_widget(Widget::empty()),
-            );
+            let scrim = DecoratedBox::new(BoxDecoration::solid(widget.barrier_color))
+                .into_widget(Widget::empty());
+            let barrier = if widget.barrier_dismissible {
+                GestureDetector::new(
+                    &widget.binding,
+                    GestureTargetConfig {
+                        tap: Some((
+                            TapConfig::default(),
+                            TapCallbacks {
+                                on_tap: Some(Rc::new(move |_| {
+                                    let _ = dismiss.dismiss();
+                                })),
+                                ..Default::default()
+                            },
+                        )),
+                        ..Default::default()
+                    },
+                )
+                .expect("live Material dialog gesture binding")
+                .behavior(HitTestBehavior::Opaque)
+                .into_widget(scrim)
+            } else {
+                scrim
+            };
             layers.push(StackItem::positioned(barrier, Positioned::fill()));
             layers.push(StackItem::new(Widget::align(
                 Alignment::CENTER,

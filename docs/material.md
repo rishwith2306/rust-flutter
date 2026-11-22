@@ -303,7 +303,10 @@ let host = MaterialDialogHost::new(&binding, |controller, selected| {
 # let _ = host;
 ```
 
-The host currently returns no dialog result and has no configurable barrier
-dismissal, system-back binding, route transition, alert icon, or automatic
-scrolling. Flutter's [AlertDialog API](https://api.flutter.dev/flutter/material/AlertDialog-class.html)
-is displayed with `showDialog`, which also owns routing and result delivery.
+An action may use `controller.dismiss_with_result(value)`; the page can then
+read that value with `controller.take_result::<T>()`. The host can disable
+scrim dismissal with `.barrier_dismissible(false)` and set its scrim color.
+It still has no route transition, alert icon, or automatic scrolling, and
+Android back handling must be wired by the app. Flutter's
+[AlertDialog API](https://api.flutter.dev/flutter/material/AlertDialog-class.html)
+is displayed with `showDialog`, which also owns route and result delivery.

@@ -9,17 +9,31 @@ use rust_flutter::{
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
+use std::{cell::Cell, cell::RefCell, rc::Rc};
 
 /// A small Material application demonstrating drawer, FAB and modal dialog APIs.
 pub fn showcase() -> Widget {
+    showcase_with_back_handler().0
+}
+
+pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let binding = GestureBinding::new();
     let theme = ThemeData::default();
     let page_binding = binding.clone();
+    let back_controller = Rc::new(RefCell::new(None::<MaterialDialogController>));
+    let build_controller = back_controller.clone();
+    let result = Rc::new(Cell::new(None::<bool>));
+    let build_result = result.clone();
     let host = MaterialDialogHost::new(&binding, move |controller, selected| {
+        *build_controller.borrow_mut() = Some(controller.clone());
+        if let Ok(Some(value)) = controller.take_result::<bool>() {
+            build_result.set(Some(value));
+        }
         let page = Widget::stateful(DrawerExample {
             binding: page_binding.clone(),
             theme,
             dialog_controller: controller.clone(),
+            result: build_result.clone(),
         });
         let dialog = (selected == Some(0)).then(|| {
             let cancel = controller.clone();
@@ -28,11 +42,11 @@ pub fn showcase() -> Widget {
                 .content(Text::new("This action can be connected to your app data.").into_widget())
                 .actions(vec![
                     TextButton::new(&page_binding, "Cancel", move || {
-                        let _ = cancel.dismiss();
+                        let _ = cancel.dismiss_with_result(false);
                     })
                     .into_widget(),
                     TextButton::new(&page_binding, "Create", move || {
-                        let _ = create.dismiss();
+                        let _ = create.dismiss_with_result(true);
                     })
                     .into_widget(),
                 ])
@@ -43,13 +57,23 @@ pub fn showcase() -> Widget {
         (page, dialog)
     })
     .into_widget();
-    MaterialApp::new(host).theme(theme).into_widget()
+    let root = MaterialApp::new(host).theme(theme).into_widget();
+    let on_back = move || {
+        let controller = back_controller.borrow().clone();
+        if let Some(controller) = controller.filter(MaterialDialogController::is_presented) {
+            controller.dismiss().is_ok()
+        } else {
+            false
+        }
+    };
+    (root, on_back)
 }
 
 struct DrawerExample {
     binding: GestureBinding,
     theme: ThemeData,
     dialog_controller: MaterialDialogController,
+    result: Rc<Cell<Option<bool>>>,
 }
 
 struct DrawerExampleState {
@@ -82,7 +106,12 @@ impl State<DrawerExample> for DrawerExampleState {
         }
         .provide(
             Text::new(format!(
-                "Current destination: {title}\nTap + to open a dialog."
+                "Current destination: {title}\n{}\nTap + to open a dialog.",
+                match widget.result.get() {
+                    Some(true) => "Dialog result: create",
+                    Some(false) => "Dialog result: cancel",
+                    None => "",
+                }
             ))
             .into_widget(),
         );
@@ -158,13 +187,15 @@ impl State<DrawerExample> for DrawerExampleState {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: rust_flutter::AndroidApp) {
-    rust_flutter::run_widget_with_options(
+    let (root, on_back) = showcase_with_back_handler();
+    rust_flutter::run_widget_with_options_and_back(
         "Rust Flutter Material Showcase",
         rust_flutter::NativeOptions {
             android_app: Some(app),
             ..rust_flutter::native_options(rust_flutter::GraphicsBackend::Gles)
         },
-        showcase(),
+        root,
+        on_back,
     )
     .expect("Android Material showcase failed");
 }
