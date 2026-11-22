@@ -168,6 +168,7 @@ struct FocusScopeCore {
     focused: Cell<Option<egui::Id>>,
     pending: Cell<bool>,
     can_request: Cell<bool>,
+    handled_frame: Cell<Option<u64>>,
     notifier: ChangeNotifier,
 }
 /// A retained group of framework focus targets with explicit cyclic traversal.
@@ -187,6 +188,7 @@ impl FocusScopeNode {
             focused: Cell::new(None),
             pending: Cell::new(false),
             can_request: Cell::new(true),
+            handled_frame: Cell::new(None),
             notifier: ChangeNotifier::new(),
         }))
     }
@@ -299,6 +301,66 @@ impl FocusScopeNode {
             (target.can_focus && target.context.memory(|m| m.has_focus(*id))).then_some(*id)
         });
         self.sync(focused);
+        let Some(context) = focused.and_then(|id| {
+            self.0
+                .targets
+                .borrow()
+                .get(&id)
+                .map(|target| target.context.clone())
+        }) else {
+            return;
+        };
+        let frame = context.cumulative_frame_nr();
+        if self.0.handled_frame.get() == Some(frame) || !context.input(|i| i.focused) {
+            return;
+        }
+        let tab = context.input(|i| {
+            i.events.iter().find_map(|event| match event {
+                egui::Event::Key {
+                    key: egui::Key::Tab,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if !modifiers.ctrl && !modifiers.alt && !modifiers.command => {
+                    Some((event.clone(), modifiers.shift))
+                }
+                _ => None,
+            })
+        });
+        let Some((event, backwards)) = tab else {
+            return;
+        };
+        let consumed = context.input_mut(|i| {
+            if let Some(index) = i.events.iter().position(|candidate| *candidate == event) {
+                i.events.remove(index);
+                true
+            } else {
+                false
+            }
+        });
+        if consumed {
+            self.0.handled_frame.set(Some(frame));
+            let _ = self.traverse(!backwards);
+        }
+    }
+    pub(super) fn prepare_keyboard_navigation(&self, context: &egui::Context) {
+        let Some(id) = context.memory(|memory| memory.focused()) else {
+            return;
+        };
+        if !self.0.targets.borrow().contains_key(&id) {
+            return;
+        }
+        context.memory_mut(|memory| {
+            memory.set_focus_lock_filter(
+                id,
+                egui::EventFilter {
+                    tab: true,
+                    horizontal_arrows: true,
+                    vertical_arrows: true,
+                    ..Default::default()
+                },
+            )
+        });
     }
     pub(super) fn register_target(
         &self,
@@ -343,6 +405,7 @@ impl FocusScopeNode {
         }
         if !can_focus && self.0.focused.get() == Some(id) {
             context.memory_mut(|m| m.surrender_focus(id));
+            self.sync(None);
         }
         if can_focus && self.0.pending.get() && self.can_request_focus() {
             let _ = self.request_focus();

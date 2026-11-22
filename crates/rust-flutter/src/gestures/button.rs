@@ -240,6 +240,9 @@ impl RenderBox for GestureButtonRenderBox {
     }
     fn paint(&mut self, ui: &mut egui::Ui, ctx: &RenderContext) {
         // Focusable, but deliberately no backend pointer click/drag sense.
+        if let Some(scope) = &self.focus_scope {
+            scope.prepare_keyboard_navigation(ui.ctx());
+        }
         let mut button = egui::Button::new(self.config.label.clone())
             .sense(egui::Sense::focusable_noninteractive());
         if let Some(fill) = self.config.fill {

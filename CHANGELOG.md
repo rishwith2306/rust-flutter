@@ -3,8 +3,8 @@
 ## Unreleased — 0.1.0 development
 
 - Add `FocusScopeNode` / `FocusScope` to group retained text/button targets,
-  queue initial focus requests and explicitly traverse current mounted targets.
-  Automatic Tab routing and nested Flutter focus policies remain unfinished.
+  queue initial requests, explicitly traverse mounted targets, and cycle with
+  Tab / Shift+Tab. Nested Flutter focus policies remain unfinished.
 
 - Connect inherited `FocusNode` handles to retained `GestureButton` controls as
   well as text fields, preserving one-control focus ownership.

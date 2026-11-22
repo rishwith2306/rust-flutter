@@ -26,9 +26,10 @@ build an ancestor focus tree.
 
 `FocusScopeNode` groups the framework controls in its `FocusScope` subtree. Its
 `request_focus()` focuses the first enabled mounted target, and `next_focus()` /
-`previous_focus()` cycle through targets in their current paint order. Requests
-can be made before a target mounts. Disabled, removed and unmounted controls are
-excluded. This explicit traversal API does not intercept Tab or arrow keys.
+`previous_focus()` cycle through targets in their current paint order. Tab and
+Shift+Tab use the same cyclic traversal while a scoped target owns focus.
+Requests can be made before a target mounts. Disabled, removed and unmounted
+controls are excluded. Arrow keys do not use the scope's traversal order.
 
 ```rust
 use rust_flutter::{focus::{FocusScope, FocusScopeNode}, forms::TextFormField};
@@ -42,10 +43,10 @@ scope.request_focus(); // queued until a descendant control mounts
 ```
 
 This remains a partial match for Flutter's focus system. Nested-scope ancestry,
-remembered focused children, traversal policies and groups, keyboard bubbling,
-Shortcuts, Actions, automatic Tab traversal and screen-reader focus semantics
-remain unimplemented. A `FocusNode` attaches to one control at a time; ordinary
-egui controls do not yet attach to framework focus scopes.
+remembered focused children, traversal policies and groups, arrow-key focus
+traversal, keyboard bubbling, Shortcuts, Actions and screen-reader focus
+semantics remain unimplemented. A `FocusNode` attaches to one control at a time;
+ordinary egui controls do not yet attach to framework focus scopes.
 
 The API shape was checked against the official [Flutter Focus](https://api.flutter.dev/flutter/widgets/Focus-class.html)
 and [FocusNode](https://api.flutter.dev/flutter/widgets/FocusNode-class.html)
@@ -53,6 +54,6 @@ references. Behavior is backend-specific and must be tested with physical
 keyboards on macOS and Android; current evidence covers headless egui focus.
 
 `crates/rust-flutter/tests/forms.rs` covers queued focus requests, notifier
-changes, text/button targets, scope order, forward/backward cycling, disabled
-targets and target removal. These are headless framework checks, not device
-keyboard or accessibility evidence.
+changes, text/button targets, scope order, explicit and Tab / Shift+Tab cycling,
+disabled targets and target removal. These are headless framework checks, not
+device keyboard or accessibility evidence.

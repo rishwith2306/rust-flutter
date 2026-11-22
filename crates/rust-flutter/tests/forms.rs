@@ -571,13 +571,15 @@ fn focus_scope_tracks_children_and_traverses_in_render_order() {
     )
     .unwrap();
     assert!(scope.request_focus());
-    let frame = |tree: &mut ElementTree, ctx: &egui::Context| {
+    let frame = |tree: &mut ElementTree, ctx: &egui::Context, events: Vec<egui::Event>| {
         let _ = ctx.run(
             egui::RawInput {
+                focused: true,
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
                     egui::vec2(240.0, 120.0),
                 )),
+                events,
                 ..Default::default()
             },
             |ctx| {
@@ -588,21 +590,41 @@ fn focus_scope_tracks_children_and_traverses_in_render_order() {
             },
         );
     };
-    frame(&mut tree, &context);
+    frame(&mut tree, &context, vec![]);
     assert!(scope.has_focus());
-    frame(&mut tree, &context);
+    frame(&mut tree, &context, vec![]);
     assert!(first.has_focus());
-    assert!(scope.next_focus());
-    frame(&mut tree, &context);
+    frame(
+        &mut tree,
+        &context,
+        vec![egui::Event::Key {
+            key: egui::Key::Tab,
+            physical_key: Some(egui::Key::Tab),
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    frame(&mut tree, &context, vec![]);
     assert!(second.has_focus());
-    assert!(scope.previous_focus());
-    frame(&mut tree, &context);
+    frame(
+        &mut tree,
+        &context,
+        vec![egui::Event::Key {
+            key: egui::Key::Tab,
+            physical_key: Some(egui::Key::Tab),
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::SHIFT,
+        }],
+    );
+    frame(&mut tree, &context, vec![]);
     assert!(first.has_focus());
     first.set_can_request_focus(false);
-    frame(&mut tree, &context);
+    frame(&mut tree, &context, vec![]);
     assert!(!scope.has_focus());
     assert!(scope.next_focus());
-    frame(&mut tree, &context);
+    frame(&mut tree, &context, vec![]);
     assert!(second.has_focus());
     drop(tree);
     assert!(!scope.has_focus());

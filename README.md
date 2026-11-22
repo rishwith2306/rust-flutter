@@ -11,9 +11,9 @@ state updates and lifecycle hooks. Typed inherited scopes notify dependent
 components while preserving their state. Inherited models add typed aspect
 subscriptions and nested supported-aspect lookup. Observable values, scoped
 listeners and notifier-driven builders support shared UI-local state.
-Retained form validation, controller-backed text input and limited focus nodes
-with explicit scope traversal are available; platform IME, screen-reader and
-complete focus-tree behavior remain unfinished.
+Retained form validation, controller-backed text input and limited focus scopes
+with explicit and Tab / Shift+Tab traversal are available; platform IME,
+screen-reader and complete focus-tree behavior remain unfinished.
 Desktop windows use [eframe 0.33.3](https://docs.rs/eframe/0.33.3/eframe/);
 Android uses a framework-owned NativeActivity host. Both render egui through wgpu.
 

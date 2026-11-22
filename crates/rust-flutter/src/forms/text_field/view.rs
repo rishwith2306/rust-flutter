@@ -298,6 +298,9 @@ impl RenderBox for TextInputRender {
     }
     fn paint(&mut self, ui: &mut egui::Ui, ctx: &RenderContext) {
         let id = self.input_id(ctx);
+        if let Some(scope) = &self.focus_scope {
+            scope.prepare_keyboard_navigation(ui.ctx());
+        }
         let origin = ui.max_rect().min;
         let rect = self.input_rect.translate(origin.to_vec2());
         if let Some(g) = &self.label_galley {
