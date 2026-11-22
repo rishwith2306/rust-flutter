@@ -398,6 +398,151 @@ impl CupertinoListTile {
     }
 }
 
+/// A grouped container for Cupertino list rows, headers, and footer text.
+pub struct CupertinoListSection {
+    children: Vec<Widget>,
+    header: Option<Widget>,
+    footer: Option<Widget>,
+    background_color: Color32,
+    separator_color: Color32,
+    margin: Insets,
+    divider_margin: f32,
+    inset_grouped: bool,
+    has_leading: bool,
+}
+
+impl CupertinoListSection {
+    pub fn new(children: Vec<Widget>) -> Self {
+        Self {
+            children,
+            header: None,
+            footer: None,
+            background_color: Color32::WHITE,
+            separator_color: Color32::from_gray(205),
+            margin: Insets {
+                top: 16.0,
+                ..Default::default()
+            },
+            divider_margin: 16.0,
+            inset_grouped: false,
+            has_leading: true,
+        }
+    }
+
+    pub fn header(mut self, header: Widget) -> Self {
+        self.header = Some(header);
+        self
+    }
+
+    pub fn footer(mut self, footer: Widget) -> Self {
+        self.footer = Some(footer);
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = color;
+        self
+    }
+
+    pub fn separator_color(mut self, color: Color32) -> Self {
+        self.separator_color = color;
+        self
+    }
+
+    pub fn margin(mut self, margin: Insets) -> Self {
+        self.margin = margin;
+        self
+    }
+
+    pub fn divider_margin(mut self, margin: f32) -> Self {
+        self.divider_margin = margin;
+        self
+    }
+
+    pub fn has_leading(mut self, has_leading: bool) -> Self {
+        self.has_leading = has_leading;
+        self
+    }
+
+    /// Add rounded side insets matching Notes/Reminders grouped lists.
+    pub fn inset_grouped(mut self) -> Self {
+        self.inset_grouped = true;
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        let finite_nonnegative = |value: f32| value.is_finite() && value >= 0.0;
+        if !finite_nonnegative(self.margin.left)
+            || !finite_nonnegative(self.margin.top)
+            || !finite_nonnegative(self.margin.right)
+            || !finite_nonnegative(self.margin.bottom)
+            || !finite_nonnegative(self.divider_margin)
+        {
+            return Err("Cupertino list section spacing must be finite and nonnegative");
+        }
+        let mut rows = Vec::with_capacity(self.children.len().saturating_mul(2));
+        for (index, child) in self.children.into_iter().enumerate() {
+            if index > 0 {
+                let separator_color = self.separator_color;
+                let divider_margin =
+                    self.divider_margin + if self.has_leading { 28.0 } else { 0.0 };
+                rows.push(FlexItem::fixed(Widget::leaf(
+                    egui::vec2(0.0, 1.0),
+                    move |ui| {
+                        let rect = ui.max_rect();
+                        ui.painter().line_segment(
+                            [
+                                egui::pos2(rect.left() + divider_margin, rect.center().y),
+                                rect.right_center(),
+                            ],
+                            Stroke::new(0.5_f32, separator_color),
+                        );
+                    },
+                )));
+            }
+            rows.push(FlexItem::fixed(child));
+        }
+        let mut rows_style = FlexStyle::new(Axis::Vertical);
+        rows_style.cross_alignment = CrossAxisAlignment::Stretch;
+        let group = DecoratedBox::new(BoxDecoration {
+            color: self.background_color,
+            corner_radius: if self.inset_grouped {
+                egui::CornerRadius::same(10)
+            } else {
+                egui::CornerRadius::ZERO
+            },
+            ..Default::default()
+        })
+        .into_widget(Widget::flex(rows_style, rows));
+        let mut section = Vec::with_capacity(3);
+        if let Some(header) = self.header {
+            section.push(FlexItem::fixed(Widget::padding(
+                Insets {
+                    bottom: 6.0,
+                    ..Default::default()
+                },
+                header,
+            )));
+        }
+        section.push(FlexItem::fixed(group));
+        if let Some(footer) = self.footer {
+            section.push(FlexItem::fixed(Widget::padding(
+                Insets {
+                    top: 6.0,
+                    ..Default::default()
+                },
+                footer,
+            )));
+        }
+        let mut section_style = FlexStyle::new(Axis::Vertical);
+        section_style.cross_alignment = CrossAxisAlignment::Stretch;
+        Ok(Widget::padding(
+            self.margin,
+            Widget::flex(section_style, section),
+        ))
+    }
+}
+
 /// Cupertino styled text entry backed by the shared retained editor/controller.
 pub struct CupertinoTextField {
     field: TextFormField,

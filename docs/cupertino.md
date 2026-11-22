@@ -10,7 +10,8 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
-        CupertinoActivityIndicator, CupertinoListTile, CupertinoPageScaffold, CupertinoSlider,
+        CupertinoActivityIndicator, CupertinoListSection, CupertinoListTile,
+        CupertinoPageScaffold, CupertinoSlider,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSwitch,
         CupertinoSlidingSegment, CupertinoSlidingSegmentedControl,
         CupertinoTextField, CupertinoThemeData,
@@ -40,6 +41,10 @@ let list_tile = CupertinoListTile::new(&binding, rust_flutter::text::Text::new("
     .on_tap(|| {})
     .notched()
     .into_widget()?;
+let list_section = CupertinoListSection::new(vec![list_tile])
+    .header(rust_flutter::text::Text::new("SETTINGS").into_widget())
+    .inset_grouped()
+    .into_widget()?;
 let density = CupertinoSegmentedControl::new(
     &binding,
     vec![
@@ -68,7 +73,7 @@ let content = Widget::flex(
         rust_flutter::element::FlexItem::fixed(switch),
         rust_flutter::element::FlexItem::fixed(volume),
         rust_flutter::element::FlexItem::fixed(loading),
-        rust_flutter::element::FlexItem::fixed(list_tile),
+        rust_flutter::element::FlexItem::fixed(list_section),
         rust_flutter::element::FlexItem::fixed(density),
         rust_flutter::element::FlexItem::fixed(view),
         rust_flutter::element::FlexItem::fixed(button),
@@ -107,5 +112,6 @@ APIs for the broader Flutter surface. The control references include
 [CupertinoSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSegmentedControl-class.html),
 [CupertinoSlidingSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSlidingSegmentedControl-class.html),
 [CupertinoListTile](https://api.flutter.dev/flutter/cupertino/CupertinoListTile-class.html),
+[CupertinoListSection](https://api.flutter.dev/flutter/cupertino/CupertinoListSection-class.html),
 [CupertinoSwitch](https://api.flutter.dev/flutter/cupertino/CupertinoSwitch-class.html),
 and [CupertinoTextField](https://api.flutter.dev/flutter/cupertino/CupertinoTextField-class.html).
