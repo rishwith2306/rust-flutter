@@ -99,8 +99,10 @@ state. The slider supports continuous or discrete ranges, drag callbacks, and
 theme-based Cupertino track colors while reusing the shared gesture engine.
 The activity indicator draws a rotating radial tick pattern and supports a
 static partially revealed progress value. Switch thumb animation, slider value
-indicators and semantics, accessibility, and the broader Cupertino component
-catalog remain to be implemented.
+indicators and semantics, persistent tile activation while asynchronous tap work
+runs, accessibility semantics, and the broader Cupertino component catalog
+remain to be implemented. Tiles provide a pressed background and allow a custom
+activated color through `background_color_activated`.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; routing, localization, system appearance following, dialogs, and pickers

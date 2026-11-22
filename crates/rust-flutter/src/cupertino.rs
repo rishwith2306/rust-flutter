@@ -5,16 +5,25 @@
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke, Vec2},
-    element::{BuildContext, DependencyError, FlexItem, FlexStyle, StatelessWidget, Widget},
+    element::{
+        BuildContext, DependencyError, FlexItem, FlexStyle, RenderBox, RenderContext,
+        RenderObjectWidget, StatelessWidget, Widget,
+    },
     forms::{TextEditingController, TextFormField},
     gestures::{
         GestureBinding, GestureButton, GestureDetector, GestureTargetConfig, TapCallbacks,
         TapConfig,
     },
-    layout::{Axis, BoxConstraints, CrossAxisAlignment, HitTestBehavior, Insets},
+    layout::{
+        Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
+        HitTestBehavior, Insets, IntrinsicDimension, LayoutError, TextBaseline,
+    },
     text::{DefaultTextStyle, Text, TextStyle},
 };
-use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 mod sliding_segmented;
 pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
@@ -227,6 +236,7 @@ pub struct CupertinoListTile {
     on_tap: Option<Rc<dyn Fn()>>,
     enabled: bool,
     background_color: Color32,
+    background_color_activated: Option<Color32>,
     leading_size: Vec2,
     leading_to_title: f32,
     notched: bool,
@@ -244,6 +254,7 @@ impl CupertinoListTile {
             on_tap: None,
             enabled: true,
             background_color: CupertinoThemeData::default().scaffold_background_color,
+            background_color_activated: None,
             leading_size: Vec2::splat(28.0),
             leading_to_title: 12.0,
             notched: false,
@@ -292,6 +303,11 @@ impl CupertinoListTile {
 
     pub fn background_color(mut self, color: Color32) -> Self {
         self.background_color = color;
+        self
+    }
+
+    pub fn background_color_activated(mut self, color: Color32) -> Self {
+        self.background_color_activated = Some(color);
         self
     }
 
@@ -355,17 +371,21 @@ impl CupertinoListTile {
             egui::vec2(f32::INFINITY, f32::INFINITY),
         )
         .map_err(|_| "invalid Cupertino list tile minimum height")?;
-        let decoration = BoxDecoration {
-            color: self.background_color,
+        let interaction = Rc::new(ListTileInteraction::default());
+        let surface = CupertinoListTileSurface {
+            background: self.background_color,
+            background_activated: self
+                .background_color_activated
+                .unwrap_or_else(|| self.background_color.gamma_multiply(0.9)),
             corner_radius: if self.notched {
                 egui::CornerRadius::same(9)
             } else {
                 egui::CornerRadius::ZERO
             },
-            ..Default::default()
+            interaction: interaction.clone(),
         };
         let mut tile =
-            DecoratedBox::new(decoration).into_widget(Widget::constrained(min_height, content));
+            Widget::render_object(surface, vec![Widget::constrained(min_height, content)]);
         if self.notched {
             tile = Widget::padding(
                 Insets {
@@ -383,8 +403,21 @@ impl CupertinoListTile {
                 tap: Some((
                     TapConfig::default(),
                     TapCallbacks {
-                        on_tap: Some(Rc::new(move |_| callback())),
-                        ..Default::default()
+                        on_down: {
+                            let interaction = interaction.clone();
+                            Some(Rc::new(move |_| interaction.set_pressed(true)))
+                        },
+                        on_tap: {
+                            let interaction = interaction.clone();
+                            Some(Rc::new(move |_| {
+                                interaction.set_pressed(false);
+                                callback();
+                            }))
+                        },
+                        on_cancel: {
+                            let interaction = interaction.clone();
+                            Some(Rc::new(move |_| interaction.set_pressed(false)))
+                        },
                     },
                 )),
                 ..Default::default()
@@ -395,6 +428,128 @@ impl CupertinoListTile {
                 .into_widget(tile);
         }
         Ok(tile)
+    }
+}
+
+#[derive(Default)]
+struct ListTileInteraction {
+    pressed: Cell<bool>,
+    handle: RefCell<Option<crate::element::RenderHandle>>,
+}
+
+impl ListTileInteraction {
+    fn set_pressed(&self, pressed: bool) {
+        if self.pressed.replace(pressed) != pressed
+            && let Some(handle) = self.handle.borrow().as_ref()
+        {
+            let _ = handle.mark_needs_paint();
+        }
+    }
+}
+
+struct CupertinoListTileSurface {
+    background: Color32,
+    background_activated: Color32,
+    corner_radius: egui::CornerRadius,
+    interaction: Rc<ListTileInteraction>,
+}
+
+struct CupertinoListTileSurfaceRender(CupertinoListTileSurface);
+
+impl RenderObjectWidget for CupertinoListTileSurface {
+    type Object = CupertinoListTileSurfaceRender;
+
+    fn create_render_object(&self, context: &RenderContext) -> Self::Object {
+        self.interaction.handle.replace(Some(context.handle()));
+        CupertinoListTileSurfaceRender(CupertinoListTileSurface {
+            background: self.background,
+            background_activated: self.background_activated,
+            corner_radius: self.corner_radius,
+            interaction: self.interaction.clone(),
+        })
+    }
+
+    fn update_render_object(&self, object: &mut Self::Object, context: &RenderContext) {
+        self.interaction.handle.replace(Some(context.handle()));
+        object.0.background = self.background;
+        object.0.background_activated = self.background_activated;
+        object.0.corner_radius = self.corner_radius;
+        object.0.interaction = self.interaction.clone();
+    }
+}
+
+impl RenderBox for CupertinoListTileSurfaceRender {
+    fn dry_layout(
+        &self,
+        constraints: BoxConstraints,
+        children: &BoxQueries<'_>,
+    ) -> Result<Vec2, LayoutError> {
+        if children.len() != 1 {
+            return Err(LayoutError::InvalidConfiguration(
+                "CupertinoListTile surface requires one child",
+            ));
+        }
+        children.dry_layout(0, constraints)
+    }
+
+    fn dry_baseline(
+        &self,
+        constraints: BoxConstraints,
+        kind: TextBaseline,
+        children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        if children.len() != 1 {
+            return Err(LayoutError::InvalidConfiguration(
+                "CupertinoListTile surface requires one child",
+            ));
+        }
+        children.dry_baseline(0, constraints, kind)
+    }
+
+    fn intrinsic(
+        &self,
+        dimension: IntrinsicDimension,
+        extent: f32,
+        children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        if children.len() != 1 {
+            return Err(LayoutError::InvalidConfiguration(
+                "CupertinoListTile surface requires one child",
+            ));
+        }
+        children.intrinsic(0, dimension, extent)
+    }
+
+    fn layout(
+        &mut self,
+        constraints: BoxConstraints,
+        children: &mut BoxChildren<'_>,
+        _: &RenderContext,
+    ) -> Result<BoxGeometry, LayoutError> {
+        if children.len() != 1 {
+            return Err(LayoutError::InvalidConfiguration(
+                "CupertinoListTile surface requires one child",
+            ));
+        }
+        let size = children.layout(0, constraints)?;
+        children.place(0, Vec2::ZERO)?;
+        let mut geometry = BoxGeometry::new(size);
+        geometry.baselines = Baselines {
+            alphabetic: children.baseline(0, TextBaseline::Alphabetic, true)?,
+            ideographic: children.baseline(0, TextBaseline::Ideographic, true)?,
+        };
+        Ok(geometry)
+    }
+
+    fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
+        let config = &self.0;
+        let color = if config.interaction.pressed.get() {
+            config.background_activated
+        } else {
+            config.background
+        };
+        ui.painter()
+            .rect_filled(ui.max_rect(), config.corner_radius, color);
     }
 }
 
