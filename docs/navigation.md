@@ -29,8 +29,9 @@ the retained route view, which rebuilds the current page while preserving
 matching keyed state in the tree. The controller is UI-local; it is not a
 thread-safe navigation service.
 
-Use a shared `BackDispatcher` for route stacks and modal overlays. The newest
-live handler receives Back first; it returns `true` when it handled the event.
+Use a shared `BackDispatcher` for route stacks and modal overlays. The highest-priority
+live handler receives Back first; equal priorities use newest-first order. A
+handler returns `true` when it handled the event.
 `NavigatorController::register_back_handler` pops one page and returns false at
 the root. Keep the subscription alive for as long as the route stack is active:
 
@@ -58,8 +59,8 @@ let handle_back = back.handler();
 Pass `handle_back` to `run_widget_with_back_handler` or
 `run_widget_with_options_and_back`. `MaterialDialogHost`,
 `ModalBottomSheetHost` and `CupertinoModalPopup` can receive the same dispatcher
-with `.back_dispatcher(&back)`. Their live overlays register after the route
-handler and therefore dismiss before the current page is popped.
+with `.back_dispatcher(&back)`. They use modal priority and therefore dismiss
+before the route stack pops the current page.
 
 `MaterialApp::with_navigator` combines the route view and inherited theme:
 

@@ -84,8 +84,7 @@ impl ModalBottomSheetHost {
         self
     }
 
-    /// Dismiss the sheet when this host receives Back. Register the app's
-    /// navigator with the same dispatcher before mounting the overlay host.
+    /// Dismiss the sheet on Back before route handlers on the same dispatcher.
     pub fn back_dispatcher(mut self, dispatcher: &BackDispatcher) -> Self {
         self.back_dispatcher = Some(dispatcher.clone());
         self
@@ -194,9 +193,11 @@ impl State<ModalBottomSheetHost> for ModalBottomSheetState {
             && let Some(dispatcher) = &widget.back_dispatcher
         {
             let back_controller = controller.clone();
-            self.back_subscription = Some(dispatcher.register(move || {
-                back_controller.is_presented() && back_controller.dismiss().is_ok()
-            }));
+            self.back_subscription = Some(
+                dispatcher.register_with_priority(BackDispatcher::MODAL_PRIORITY, move || {
+                    back_controller.is_presented() && back_controller.dismiss().is_ok()
+                }),
+            );
         }
         widget.is_presented.set(self.is_presented);
         let (page, sheet) = (widget.builder)(controller.clone(), self.is_presented);

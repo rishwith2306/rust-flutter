@@ -11,27 +11,44 @@ use std::{
 type BackCallback = Rc<dyn Fn() -> bool>;
 
 struct BackHandlerEntry {
+    priority: i32,
     subscription: Weak<()>,
     callback: BackCallback,
 }
 
 /// UI-local dispatcher for Android system Back, macOS Escape and other app
-/// back requests. The most recently registered active handler gets first
-/// refusal; a handler returns `true` when it consumed the request.
+/// back requests. The highest-priority live handler gets first refusal; ties
+/// are resolved in favor of the most recently registered handler.
 #[derive(Clone, Default)]
 pub struct BackDispatcher {
     handlers: Rc<RefCell<Vec<BackHandlerEntry>>>,
 }
 
 impl BackDispatcher {
+    /// Default priority used by route stacks.
+    pub const ROUTE_PRIORITY: i32 = 0;
+    /// Priority used by modal overlays so they dismiss before routes pop.
+    pub const MODAL_PRIORITY: i32 = 100;
+
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Register a handler until the returned subscription is dropped.
     pub fn register(&self, handler: impl Fn() -> bool + 'static) -> BackSubscription {
+        self.register_with_priority(Self::ROUTE_PRIORITY, handler)
+    }
+
+    /// Register a handler at an explicit priority. Higher values receive Back
+    /// first; handlers at the same priority are tried newest first.
+    pub fn register_with_priority(
+        &self,
+        priority: i32,
+        handler: impl Fn() -> bool + 'static,
+    ) -> BackSubscription {
         let subscription = Rc::new(());
         self.handlers.borrow_mut().push(BackHandlerEntry {
+            priority,
             subscription: Rc::downgrade(&subscription),
             callback: Rc::new(handler),
         });
@@ -40,20 +57,29 @@ impl BackDispatcher {
         }
     }
 
-    /// Dispatch back to the newest live handler that consumes the request.
+    /// Dispatch back to the highest-priority live handler that consumes it.
     pub fn dispatch(&self) -> bool {
-        let handlers = {
+        let mut handlers = {
             let mut entries = self.handlers.borrow_mut();
             entries.retain(|entry| entry.subscription.strong_count() > 0);
             entries
                 .iter()
-                .rev()
-                .map(|entry| (entry.subscription.clone(), entry.callback.clone()))
+                .enumerate()
+                .map(|(order, entry)| {
+                    (
+                        entry.priority,
+                        order,
+                        entry.subscription.clone(),
+                        entry.callback.clone(),
+                    )
+                })
                 .collect::<Vec<_>>()
         };
+        handlers.sort_by_key(|(priority, order, _, _)| (*priority, *order));
         handlers
             .into_iter()
-            .any(|(subscription, handler)| subscription.upgrade().is_some() && handler())
+            .rev()
+            .any(|(_, _, subscription, handler)| subscription.upgrade().is_some() && handler())
     }
 
     /// Callback adapter for `run_widget_with_back_handler`.
@@ -130,7 +156,7 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
         self.routes.read(|routes| routes.len() > 1)
     }
 
-    /// Register this route stack as a lower-priority back handler. Keep the
+    /// Register this route stack at the standard route priority. Keep the
     /// returned subscription alive while the navigator should handle Back.
     pub fn register_back_handler(&self, dispatcher: &BackDispatcher) -> BackSubscription {
         let navigator = self.clone();

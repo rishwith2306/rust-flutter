@@ -132,9 +132,11 @@ impl State<CupertinoModalPopup> for ModalState {
             && let Some(dispatcher) = &widget.back_dispatcher
         {
             let back_controller = controller.clone();
-            self.back_subscription = Some(dispatcher.register(move || {
-                back_controller.is_presented() && back_controller.dismiss().is_ok()
-            }));
+            self.back_subscription = Some(
+                dispatcher.register_with_priority(BackDispatcher::MODAL_PRIORITY, move || {
+                    back_controller.is_presented() && back_controller.dismiss().is_ok()
+                }),
+            );
         }
         widget.selected.set(self.selected);
         let (page, popup) = (widget.builder)(controller.clone(), self.selected);
