@@ -79,9 +79,27 @@ pub struct GestureButtonRenderBox {
     target: Option<GestureTarget>,
     state: Rc<ButtonState>,
     focus_node: Option<FocusNode>,
+    focus_scope: Option<crate::focus::FocusScopeNode>,
+    scope_target: Option<crate::focus::FocusTarget>,
     error: Option<BindingError>,
 }
 impl GestureButtonRenderBox {
+    fn update_focus_scope(&mut self, ctx: &RenderContext) {
+        let next = ctx
+            .depend_on::<InheritedNotifier<crate::focus::FocusScopeNode>>()
+            .ok()
+            .flatten()
+            .and_then(|provider| provider.notifier.clone());
+        let same = match (&self.focus_scope, &next) {
+            (Some(a), Some(b)) => a == b,
+            (None, None) => true,
+            _ => false,
+        };
+        if !same {
+            self.scope_target = None;
+            self.focus_scope = next;
+        }
+    }
     fn update_focus_node(&mut self, ctx: &RenderContext) {
         let next = ctx
             .depend_on::<InheritedNotifier<FocusNode>>()
@@ -166,6 +184,8 @@ impl RenderObjectWidget for GestureButton {
             target: None,
             state,
             focus_node: None,
+            focus_scope: None,
+            scope_target: None,
             error: None,
         };
         object.configure(self, ctx);
@@ -174,6 +194,7 @@ impl RenderObjectWidget for GestureButton {
     fn update_render_object(&self, object: &mut Self::Object, ctx: &RenderContext) {
         object.configure(self, ctx);
         object.update_focus_node(ctx);
+        object.update_focus_scope(ctx);
     }
 }
 impl RenderBox for GestureButtonRenderBox {
@@ -261,6 +282,29 @@ impl RenderBox for GestureButtonRenderBox {
             node.attach(ui.ctx(), response.id);
             node.sync(response.has_focus());
         }
+        if let Some(scope) = self.focus_scope.clone() {
+            let can_focus = response.enabled()
+                && self
+                    .focus_node
+                    .as_ref()
+                    .is_none_or(FocusNode::can_request_focus)
+                && !crate::layout::ui_is_offstage(ui);
+            if self
+                .scope_target
+                .as_ref()
+                .is_some_and(|target| !target.is_for(&scope, response.id))
+            {
+                self.scope_target = None;
+            }
+            if self.scope_target.is_none() {
+                self.scope_target = Some(scope.register_target(ui.ctx(), response.id, can_focus));
+            } else {
+                scope.update_target(ui.ctx(), response.id, can_focus);
+            }
+            scope.refresh_focus();
+        } else {
+            self.scope_target = None;
+        }
         let frame = ui.ctx().cumulative_frame_nr();
         #[cfg(not(target_os = "android"))]
         if response.enabled() && !crate::layout::ui_is_offstage(ui) {
@@ -298,6 +342,7 @@ impl RenderBox for GestureButtonRenderBox {
     fn dispose(&mut self) {
         self.target = None;
         self.state.pressed(false);
+        self.scope_target = None;
         if let Some(node) = self.focus_node.take()
             && let Some(id) = self.state.focus.get()
         {

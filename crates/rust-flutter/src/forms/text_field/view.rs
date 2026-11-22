@@ -48,6 +48,7 @@ pub(super) struct TextView {
     pub field: FormFieldController<String>,
     pub style: InputStyle,
     pub focus: Option<crate::focus::FocusNode>,
+    pub focus_scope: Option<crate::focus::FocusScopeNode>,
     pub on_changed: Option<TextCallback>,
     pub on_submitted: Option<TextCallback>,
 }
@@ -57,6 +58,8 @@ pub struct TextInputRender {
     style: InputStyle,
     focus: Option<crate::focus::FocusNode>,
     focus_target: Option<(crate::focus::FocusNode, Id)>,
+    focus_scope: Option<crate::focus::FocusScopeNode>,
+    scope_target: Option<crate::focus::FocusTarget>,
     on_changed: Option<TextCallback>,
     on_submitted: Option<TextCallback>,
     context: egui::Context,
@@ -185,6 +188,8 @@ impl RenderObjectWidget for TextView {
             style: self.style.clone(),
             focus: self.focus.clone(),
             focus_target: None,
+            focus_scope: self.focus_scope.clone(),
+            scope_target: None,
             on_changed: self.on_changed.clone(),
             on_submitted: self.on_submitted.clone(),
             context: ctx.egui().clone(),
@@ -208,11 +213,21 @@ impl RenderObjectWidget for TextView {
             (None, None) => false,
             _ => true,
         };
-        let layout_changed = o.style != self.style || field_identity || focus_identity;
+        let scope_identity = match (&o.focus_scope, &self.focus_scope) {
+            (Some(a), Some(b)) => a != b,
+            (None, None) => false,
+            _ => true,
+        };
+        let layout_changed =
+            o.style != self.style || field_identity || focus_identity || scope_identity;
         o.binding = self.binding.clone();
         o.field = self.field.clone();
         o.style = self.style.clone();
         o.focus = self.focus.clone();
+        if scope_identity {
+            o.scope_target = None;
+        }
+        o.focus_scope = self.focus_scope.clone();
         o.on_changed = self.on_changed.clone();
         o.on_submitted = self.on_submitted.clone();
         if field_identity {
@@ -378,6 +393,29 @@ impl RenderBox for TextInputRender {
         if let Some(node) = &self.focus {
             node.sync(response.has_focus());
         }
+        if let Some(scope) = self.focus_scope.clone() {
+            let can_focus = response.enabled()
+                && self
+                    .focus
+                    .as_ref()
+                    .is_none_or(crate::focus::FocusNode::can_request_focus)
+                && !crate::layout::ui_is_offstage(ui);
+            if self
+                .scope_target
+                .as_ref()
+                .is_some_and(|target| !target.is_for(&scope, id))
+            {
+                self.scope_target = None;
+            }
+            if self.scope_target.is_none() {
+                self.scope_target = Some(scope.register_target(ui.ctx(), id, can_focus));
+            } else {
+                scope.update_target(ui.ctx(), id, can_focus);
+            }
+            scope.refresh_focus();
+        } else {
+            self.scope_target = None;
+        }
         let changed = !self.style.read_only && output.response.changed() && value != text;
         if response.has_focus() {
             if self.keep_alive.is_none() {
@@ -448,6 +486,7 @@ impl RenderBox for TextInputRender {
             drop(s);
         }
         self.keep_alive = None;
+        self.scope_target = None;
         if let Some((node, id)) = self.focus_target.take() {
             node.detach(id);
         }

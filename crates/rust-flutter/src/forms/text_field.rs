@@ -463,6 +463,11 @@ impl State<TextFormField> for TextFormFieldState {
             .ok()
             .flatten()
             .and_then(|provider| provider.notifier.clone());
+        let focus_scope = context
+            .depend_on::<InheritedNotifier<crate::focus::FocusScopeNode>>()
+            .ok()
+            .flatten()
+            .and_then(|provider| provider.notifier.clone());
         let mut field = FormField::new(initial.clone(), move |_: &BuildContext, field| {
             binding.bind(field.clone());
             Widget::render_object(
@@ -471,6 +476,7 @@ impl State<TextFormField> for TextFormFieldState {
                     field,
                     style: style.clone(),
                     focus: focus.clone(),
+                    focus_scope: focus_scope.clone(),
                     on_changed: changed.clone(),
                     on_submitted: submitted.clone(),
                 },

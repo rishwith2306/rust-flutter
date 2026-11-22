@@ -1,7 +1,7 @@
 use rust_flutter::{
     egui,
     element::*,
-    focus::{Focus, FocusNode},
+    focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
     forms::*,
     gestures::{GestureBinding, GestureButton},
     layout::BoxConstraints,
@@ -543,4 +543,68 @@ fn focus_node_can_attach_to_a_retained_gesture_button() {
         },
     );
     assert!(node.has_primary_focus());
+}
+
+#[test]
+fn focus_scope_tracks_children_and_traverses_in_render_order() {
+    let context = egui::Context::default();
+    let scope = FocusScopeNode::new();
+    let first = FocusNode::new();
+    let second = FocusNode::new();
+    let a = Focus::new(
+        first.clone(),
+        GestureButton::new(&GestureBinding::new(), "First", || {}).into_widget(),
+    )
+    .into_widget();
+    let b = Focus::new(
+        second.clone(),
+        GestureButton::new(&GestureBinding::new(), "Second", || {}).into_widget(),
+    )
+    .into_widget();
+    let column = Widget::flex(
+        FlexStyle::new(rust_flutter::layout::Axis::Vertical),
+        vec![FlexItem::fixed(a), FlexItem::fixed(b)],
+    );
+    let mut tree = ElementTree::new(
+        &context,
+        FocusScope::new(scope.clone(), column).into_widget(),
+    )
+    .unwrap();
+    assert!(scope.request_focus());
+    let frame = |tree: &mut ElementTree, ctx: &egui::Context| {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(240.0, 120.0),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    tree.show(ui, BoxConstraints::tight(egui::vec2(240.0, 120.0)).unwrap())
+                        .unwrap();
+                });
+            },
+        );
+    };
+    frame(&mut tree, &context);
+    assert!(scope.has_focus());
+    frame(&mut tree, &context);
+    assert!(first.has_focus());
+    assert!(scope.next_focus());
+    frame(&mut tree, &context);
+    assert!(second.has_focus());
+    assert!(scope.previous_focus());
+    frame(&mut tree, &context);
+    assert!(first.has_focus());
+    first.set_can_request_focus(false);
+    frame(&mut tree, &context);
+    assert!(!scope.has_focus());
+    assert!(scope.next_focus());
+    frame(&mut tree, &context);
+    assert!(second.has_focus());
+    drop(tree);
+    assert!(!scope.has_focus());
+    assert!(!scope.next_focus());
 }

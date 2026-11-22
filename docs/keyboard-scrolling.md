@@ -49,13 +49,14 @@ outside render-object borrows. Repeated backend passes do not replay consumed
 keys. Reentrant listeners can change focus or unmount the view; later key events
 then remain unconsumed. Native key repeat uses the backend's pressed events.
 
-`FocusNode` can also request and observe a `TextFormField`'s focus through the
-[`Focus` adapter](focus.md). It currently attaches to one text field. This does
-not implement Flutter's focus tree, Shortcuts, Actions, ScrollIntent or full
-ScrollAction APIs. Descendant-to-ancestor keyboard bubbling, coordinated nested
-scrolling, configurable shortcut maps, platform key conventions and
-accessibility scrolling remain unfinished. macOS runtime keyboard behavior and
-physical Android keyboards need separate evidence.
+[`FocusNode` and `FocusScopeNode`](focus.md) can request/observe framework
+control focus and explicitly traverse a scope's current targets. Scope
+traversal is not wired to Tab or arrow keys. This does not implement Flutter's
+focus ancestry, Shortcuts, Actions, ScrollIntent or full ScrollAction APIs.
+Descendant-to-ancestor keyboard bubbling, coordinated nested scrolling,
+configurable shortcut maps, platform key conventions and accessibility
+scrolling remain unfinished. macOS runtime keyboard behavior and physical
+Android keyboards need separate evidence.
 The line/page increments follow the documented
 [Flutter ScrollAction defaults](https://api.flutter.dev/flutter/widgets/ScrollAction-class.html).
 

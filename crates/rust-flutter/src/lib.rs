@@ -123,8 +123,12 @@ pub fn run_android<A: Application>(activity: AndroidApp, title: &str, app: A) ->
 
 pub mod prelude {
     pub use crate::{
-        AppContext, AppEvent, Application, EventResponse, LifecycleEvent, animation::*,
-        navigation::Navigator, state::Signal, widgets::*,
+        AppContext, AppEvent, Application, EventResponse, LifecycleEvent,
+        animation::*,
+        focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
+        navigation::Navigator,
+        state::Signal,
+        widgets::*,
     };
     pub use egui::{self, Ui};
 }
