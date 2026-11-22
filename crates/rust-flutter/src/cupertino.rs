@@ -295,6 +295,92 @@ impl StatelessWidget for CupertinoTextFieldWidget {
     }
 }
 
+/// A controlled Cupertino range slider, using the shared slider gesture engine.
+pub struct CupertinoSlider {
+    slider: crate::material::Slider,
+    enabled: bool,
+}
+
+impl CupertinoSlider {
+    pub fn new(binding: &GestureBinding, value: f32, on_changed: impl Fn(f32) + 'static) -> Self {
+        Self {
+            slider: crate::material::Slider::new(binding, value, on_changed),
+            enabled: true,
+        }
+    }
+
+    pub fn range(mut self, min: f32, max: f32) -> Self {
+        self.slider = self.slider.range(min, max);
+        self
+    }
+
+    pub fn divisions(mut self, divisions: Option<u32>) -> Self {
+        self.slider = self.slider.divisions(divisions);
+        self
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.slider = self.slider.width(width);
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.slider = self.slider.enabled(enabled);
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn on_change_start(mut self, callback: impl Fn(f32) + 'static) -> Self {
+        self.slider = self.slider.on_change_start(callback);
+        self
+    }
+
+    pub fn on_change_end(mut self, callback: impl Fn(f32) + 'static) -> Self {
+        self.slider = self.slider.on_change_end(callback);
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        self.slider.validate()?;
+        Ok(Widget::stateless(CupertinoSliderView {
+            slider: self.slider,
+            enabled: self.enabled,
+        }))
+    }
+}
+
+struct CupertinoSliderView {
+    slider: crate::material::Slider,
+    enabled: bool,
+}
+
+impl StatelessWidget for CupertinoSliderView {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let theme = CupertinoThemeData::of(context).unwrap_or_default();
+        let enabled = self.enabled;
+        let palette = if enabled {
+            crate::material::SliderColors {
+                active: theme.primary_color,
+                inactive: Color32::from_gray(145),
+                thumb: Color32::WHITE,
+                outline: theme.primary_color,
+            }
+        } else {
+            crate::material::SliderColors {
+                active: theme.disabled_color,
+                inactive: theme.disabled_color.gamma_multiply(0.5),
+                thumb: Color32::from_gray(210),
+                outline: theme.disabled_color,
+            }
+        };
+        self.slider
+            .clone()
+            .with_colors(palette)
+            .into_widget()
+            .unwrap_or_else(|_| Widget::empty())
+    }
+}
+
 /// Owner-controlled Cupertino switch. Update the supplied value in its owner.
 pub struct CupertinoSwitch {
     binding: GestureBinding,

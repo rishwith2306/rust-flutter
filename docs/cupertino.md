@@ -10,7 +10,8 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
-        CupertinoPageScaffold, CupertinoSwitch, CupertinoTextField, CupertinoThemeData,
+        CupertinoPageScaffold, CupertinoSlider, CupertinoSwitch, CupertinoTextField,
+        CupertinoThemeData,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -24,11 +25,18 @@ let switch = CupertinoSwitch::new(&binding, true, |enabled| {
     let _ = enabled;
 })
 .into_widget();
+let volume = CupertinoSlider::new(&binding, 0.5, |value| {
+    let _ = value;
+})
+.range(0.0, 1.0)
+.divisions(Some(10))
+.into_widget()?;
 let content = Widget::flex(
     rust_flutter::element::FlexStyle::new(rust_flutter::layout::Axis::Vertical),
     vec![
         rust_flutter::element::FlexItem::fixed(field),
         rust_flutter::element::FlexItem::fixed(switch),
+        rust_flutter::element::FlexItem::fixed(volume),
         rust_flutter::element::FlexItem::fixed(button),
     ],
 );
@@ -48,8 +56,10 @@ remain explicit application work. The initial text field uses the shared
 retained editor for controller, selection, validation, and input behavior. Its
 styling remains basic and does not match native insets, borders, clear-button,
 or keyboard accessory APIs. The switch is controlled and uses the iOS green on
-state. Switch thumb animation, hover/pressed animation, accessibility semantics,
-and the broader Cupertino component catalog remain to be implemented.
+state. The slider supports continuous or discrete ranges, drag callbacks, and
+theme-based Cupertino track colors while reusing the shared gesture engine.
+Switch thumb animation, slider indicators and semantics, accessibility, and the
+broader Cupertino component catalog remain to be implemented.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; routing, localization, system appearance following, dialogs, and pickers

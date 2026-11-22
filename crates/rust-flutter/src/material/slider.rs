@@ -15,8 +15,17 @@ use crate::{
 };
 use std::{cell::Cell, rc::Rc};
 
+#[derive(Clone, Copy)]
+pub(crate) struct SliderColors {
+    pub active: Color32,
+    pub inactive: Color32,
+    pub thumb: Color32,
+    pub outline: Color32,
+}
+
 /// A controlled range slider. The owner supplies the updated value after
 /// `on_changed` runs.
+#[derive(Clone)]
 pub struct Slider {
     binding: GestureBinding,
     value: f32,
@@ -28,6 +37,7 @@ pub struct Slider {
     on_changed: Rc<dyn Fn(f32)>,
     on_change_start: Option<Rc<dyn Fn(f32)>>,
     on_change_end: Option<Rc<dyn Fn(f32)>>,
+    colors: Option<SliderColors>,
 }
 
 impl Slider {
@@ -43,6 +53,7 @@ impl Slider {
             on_changed: Rc::new(on_changed),
             on_change_start: None,
             on_change_end: None,
+            colors: None,
         }
     }
 
@@ -78,7 +89,12 @@ impl Slider {
         self
     }
 
-    pub fn into_widget(self) -> Result<Widget, &'static str> {
+    pub(crate) fn with_colors(mut self, colors: SliderColors) -> Self {
+        self.colors = Some(colors);
+        self
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), &'static str> {
         if !self.min.is_finite()
             || !self.max.is_finite()
             || self.min >= self.max
@@ -91,6 +107,11 @@ impl Slider {
         {
             return Err("invalid slider value, range, divisions, or width");
         }
+        Ok(())
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        self.validate()?;
         Ok(Widget::stateless(SliderView(self)))
     }
 }
@@ -100,24 +121,26 @@ struct SliderView(Slider);
 impl StatelessWidget for SliderView {
     fn build(&self, context: &BuildContext) -> Widget {
         let slider = &self.0;
-        let scheme = ThemeData::of(context)
-            .expect("Material sliders resolve theme during build")
-            .color_scheme;
-        let (active, inactive, thumb, outline) = if slider.enabled {
-            (
-                scheme.primary,
-                scheme.surface_container,
-                scheme.primary,
-                scheme.primary,
-            )
-        } else {
-            (
-                scheme.on_surface.gamma_multiply(0.38),
-                scheme.on_surface.gamma_multiply(0.12),
-                scheme.on_surface.gamma_multiply(0.38),
-                scheme.on_surface.gamma_multiply(0.12),
-            )
-        };
+        let colors = slider.colors.unwrap_or_else(|| {
+            let scheme = ThemeData::of(context)
+                .expect("Material sliders resolve theme during build")
+                .color_scheme;
+            if slider.enabled {
+                SliderColors {
+                    active: scheme.primary,
+                    inactive: scheme.surface_container,
+                    thumb: scheme.primary,
+                    outline: scheme.primary,
+                }
+            } else {
+                SliderColors {
+                    active: scheme.on_surface.gamma_multiply(0.38),
+                    inactive: scheme.on_surface.gamma_multiply(0.12),
+                    thumb: scheme.on_surface.gamma_multiply(0.38),
+                    outline: scheme.on_surface.gamma_multiply(0.12),
+                }
+            }
+        });
         let position = Rc::new(Cell::new(Rect::NOTHING));
         let value_at = {
             let position = position.clone();
@@ -192,10 +215,10 @@ impl StatelessWidget for SliderView {
             max: slider.max,
             width: slider.width,
             enabled: slider.enabled,
-            active,
-            inactive,
-            thumb,
-            outline,
+            active: colors.active,
+            inactive: colors.inactive,
+            thumb: colors.thumb,
+            outline: colors.outline,
             position,
         };
         GestureDetector::new(&slider.binding, config)

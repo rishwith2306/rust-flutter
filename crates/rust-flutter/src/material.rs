@@ -22,6 +22,7 @@ pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use radio::Radio;
 pub use scaffold::{AppBar, Scaffold};
 pub use slider::Slider;
+pub(crate) use slider::SliderColors;
 pub use switch::Switch;
 pub use text_field::TextField;
 
