@@ -194,6 +194,8 @@ let app = CupertinoApp::with_named_routes(&navigator, [
 ])?;
 ```
 
+For route snapshot persistence and its limits, see [retained navigation](navigation.md).
+
 The default theme uses the familiar blue accent for light and dark palettes.
 Applications can provide custom primary, text, disabled, and background colors
 through `CupertinoThemeData`. The page scaffold expands its body below an

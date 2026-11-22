@@ -110,5 +110,24 @@ An empty name, duplicate route name, or unregistered initial route returns a
 `RouteConfigurationError`. Later pushes to unknown names display the default
 fallback; `with_named_routes_and_fallback` accepts an app-specific fallback.
 
-Page transitions, deep links, route restoration and declarative Router
-integration remain future work.
+When the route type implements Serde, `save_json` and `restore_json` support an
+application-managed snapshot:
+
+```rust
+use rust_flutter::navigation::NavigatorController;
+
+let navigator = NavigatorController::new("home".to_owned());
+let _ = navigator.push("settings".to_owned());
+let saved = navigator.save_json()?;
+
+let restored = NavigatorController::new("home".to_owned());
+restored.restore_json(&saved)?;
+assert_eq!(restored.routes(), vec!["home".to_owned(), "settings".to_owned()]);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+An empty stack or malformed JSON is rejected. Restoring replaces the stack and
+regenerates route identities, so route widget state is rebuilt; the application
+must store the snapshot and choose when to restore it. OS-managed restoration,
+page transitions, deep links and declarative Router integration remain future
+work.

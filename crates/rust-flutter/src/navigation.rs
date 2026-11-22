@@ -139,6 +139,35 @@ pub struct NavigatorController<R: Clone + PartialEq + 'static> {
     next_route_id: Rc<Cell<u64>>,
 }
 
+/// Failure while restoring a serialized [`NavigatorController`] route stack.
+#[derive(Debug)]
+pub enum NavigatorRestoreError {
+    InvalidSnapshot(serde_json::Error),
+    EmptyStack,
+    Disposed,
+}
+
+impl std::fmt::Display for NavigatorRestoreError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidSnapshot(error) => {
+                write!(formatter, "invalid navigator snapshot: {error}")
+            }
+            Self::EmptyStack => write!(formatter, "navigator snapshot must contain a root route"),
+            Self::Disposed => write!(formatter, "navigator controller is disposed"),
+        }
+    }
+}
+
+impl std::error::Error for NavigatorRestoreError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::InvalidSnapshot(error) => Some(error),
+            Self::EmptyStack | Self::Disposed => None,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq)]
 struct RouteEntry<R> {
     id: u64,
@@ -165,6 +194,37 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
 
     pub fn can_pop(&self) -> bool {
         self.routes.read(|routes| routes.len() > 1)
+    }
+
+    /// Serialize the route stack for application-managed durable restoration.
+    pub fn save_json(&self) -> Result<String, serde_json::Error>
+    where
+        R: serde::Serialize,
+    {
+        serde_json::to_string(&self.routes())
+    }
+
+    /// Replace the route stack from a snapshot produced by [`Self::save_json`].
+    /// Route identities are regenerated so retained element state is rebuilt.
+    pub fn restore_json(&self, snapshot: &str) -> Result<bool, NavigatorRestoreError>
+    where
+        R: serde::de::DeserializeOwned,
+    {
+        let routes: Vec<R> =
+            serde_json::from_str(snapshot).map_err(NavigatorRestoreError::InvalidSnapshot)?;
+        if routes.is_empty() {
+            return Err(NavigatorRestoreError::EmptyStack);
+        }
+        let entries = routes
+            .into_iter()
+            .map(|route| RouteEntry {
+                id: self.allocate_route_id(),
+                route,
+            })
+            .collect();
+        self.routes
+            .set(entries)
+            .map_err(|_| NavigatorRestoreError::Disposed)
     }
 
     /// Register this route stack at the standard route priority. Keep the
