@@ -20,6 +20,11 @@ For inherited lookup inside a retained component, call `ThemeData::of(ctx)`;
 for a subtree, use `theme.provide(child)`. A custom brand palette can be made
 with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
+`MaterialApp` is a root convenience widget that provides `ThemeData` to its
+home subtree. It can be passed to `run_widget`; this initial implementation does
+not yet add Flutter's route table, system theme selection, or localization
+configuration.
+
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports
 optional tristate cycling:

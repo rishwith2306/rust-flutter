@@ -1,23 +1,54 @@
-use rust_flutter::prelude::*;
-use rust_flutter::assets::{AssetBundle, EmbeddedBundle};
+use rust_flutter::{
+    assets::{AssetBundle, EmbeddedBundle},
+    element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
+    gestures::{GestureBinding, GestureButton},
+    layout::Axis,
+    material::{AppBar, MaterialApp, Scaffold, ThemeData},
+};
 
 static ASSETS: EmbeddedBundle = EmbeddedBundle::new(include!(concat!(env!("OUT_DIR"), "/assets.rs")));
 
-#[derive(Default)]
-pub struct App { count: usize }
-impl Application for App {
-    fn build(&mut self, ui: &mut Ui) {
-        column(ui, |ui| {
-            heading(ui, "{{name}}");
-            text(ui, ASSETS.load_string("assets/welcome.txt").expect("bundled welcome text"));
-            text(ui, format!("Count: {}", self.count));
-            if button(ui, "Increment").clicked() { self.count += 1; }
-        });
+struct Counter { binding: GestureBinding, welcome: String }
+struct CounterState { count: usize }
+
+impl StatefulWidget for Counter {
+    type State = CounterState;
+    fn create_state(&self) -> Self::State { CounterState { count: 0 } }
+}
+
+impl State<Counter> for CounterState {
+    fn build(&mut self, widget: &Counter, context: &StateContext<Self>) -> Widget {
+        let count = self.count;
+        let welcome = widget.welcome.clone();
+        let handle = context.handle();
+        let increment = GestureButton::new(&widget.binding, "Increment", move || {
+            let _ = handle.update(|state| state.count += 1);
+        })
+        .size(rust_flutter::egui::vec2(144.0, 48.0))
+        .into_widget();
+        let mut style = FlexStyle::new(Axis::Vertical);
+        style.spacing = 12.0;
+        Widget::flex(style, vec![
+            FlexItem::fixed(Widget::leaf(rust_flutter::egui::vec2(280.0, 32.0), move |ui| {
+                ui.label(welcome.clone());
+            })),
+            FlexItem::fixed(Widget::leaf(rust_flutter::egui::vec2(280.0, 32.0), move |ui| {
+                ui.label(format!("Count: {count}"));
+            })),
+            FlexItem::fixed(increment),
+        ])
     }
 }
 
-#[cfg(target_os = "android")]
-#[unsafe(no_mangle)]
-fn android_main(activity: rust_flutter::AndroidApp) {
-    rust_flutter::run_android(activity, "{{name}}", App::default()).expect("Android runner failed");
+pub fn app() -> Widget {
+    let binding = GestureBinding::new();
+    let theme = ThemeData::default();
+    let home = Scaffold::new(Widget::stateful(Counter {
+        binding,
+        welcome: ASSETS.load_string("assets/welcome.txt").expect("bundled welcome text").to_owned(),
+    }))
+    .app_bar(AppBar::new("{{name}}").theme(theme).into_widget())
+    .theme(theme)
+    .into_widget();
+    MaterialApp::new(home).theme(theme).into_widget()
 }

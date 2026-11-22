@@ -2,8 +2,9 @@
 
 `rust_flutter::element` separates a widget description from its mounted identity
 and state. `ElementTree` reconciles descriptions, builds dirty components and
-adapts their render widgets to the constraint-based box layout. It shares the
-desktop and Android runners through `Application` and egui.
+adapts their render widgets to the constraint-based box layout. Host a tree
+inside an `Application`, or pass it to `run_widget` to keep it mounted across
+native frames without writing an application wrapper.
 
 Typed inherited values and dependency hooks are documented in [inherited values](inherited.md); selective aspect subscriptions are in [inherited models](inherited-models.md).
 

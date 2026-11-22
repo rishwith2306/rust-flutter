@@ -106,6 +106,24 @@ pub fn run_with_options<A: Application>(
     }
 }
 
+/// Run a retained framework widget tree with the native host.
+///
+/// The tree is created once and kept mounted across frames. Use
+/// [`material::MaterialApp`] to provide app-level Material theme data.
+pub fn run_widget_with_options(
+    title: &str,
+    options: NativeOptions,
+    root: element::Widget,
+) -> Result<(), Error> {
+    run_with_options(title, options, WidgetApplication::new(root))
+}
+
+/// Run a retained framework widget tree on macOS, Linux, or Windows.
+#[cfg(not(target_os = "android"))]
+pub fn run_widget(title: &str, root: element::Widget) -> Result<(), Error> {
+    run_widget_with_options(title, NativeOptions::default(), root)
+}
+
 #[cfg(target_os = "android")]
 pub use android_activity::AndroidApp;
 
@@ -122,13 +140,84 @@ pub fn run_android<A: Application>(activity: AndroidApp, title: &str, app: A) ->
     )
 }
 
+/// Run a retained widget tree on the Android NativeActivity host.
+#[cfg(target_os = "android")]
+pub fn run_widget_android(
+    activity: AndroidApp,
+    title: &str,
+    root: element::Widget,
+) -> Result<(), Error> {
+    run_android(activity, title, WidgetApplication::new(root))
+}
+
+struct WidgetApplication {
+    root: Option<element::Widget>,
+    tree: Option<element::ElementTree>,
+    gestures: gestures::GestureBinding,
+    startup_error: Option<String>,
+}
+
+impl WidgetApplication {
+    fn new(root: element::Widget) -> Self {
+        Self {
+            root: Some(root),
+            tree: None,
+            gestures: gestures::GestureBinding::new(),
+            startup_error: None,
+        }
+    }
+}
+
+impl Application for WidgetApplication {
+    fn initialize(&mut self, context: &AppContext) {
+        if let Some(root) = self.root.take() {
+            match element::ElementTree::new(&context.egui, root) {
+                Ok(tree) => self.tree = Some(tree),
+                Err(error) => self.startup_error = Some(format!("{error:?}")),
+            }
+        }
+    }
+
+    fn build(&mut self, ui: &mut egui::Ui) {
+        if let Some(error) = &self.startup_error {
+            ui.colored_label(
+                egui::Color32::LIGHT_RED,
+                format!("Widget tree error: {error}"),
+            );
+            return;
+        }
+        let constraints = match layout::BoxConstraints::loose(ui.available_size()) {
+            Ok(constraints) => constraints,
+            Err(error) => {
+                ui.colored_label(
+                    egui::Color32::LIGHT_RED,
+                    format!("Widget layout constraints error: {error}"),
+                );
+                return;
+            }
+        };
+        if let Some(tree) = &mut self.tree
+            && let Err(error) = tree.show_with_gestures(ui, constraints, &self.gestures)
+        {
+            ui.colored_label(
+                egui::Color32::LIGHT_RED,
+                format!("Widget tree frame error: {error}"),
+            );
+        }
+    }
+
+    fn shutdown(&mut self) {
+        self.tree = None;
+    }
+}
+
 pub mod prelude {
     pub use crate::{
         AppContext, AppEvent, Application, EventResponse, LifecycleEvent,
         animation::*,
         focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
         material::{
-            AppBar, Brightness, Checkbox, ColorScheme, FilledButton, NavigationBar,
+            AppBar, Brightness, Checkbox, ColorScheme, FilledButton, MaterialApp, NavigationBar,
             NavigationDestination, OutlinedButton, Radio, Scaffold, Slider, Switch, TextButton,
             TextField, ThemeData,
         },

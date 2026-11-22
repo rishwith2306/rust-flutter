@@ -1,6 +1,14 @@
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(activity: rust_flutter::AndroidApp) {
+    rust_flutter::run_widget_android(activity, "{{name}}", {{crate_name}}::app())
+        .expect("Android runner failed");
+}
+
 #[cfg(not(target_os = "android"))]
 fn main() -> Result<(), rust_flutter::Error> {
-    rust_flutter::run("{{name}}", {{crate_name}}::App::default())
+    rust_flutter::run_widget("{{name}}", {{crate_name}}::app())
 }
+
 #[cfg(target_os = "android")]
 fn main() {}

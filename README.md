@@ -1,6 +1,7 @@
 # Rust Flutter (experimental)
 
-Build desktop and Android applications from a shared Rust application model.
+Build desktop and Android applications from shared Rust source with both an
+application-hook API and a retained-widget `run_widget` API.
 The library provides composable widgets, typed navigation, reactive shared state,
 background tasks, themes, responsive breakpoints, animation primitives, lifecycle
 hooks, versioned JSON snapshots, Fluent localization, and embedded asset bundles
@@ -15,8 +16,8 @@ Retained form validation, controller-backed text input and limited focus scopes
 with explicit and Tab / Shift+Tab traversal are available; platform IME,
 screen-reader and complete focus-tree behavior remain unfinished.
 An initial inherited Material color theme, buttons, themed text input, an app
-bar, a page scaffold, and a controlled bottom navigation bar are available; the Material and
-Cupertino component catalogs are still under development.
+bar, a page scaffold, and controlled selection controls are available; the
+Material and Cupertino component catalogs are still under development.
 Desktop windows use [eframe 0.33.3](https://docs.rs/eframe/0.33.3/eframe/);
 Android uses a framework-owned NativeActivity host. Both render egui through wgpu.
 
@@ -90,6 +91,29 @@ fn main() -> Result<(), rust_flutter::Error> {
     rust_flutter::run("Counter", Counter::default())
 }
 ```
+
+For a retained widget tree, use the native widget host:
+
+```rust
+use rust_flutter::{
+    element::Widget,
+    material::{MaterialApp, Scaffold, ThemeData},
+};
+
+fn main() -> Result<(), rust_flutter::Error> {
+    let theme = ThemeData::default();
+    let root = MaterialApp::new(Scaffold::new(Widget::empty()).into_widget())
+        .theme(theme)
+        .into_widget();
+    rust_flutter::run_widget("Retained app", root)
+}
+```
+
+`run_widget` mounts one retained `ElementTree` and keeps it alive across native
+frames. On Android, pass the platform `AndroidApp` to
+`run_widget_android(activity, title, root)`. `MaterialApp` currently provides
+the inherited theme; route setup and other Material app services are still
+incomplete.
 
 Generated apps include the required renderer override. Existing/manual consumers
 should follow [renderer patch setup](docs/renderer-patches.md); Cargo only honors

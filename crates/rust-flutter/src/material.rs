@@ -148,6 +148,32 @@ pub struct ThemeData {
     pub use_material3: bool,
 }
 
+/// A Material root widget that provides an inherited theme to its home subtree.
+/// Native window setup and route management remain the responsibility of the
+/// host runner and navigator APIs.
+pub struct MaterialApp {
+    home: Widget,
+    theme: ThemeData,
+}
+
+impl MaterialApp {
+    pub fn new(home: Widget) -> Self {
+        Self {
+            home,
+            theme: ThemeData::default(),
+        }
+    }
+
+    pub fn theme(mut self, theme: ThemeData) -> Self {
+        self.theme = theme;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        self.theme.provide(self.home)
+    }
+}
+
 impl Default for ThemeData {
     fn default() -> Self {
         Self {

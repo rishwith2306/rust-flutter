@@ -10,6 +10,14 @@
   `Radio<T>`, plus continuous/discrete controlled `Slider`. Navigation icons
   still use text glyphs; switch transitions do not animate yet, and complete
   control semantics remain open.
+
+- Add `run_widget` desktop and Android entry points that mount one retained
+  `ElementTree` across frames, and a theme-providing `MaterialApp` root. Route
+  management and other Flutter `MaterialApp` services remain incomplete.
+
+- Generate new CLI projects with a retained `MaterialApp` root, themed
+  `Scaffold`, controller-backed stateful counter and the shared desktop/Android
+  widget host.
   Dynamic palette generation and most of the Material component catalog remain
   open.
 
