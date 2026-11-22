@@ -47,6 +47,7 @@ mod frame_schedule;
 pub mod gestures;
 pub mod layout;
 pub mod localization;
+pub mod material;
 pub mod navigation;
 pub mod notifier;
 pub mod physics;
@@ -126,6 +127,7 @@ pub mod prelude {
         AppContext, AppEvent, Application, EventResponse, LifecycleEvent,
         animation::*,
         focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
+        material::{Brightness, ColorScheme, ThemeData},
         navigation::Navigator,
         state::Signal,
         widgets::*,
