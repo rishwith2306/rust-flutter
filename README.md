@@ -14,8 +14,8 @@ listeners and notifier-driven builders support shared UI-local state.
 Retained form validation, controller-backed text input and limited focus scopes
 with explicit and Tab / Shift+Tab traversal are available; platform IME,
 screen-reader and complete focus-tree behavior remain unfinished.
-An initial inherited Material color theme, buttons, an app bar, a page scaffold,
-and a controlled bottom navigation bar are available; the Material and
+An initial inherited Material color theme, buttons, themed text input, an app
+bar, a page scaffold, and a controlled bottom navigation bar are available; the Material and
 Cupertino component catalogs are still under development.
 Desktop windows use [eframe 0.33.3](https://docs.rs/eframe/0.33.3/eframe/);
 Android uses a framework-owned NativeActivity host. Both render egui through wgpu.

@@ -79,6 +79,25 @@ let page = ThemeData::default()
 # let _ = page;
 ```
 
+`TextField` provides themed single-line, multiline, read-only and obscured text
+entry. It reads text and surface colors from the nearest `ThemeData` unless
+the decoration supplies explicit colors, and retains editing state through
+`TextEditingController`:
+
+```rust
+use rust_flutter::{forms::TextEditingController, material::TextField};
+
+let controller = TextEditingController::new("");
+let email = TextField::with_controller(controller)
+    .label("Email")
+    .hint("name@example.com")
+    .into_widget()?;
+# let _ = email;
+```
+
+This initial field does not yet implement the full Flutter `InputDecoration`
+surface, including prefix/suffix widgets and floating-label animation.
+
 This is an initial theme layer, not Material 3 parity. The palette is static,
 does not derive tonal roles from a seed, and does not yet include every Flutter
 `ColorScheme` role, `TextTheme`, component themes, `MaterialApp`, scaffold

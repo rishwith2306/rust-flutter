@@ -71,6 +71,7 @@ impl InputStyle {
 type TextCallback = Rc<dyn Fn(&str)>;
 /// Backend-neutral form integration rendered by egui; this is not Material's
 /// InputDecorator or a complete Flutter EditableText implementation.
+#[derive(Clone)]
 pub struct TextFormField {
     pub controller: Option<TextEditingController>,
     pub initial_value: Option<String>,

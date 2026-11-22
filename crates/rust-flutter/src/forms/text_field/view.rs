@@ -304,7 +304,11 @@ impl RenderBox for TextInputRender {
         let origin = ui.max_rect().min;
         let rect = self.input_rect.translate(origin.to_vec2());
         if let Some(g) = &self.label_galley {
-            ui.painter().galley(origin, g.clone(), Color32::WHITE);
+            ui.painter().galley(
+                origin,
+                g.clone(),
+                self.style.decoration.text_color.unwrap_or(Color32::WHITE),
+            );
         }
         let text = self.binding.editor().text();
         let revision = self.binding.editor().revision();
