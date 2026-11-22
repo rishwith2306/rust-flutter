@@ -51,7 +51,8 @@ It uses the same retained widget tree for the desktop host and Android
 `android_main` entry point. To build its Android APK, run
 `cargo apk build -p rust-flutter-cupertino-example --lib --target aarch64-linux-android`.
 
-The Material showcase demonstrates the retained `Scaffold` drawer:
+The Material showcase demonstrates retained Material cards and dividers,
+Scaffold drawer navigation, a floating action button, and a modal alert dialog:
 
 ```sh
 cargo run -p rust-flutter-material-example
