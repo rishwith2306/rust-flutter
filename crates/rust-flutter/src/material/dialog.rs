@@ -115,7 +115,7 @@ impl AlertDialog {
         let mut column = FlexStyle::new(Axis::Vertical);
         column.cross_alignment = CrossAxisAlignment::Stretch;
         let surface = DecoratedBox::new(BoxDecoration {
-            color: colors.surface_container,
+            color: colors.surface_container_high,
             border: Stroke::new(0.5_f32, colors.outline_variant),
             corner_radius: egui::CornerRadius::same(28),
         })

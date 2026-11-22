@@ -82,8 +82,8 @@ impl Card {
             CardVariant::Elevated
         };
         let (background, border) = match variant {
-            CardVariant::Elevated => (scheme.surface, Stroke::NONE),
-            CardVariant::Filled => (scheme.surface_container, Stroke::NONE),
+            CardVariant::Elevated => (scheme.surface_container_low, Stroke::NONE),
+            CardVariant::Filled => (scheme.surface_container_highest, Stroke::NONE),
             CardVariant::Outlined => (scheme.surface, Stroke::new(1.0_f32, scheme.outline_variant)),
         };
         let surface = DecoratedBox::new(BoxDecoration {

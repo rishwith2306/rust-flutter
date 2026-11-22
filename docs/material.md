@@ -1,7 +1,8 @@
 # Material theme foundation
 
-`material::ColorScheme` exposes core semantic roles for primary, secondary,
-tertiary, error, surface, outline, inverse surface, shadow and scrim colors.
+`material::ColorScheme` exposes Flutter's current primary, secondary, tertiary,
+error, fixed-tone, surface-container, outline, inverse, shadow and scrim roles,
+plus the deprecated `background`, `on_background` and `surface_variant` aliases.
 `ThemeData` carries that scheme and can provide it to a retained widget subtree
 or apply its surface, text, selection and hyperlink colors to egui defaults.
 
@@ -15,6 +16,11 @@ let theme = ThemeData {
 theme.apply(&egui::Context::default());
 # let _ = theme;
 ```
+
+The light and dark palettes are static purple-seeded presets; dynamic
+`ColorScheme.fromSeed`, high-contrast schemes, and OS theme following are not
+implemented. The [Flutter ColorScheme API](https://api.flutter.dev/flutter/material/ColorScheme-class.html)
+documents the roles and their intended use.
 
 For inherited lookup inside a retained component, call `ThemeData::of(ctx)`;
 for a subtree, use `theme.provide(child)`. A custom brand palette can be made
