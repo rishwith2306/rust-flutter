@@ -10,7 +10,7 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
-        CupertinoPageScaffold, CupertinoTextField, CupertinoThemeData,
+        CupertinoPageScaffold, CupertinoSwitch, CupertinoTextField, CupertinoThemeData,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -20,10 +20,15 @@ let binding = GestureBinding::new();
 let theme = CupertinoThemeData::default();
 let button = CupertinoButton::filled(&binding, "Continue", || {}).into_widget();
 let field = CupertinoTextField::new("").placeholder("Email").into_widget()?;
+let switch = CupertinoSwitch::new(&binding, true, |enabled| {
+    let _ = enabled;
+})
+.into_widget();
 let content = Widget::flex(
     rust_flutter::element::FlexStyle::new(rust_flutter::layout::Axis::Vertical),
     vec![
         rust_flutter::element::FlexItem::fixed(field),
+        rust_flutter::element::FlexItem::fixed(switch),
         rust_flutter::element::FlexItem::fixed(button),
     ],
 );
@@ -42,9 +47,9 @@ optional 44-point navigation bar. Safe areas and system appearance integration
 remain explicit application work. The initial text field uses the shared
 retained editor for controller, selection, validation, and input behavior. Its
 styling remains basic and does not match native insets, borders, clear-button,
-or keyboard accessory APIs. The button supports enabled state and a custom size;
-hover/pressed animation, accessibility semantics, and the broader Cupertino
-component catalog remain to be implemented.
+or keyboard accessory APIs. The switch is controlled and uses the iOS green on
+state. Switch thumb animation, hover/pressed animation, accessibility semantics,
+and the broader Cupertino component catalog remain to be implemented.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; routing, localization, system appearance following, dialogs, and pickers

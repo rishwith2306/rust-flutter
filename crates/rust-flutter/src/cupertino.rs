@@ -4,7 +4,7 @@
 //! component catalog or native macOS/iOS behavior layer.
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
-    egui::{self, Color32, Vec2},
+    egui::{self, Color32, Stroke, Vec2},
     element::{BuildContext, DependencyError, FlexItem, FlexStyle, StatelessWidget, Widget},
     forms::{TextEditingController, TextFormField},
     gestures::{GestureBinding, GestureButton},
@@ -292,6 +292,87 @@ impl StatelessWidget for CupertinoTextFieldWidget {
             field.decoration.background_color = Some(Color32::TRANSPARENT);
         }
         field.into_widget().unwrap_or_else(|_| Widget::empty())
+    }
+}
+
+/// Owner-controlled Cupertino switch. Update the supplied value in its owner.
+pub struct CupertinoSwitch {
+    binding: GestureBinding,
+    value: bool,
+    enabled: bool,
+    on_changed: Rc<dyn Fn(bool)>,
+}
+
+impl CupertinoSwitch {
+    pub fn new(binding: &GestureBinding, value: bool, on_changed: impl Fn(bool) + 'static) -> Self {
+        Self {
+            binding: binding.clone(),
+            value,
+            enabled: true,
+            on_changed: Rc::new(on_changed),
+        }
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        Widget::stateless(CupertinoSwitchView(self))
+    }
+}
+
+struct CupertinoSwitchView(CupertinoSwitch);
+
+impl StatelessWidget for CupertinoSwitchView {
+    fn build(&self, _: &BuildContext) -> Widget {
+        let switch = &self.0;
+        let active = Color32::from_rgb(52, 199, 89);
+        let track = if !switch.enabled {
+            Color32::from_gray(90)
+        } else if switch.value {
+            active
+        } else {
+            Color32::from_gray(125)
+        };
+        let thumb = if switch.enabled {
+            Color32::WHITE
+        } else {
+            Color32::from_gray(205)
+        };
+        let paint_value = switch.value;
+        let paint_enabled = switch.enabled;
+        let paint = move |painter: &egui::Painter, bounds: egui::Rect| {
+            let rect = egui::Rect::from_center_size(bounds.center(), Vec2::new(51.0, 31.0));
+            painter.rect_filled(rect, egui::CornerRadius::same(16), track);
+            if !paint_enabled {
+                painter.rect_stroke(
+                    rect,
+                    egui::CornerRadius::same(16),
+                    Stroke::new(1.0_f32, Color32::from_gray(145)),
+                    egui::StrokeKind::Inside,
+                );
+            }
+            let center_x = if paint_value {
+                rect.right() - 15.5
+            } else {
+                rect.left() + 15.5
+            };
+            painter.circle_filled(egui::pos2(center_x, rect.center().y), 13.5, thumb);
+        };
+        let callback = switch.on_changed.clone();
+        let value = switch.value;
+        GestureButton::new(&switch.binding, egui::RichText::new(""), move || {
+            callback(!value)
+        })
+        .size(Vec2::new(60.0, 44.0))
+        .enabled(switch.enabled)
+        .fill(Color32::TRANSPARENT)
+        .stroke(Stroke::NONE)
+        .corner_radius(egui::CornerRadius::ZERO)
+        .paint_content(paint)
+        .into_widget()
     }
 }
 
