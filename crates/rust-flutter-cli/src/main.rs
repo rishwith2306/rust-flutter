@@ -120,6 +120,9 @@ fn execute(args: Vec<String>) -> Result<(), String> {
             if macos_bundle && command != "build" {
                 return Err("--macos-bundle requires build".into());
             }
+            if macos_bundle && args[1..].iter().any(|arg| arg == "--android") {
+                return Err("--macos-bundle cannot be combined with --android".into());
+            }
             if macos_bundle && cfg!(not(target_os = "macos")) {
                 return Err("--macos-bundle must run on macOS with its SDK installed".into());
             }
@@ -214,6 +217,9 @@ fn create_macos_bundle(cargo_args: &[String]) -> Result<(), String> {
         .windows(2)
         .find(|args| args[0] == "--target")
         .map(|args| args[1].as_str());
+    if target.is_some_and(|target| !target.ends_with("-apple-darwin")) {
+        return Err("--macos-bundle requires a macOS Apple Darwin target".into());
+    }
     let mut executable = PathBuf::from(target_dir);
     if let Some(target) = target {
         executable.push(target);
@@ -236,8 +242,10 @@ fn create_macos_bundle(cargo_args: &[String]) -> Result<(), String> {
     if safe_bundle.is_empty() {
         return Err("Cargo package name cannot form a macOS bundle identifier".into());
     }
-    let output = PathBuf::from(target_dir).join(profile);
-    fs::create_dir_all(&output)
+    let output = executable
+        .parent()
+        .ok_or("Cargo executable output has no parent directory")?;
+    fs::create_dir_all(output)
         .map_err(|error| format!("could not create bundle output directory: {error}"))?;
     let bundle = output.join(format!("{bundle_name}.app"));
     let staging = output.join(format!(".{bundle_name}.app-staging"));
