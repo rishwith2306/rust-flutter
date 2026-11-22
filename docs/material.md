@@ -22,8 +22,9 @@ with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`; this initial implementation does
-not yet add Flutter's route table, system theme selection, or localization
-configuration.
+not yet add Flutter's named route table, system theme selection, or
+localization configuration. `MaterialApp::with_navigator` connects a retained
+`NavigatorController` to the root page builder; see [retained navigation](navigation.md).
 
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports

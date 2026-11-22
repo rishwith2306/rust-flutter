@@ -5,6 +5,7 @@
 use crate::{
     egui::{self, Color32},
     element::{BuildContext, DependencyError, Widget},
+    navigation::NavigatorController,
 };
 
 mod button;
@@ -162,6 +163,14 @@ impl MaterialApp {
             home,
             theme: ThemeData::default(),
         }
+    }
+
+    /// Create an app root whose home page follows a retained route controller.
+    pub fn with_navigator<R: Clone + PartialEq + 'static>(
+        navigator: &NavigatorController<R>,
+        builder: impl Fn(&BuildContext, &R) -> Widget + 'static,
+    ) -> Self {
+        Self::new(navigator.view(builder))
     }
 
     pub fn theme(mut self, theme: ThemeData) -> Self {

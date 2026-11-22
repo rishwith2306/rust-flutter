@@ -21,7 +21,8 @@
 
 - Add a listenable `NavigatorController<R>` for retained route views, including
   root-safe pop, replace and reset operations, and a `run_widget` back handler
-  hook for application-owned stack integration.
+  hook for application-owned stack integration. `MaterialApp::with_navigator`
+  combines the controller's route view with the app theme.
   Dynamic palette generation and most of the Material component catalog remain
   open.
 

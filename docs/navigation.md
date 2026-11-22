@@ -55,17 +55,23 @@ let handle_back = move || {
 # let _ = (root, handle_back);
 ```
 
-`MaterialApp` can wrap the route view to provide the theme:
+`MaterialApp::with_navigator` combines the route view and inherited theme:
 
 ```rust
-use rust_flutter::{element::Widget, material::{MaterialApp, ThemeData}};
+use rust_flutter::{
+    element::{BuildContext, Widget},
+    material::{MaterialApp, ThemeData},
+    navigation::NavigatorController,
+};
 
-let root = MaterialApp::new(Widget::empty())
+let navigator = NavigatorController::new("home");
+let root = MaterialApp::with_navigator(&navigator, |_: &BuildContext, _route| {
+    Widget::empty()
+})
     .theme(ThemeData::default())
     .into_widget();
 # let _ = root;
 ```
 
-The native widget runner does not automatically connect Android back requests
-to a particular `NavigatorController`. Page transitions, deep links, named
-routes and restoration remain future work.
+Pass a clone of the same controller to the back handler shown above. Page
+transitions, deep links, named route tables and restoration remain future work.
