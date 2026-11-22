@@ -1,0 +1,24 @@
+[package]
+name = "rust-flutter-cupertino-example"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rust-flutter = { path = "../../crates/rust-flutter" }
+
+[package.metadata.android]
+package = "dev.rustflutter.cupertino"
+apk_name = "rust-flutter-cupertino"
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 24
+target_sdk_version = 35
+
+[package.metadata.android.application.activity]
+config_changes = "orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|density|fontScale|layoutDirection|locale|uiMode"

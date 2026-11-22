@@ -41,6 +41,16 @@ Rust 1.89+ and your platform's native build tools are required.
 cargo run -p rust-flutter-gallery
 ```
 
+The retained Cupertino controls also have a focused runnable showcase:
+
+```sh
+cargo run -p rust-flutter-cupertino-example
+```
+
+It uses the same retained widget tree for the desktop host and Android
+`android_main` entry point. On Android, build and install it with
+`cargo apk build -p rust-flutter-cupertino-example --lib --target aarch64-linux-android`.
+
 On macOS install Xcode Command Line Tools (`xcode-select --install`). The renderer
 uses wgpu with Metal on macOS. On Linux, Wayland/X11 development libraries and a
 Vulkan or GLES driver are needed. Linux is a development host, in addition to the

@@ -2489,6 +2489,13 @@ name = "rust-flutter-cli"
 version = "0.1.0"
 
 [[package]]
+name = "rust-flutter-cupertino-example"
+version = "0.1.0"
+dependencies = [
+ "rust-flutter",
+]
+
+[[package]]
 name = "rust-flutter-gallery"
 version = "0.1.0"
 dependencies = [
