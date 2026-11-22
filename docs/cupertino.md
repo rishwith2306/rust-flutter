@@ -10,6 +10,7 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
+        CupertinoActionSheet, CupertinoActionSheetAction,
         CupertinoAlertDialog, CupertinoDialogAction,
         CupertinoActivityIndicator, CupertinoListSection, CupertinoListTile,
         CupertinoPageScaffold, CupertinoSlider,
@@ -126,9 +127,25 @@ let alert = CupertinoAlertDialog::new(
 ])
 .theme(theme)
 .into_widget()?;
+let action = |label: &str| {
+    CupertinoActionSheetAction::new(&binding, label, || {})
+        .width(320.0)
+        .theme(theme)
+        .into_widget()
+        .unwrap()
+};
+let sheet = CupertinoActionSheet::new()
+    .title(rust_flutter::text::Text::new("Choose an action").into_widget())
+    .message(rust_flutter::text::Text::new("Select an option.").into_widget())
+    .actions(vec![action("Save"), action("Copy link")])
+    .cancel_button(action("Cancel"))
+    .width(340.0)
+    .theme(theme)
+    .into_widget()?;
 # let _: Widget = app;
 # let _: Widget = tabs_app;
 # let _: Widget = alert;
+# let _: Widget = sheet;
 ```
 
 The default theme uses the familiar blue accent for light and dark palettes.
@@ -161,6 +178,11 @@ emphasis and destructive coloring. The application must place the panel in its
 own route or overlay to present it modally; `CupertinoApp` does not yet provide
 `showCupertinoDialog`, barrier handling, or dismissal routing. Set the panel
 width and action widths together when adapting it to a narrow window.
+`CupertinoActionSheet` groups a title/message, a list of choice actions, and an
+optional separated cancel action. Its actions support default emphasis and
+destructive coloring. Like the alert panel, it needs an app-owned modal popup
+for bottom-sheet presentation and dismissal; that routing and barrier behavior
+is not part of the current widget.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; routing, localization, system appearance following, modal presentation,
@@ -177,3 +199,4 @@ APIs for the broader Flutter surface. The control references include
 [CupertinoTabScaffold](https://api.flutter.dev/flutter/cupertino/CupertinoTabScaffold-class.html),
 [CupertinoSwitch](https://api.flutter.dev/flutter/cupertino/CupertinoSwitch-class.html),
 and [CupertinoTextField](https://api.flutter.dev/flutter/cupertino/CupertinoTextField-class.html).
+The action-sheet reference is [CupertinoActionSheet](https://api.flutter.dev/flutter/cupertino/CupertinoActionSheet-class.html).

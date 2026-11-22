@@ -1,10 +1,10 @@
 use rust_flutter::{
     cupertino::{
-        CupertinoActivityIndicator, CupertinoAlertDialog, CupertinoApp, CupertinoButton,
-        CupertinoDialogAction, CupertinoListSection, CupertinoListTile, CupertinoNavigationBar,
-        CupertinoPageScaffold, CupertinoSegment, CupertinoSegmentedControl, CupertinoSlider,
-        CupertinoSwitch, CupertinoTabDestination, CupertinoTabScaffold, CupertinoTextField,
-        CupertinoThemeData,
+        CupertinoActionSheet, CupertinoActionSheetAction, CupertinoActivityIndicator,
+        CupertinoAlertDialog, CupertinoApp, CupertinoButton, CupertinoDialogAction,
+        CupertinoListSection, CupertinoListTile, CupertinoNavigationBar, CupertinoPageScaffold,
+        CupertinoSegment, CupertinoSegmentedControl, CupertinoSlider, CupertinoSwitch,
+        CupertinoTabDestination, CupertinoTabScaffold, CupertinoTextField, CupertinoThemeData,
     },
     element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
@@ -23,6 +23,7 @@ pub fn showcase() -> Widget {
         vec![
             CupertinoTabDestination::new("◉", "Controls"),
             CupertinoTabDestination::new("▣", "Dialog"),
+            CupertinoTabDestination::new("☰", "Actions"),
             CupertinoTabDestination::new("ⓘ", "About"),
         ],
         0,
@@ -58,6 +59,35 @@ pub fn showcase() -> Widget {
                     Widget::padding(Insets::all(16.0), dialog),
                     theme,
                 )
+            } else if index == 2 {
+                let action = |label: &'static str, destructive: bool| {
+                    CupertinoActionSheetAction::new(&page_binding, label, move || {
+                        println!("Cupertino action selected: {label}");
+                    })
+                    .width(320.0)
+                    .destructive_action(destructive)
+                    .theme(theme)
+                    .into_widget()
+                    .expect("valid example action sheet action")
+                };
+                let sheet = CupertinoActionSheet::new()
+                    .title(Text::new("Choose an action").into_widget())
+                    .message(Text::new("Select how to share this item.").into_widget())
+                    .actions(vec![
+                        action("Save to Files", false),
+                        action("Copy Link", false),
+                        action("Delete", true),
+                    ])
+                    .cancel_button(action("Cancel", false))
+                    .width(340.0)
+                    .theme(theme)
+                    .into_widget()
+                    .expect("valid example action sheet");
+                page(
+                    "Action sheet panel",
+                    Widget::padding(Insets::all(12.0), sheet),
+                    theme,
+                )
             } else {
                 page(
                     "About",
@@ -71,7 +101,7 @@ pub fn showcase() -> Widget {
             }
         },
     )
-    .expect("two valid example tabs")
+    .expect("valid example tabs")
     .theme(theme)
     .into_widget();
     CupertinoApp::new(tabs).theme(theme).into_widget()
