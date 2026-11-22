@@ -412,8 +412,13 @@ let host = ModalBottomSheetHost::new(&binding, |controller, is_presented| {
 # let _ = host;
 ```
 
+The host shows a drag handle by default. Dragging down at least 72 logical points
+or releasing it downward at fling speed dismisses the sheet; `.enable_drag(false)`
+disables this, and `.show_drag_handle(false)` hides the handle. The handle owns
+the drag recognizer, so vertical scrolling inside the sheet remains available.
+
 Sheet actions can call `dismiss_with_result(value)`; the page reads it with
-`take_result::<T>()`. Drag dismissal, route/back integration, transitions,
-keyboard insets, and Flutter's full shape and elevation options remain to be
-implemented. See Flutter's
+`take_result::<T>()`. Dragging does not animate or follow the pointer yet;
+route/back integration, transitions, keyboard insets, and Flutter's full shape
+and elevation options remain to be implemented. See Flutter's
 [showModalBottomSheet API](https://api.flutter.dev/flutter/material/showModalBottomSheet.html).

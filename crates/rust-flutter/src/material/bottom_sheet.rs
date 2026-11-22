@@ -2,9 +2,17 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke, Vec2},
-    element::{StackItem, StackStyle, State, StateContext, StateHandle, StatefulWidget, Widget},
-    gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
-    layout::{Alignment, BoxConstraints, Clip, HitTestBehavior, Positioned, StackFit},
+    element::{
+        FlexItem, FlexStyle, StackItem, StackStyle, State, StateContext, StateHandle,
+        StatefulWidget, Widget,
+    },
+    gestures::{
+        DragAxis, GestureBinding, GestureDetector, GestureTargetConfig, PanCallbacks, PanConfig,
+        TapCallbacks, TapConfig,
+    },
+    layout::{
+        Alignment, Axis, BoxConstraints, Clip, HitTestBehavior, Insets, Positioned, StackFit,
+    },
 };
 use std::{any::Any, cell::Cell, cell::RefCell, rc::Rc};
 
@@ -21,6 +29,8 @@ pub struct ModalBottomSheetHost {
     barrier_dismissible: bool,
     barrier_color: Color32,
     max_height: f32,
+    enable_drag: bool,
+    show_drag_handle: bool,
     theme: ThemeData,
 }
 
@@ -37,6 +47,8 @@ impl ModalBottomSheetHost {
             barrier_dismissible: true,
             barrier_color: Color32::from_rgba_unmultiplied(0, 0, 0, 112),
             max_height: 640.0,
+            enable_drag: true,
+            show_drag_handle: true,
             theme: ThemeData::default(),
         }
     }
@@ -57,6 +69,16 @@ impl ModalBottomSheetHost {
         }
         self.max_height = height;
         Ok(self)
+    }
+
+    pub fn enable_drag(mut self, enabled: bool) -> Self {
+        self.enable_drag = enabled;
+        self
+    }
+
+    pub fn show_drag_handle(mut self, visible: bool) -> Self {
+        self.show_drag_handle = visible;
+        self
     }
 
     pub fn theme(mut self, theme: ThemeData) -> Self {
@@ -149,7 +171,7 @@ impl State<ModalBottomSheetHost> for ModalBottomSheetState {
         let (page, sheet) = (widget.builder)(controller.clone(), self.is_presented);
         let mut layers = vec![StackItem::new(page)];
         if let Some(sheet) = sheet {
-            let dismiss = controller;
+            let dismiss = controller.clone();
             let scrim = DecoratedBox::new(BoxDecoration::solid(widget.barrier_color))
                 .into_widget(Widget::empty());
             let barrier = if widget.barrier_dismissible {
@@ -179,12 +201,76 @@ impl State<ModalBottomSheetHost> for ModalBottomSheetState {
             let constraints =
                 BoxConstraints::loose(max).expect("validated finite Material bottom-sheet height");
             let colors = widget.theme.color_scheme;
+            let mut content = vec![];
+            if widget.show_drag_handle {
+                let drag_distance = Rc::new(Cell::new(0.0_f32));
+                let mut config = GestureTargetConfig::default();
+                if widget.enable_drag {
+                    let start_distance = drag_distance.clone();
+                    let update_distance = drag_distance.clone();
+                    let end_distance = drag_distance.clone();
+                    let dismiss = controller.clone();
+                    config.pan = Some((
+                        PanConfig {
+                            axis: Some(DragAxis::Vertical),
+                            ..Default::default()
+                        },
+                        PanCallbacks {
+                            on_start: Some(Rc::new(move |_| start_distance.set(0.0))),
+                            on_update: Some(Rc::new(move |details| {
+                                update_distance.set(
+                                    update_distance.get() + details.primary_delta.unwrap_or(0.0),
+                                );
+                            })),
+                            on_end: Some(Rc::new(move |details| {
+                                let distance = end_distance.get();
+                                if distance >= 72.0
+                                    || details.primary_velocity.unwrap_or(0.0) >= 900.0
+                                {
+                                    let _ = dismiss.dismiss();
+                                }
+                            })),
+                            ..Default::default()
+                        },
+                    ));
+                }
+                let handle = DecoratedBox::new(BoxDecoration {
+                    color: colors.outline_variant,
+                    corner_radius: egui::CornerRadius::same(2),
+                    ..Default::default()
+                })
+                .into_widget(Widget::empty());
+                let handle_size = BoxConstraints::tight(Vec2::new(32.0, 4.0))
+                    .expect("finite Material drag-handle dimensions");
+                let handle = Widget::padding(
+                    Insets {
+                        left: 0.0,
+                        top: 14.0,
+                        right: 0.0,
+                        bottom: 10.0,
+                    },
+                    Widget::align(Alignment::CENTER, Widget::constrained(handle_size, handle)),
+                );
+                let handle = if widget.enable_drag {
+                    GestureDetector::new(&widget.binding, config)
+                        .expect("live Material bottom-sheet gesture binding")
+                        .behavior(HitTestBehavior::Opaque)
+                        .into_widget(handle)
+                } else {
+                    handle
+                };
+                content.push(FlexItem::fixed(handle));
+            }
+            content.push(FlexItem::fixed(sheet));
+            let mut column = FlexStyle::new(Axis::Vertical);
+            column.cross_alignment = crate::layout::CrossAxisAlignment::Stretch;
+            let content = Widget::flex(column, content);
             let surface = DecoratedBox::new(BoxDecoration {
                 color: colors.surface_container_low,
                 border: Stroke::new(0.5_f32, colors.outline_variant),
                 corner_radius: egui::CornerRadius::same(28),
             })
-            .into_widget(Widget::safe_area(Widget::constrained(constraints, sheet)));
+            .into_widget(Widget::safe_area(Widget::constrained(constraints, content)));
             layers.push(StackItem::new(Widget::align(
                 Alignment { x: 0.0, y: 1.0 },
                 surface,
