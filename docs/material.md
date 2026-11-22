@@ -275,6 +275,28 @@ hero transition, disabled state, focus/hover/pressed feedback, or semantic
 button role. Flutter's API includes those options and separate small, regular,
 large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).
 
+`Card` groups related content in an elevated, filled, or outlined rounded
+surface. The card adds its default four-point outside margin and can be made a
+single tap target:
+
+```rust
+use rust_flutter::{
+    element::Widget,
+    material::{Card, CardVariant, ThemeData},
+};
+
+let card = Card::new(Widget::empty())
+    .variant(CardVariant::Outlined)
+    .theme(ThemeData::default())
+    .into_widget()?;
+# let _ = card;
+```
+
+The variants currently use simple fills and borders. Elevation shadows,
+surface tint, child clipping, ink feedback, semantic grouping, and card theme
+data remain incomplete. Flutter's [Card API](https://api.flutter.dev/flutter/material/Card-class.html)
+provides those shape and elevation options.
+
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
 shows a selected dialog above it, and dismisses that dialog when the user taps
 the scrim. Its builder receives a controller on every build, so a page action

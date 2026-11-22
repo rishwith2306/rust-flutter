@@ -3,8 +3,8 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::Insets,
     material::{
-        AlertDialog, AppBar, Drawer, FloatingActionButton, ListTile, MaterialApp,
-        MaterialDialogController, MaterialDialogHost, NavigationDrawer,
+        AlertDialog, AppBar, Card, CardVariant, Drawer, FloatingActionButton, ListTile,
+        MaterialApp, MaterialDialogController, MaterialDialogHost, NavigationDrawer,
         NavigationDrawerDestination, Scaffold, TextButton, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
@@ -96,7 +96,7 @@ impl State<DrawerExample> for DrawerExampleState {
     fn build(&mut self, widget: &DrawerExample, context: &StateContext<Self>) -> Widget {
         let handle = context.handle();
         let title = ["Home", "Projects", "Settings"][self.selected];
-        let body = DefaultTextStyle {
+        let card_content = DefaultTextStyle {
             style: TextStyle {
                 font_size: Some(22.0),
                 color: Some(widget.theme.color_scheme.on_surface),
@@ -115,6 +115,11 @@ impl State<DrawerExample> for DrawerExampleState {
             ))
             .into_widget(),
         );
+        let body = Card::new(Widget::padding(Insets::all(20.0), card_content))
+            .variant(CardVariant::Filled)
+            .theme(widget.theme)
+            .into_widget()
+            .expect("valid example Material card");
 
         let select = handle.clone();
         let drawer_contents = NavigationDrawer::new(
