@@ -1,6 +1,6 @@
 # Changelog
 
-- Start a retained Cupertino design layer with inherited theme data, `CupertinoApp`, `CupertinoPageScaffold`, `CupertinoNavigationBar`, and regular/filled `CupertinoButton` widgets.
+- Start a retained Cupertino design layer with inherited theme data, `CupertinoApp`, `CupertinoPageScaffold`, `CupertinoNavigationBar`, regular/filled `CupertinoButton`, and basic `CupertinoTextField` widgets.
 
 ## Unreleased — 0.1.0 development
 

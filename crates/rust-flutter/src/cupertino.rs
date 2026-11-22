@@ -6,6 +6,7 @@ use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Vec2},
     element::{BuildContext, DependencyError, FlexItem, FlexStyle, StatelessWidget, Widget},
+    forms::{TextEditingController, TextFormField},
     gestures::{GestureBinding, GestureButton},
     layout::{Axis, BoxConstraints, CrossAxisAlignment, Insets},
     text::{DefaultTextStyle, Text, TextStyle},
@@ -206,6 +207,91 @@ impl CupertinoPageScaffold {
         style.cross_alignment = CrossAxisAlignment::Stretch;
         DecoratedBox::new(BoxDecoration::solid(self.background_color))
             .into_widget(Widget::flex(style, children))
+    }
+}
+
+/// Cupertino styled text entry backed by the shared retained editor/controller.
+pub struct CupertinoTextField {
+    field: TextFormField,
+}
+
+impl CupertinoTextField {
+    pub fn new(initial: impl Into<String>) -> Self {
+        Self {
+            field: TextFormField::new(initial),
+        }
+    }
+
+    pub fn with_controller(controller: TextEditingController) -> Self {
+        Self {
+            field: TextFormField::with_controller(controller),
+        }
+    }
+
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.field.decoration.hint = placeholder.into();
+        self
+    }
+
+    pub fn on_changed(mut self, callback: impl Fn(&str) + 'static) -> Self {
+        self.field = self.field.on_changed(callback);
+        self
+    }
+
+    pub fn on_submitted(mut self, callback: impl Fn(&str) + 'static) -> Self {
+        self.field = self.field.on_submitted(callback);
+        self
+    }
+
+    pub fn read_only(mut self, value: bool) -> Self {
+        self.field = self.field.read_only(value);
+        self
+    }
+
+    pub fn enabled(mut self, value: bool) -> Self {
+        self.field = self.field.enabled(value);
+        self
+    }
+
+    pub fn obscure_text(mut self, value: bool) -> Self {
+        self.field = self.field.obscure_text(value);
+        self
+    }
+
+    pub fn multiline(mut self, min_lines: usize, max_lines: Option<usize>) -> Self {
+        self.field = self.field.multiline(min_lines, max_lines);
+        self
+    }
+
+    pub fn max_chars(mut self, value: Option<usize>) -> Self {
+        self.field = self.field.max_chars(value);
+        self
+    }
+
+    pub fn preferred_width(mut self, width: f32) -> Self {
+        self.field = self.field.preferred_width(width);
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, crate::forms::TextEditingError> {
+        self.field.clone().into_widget()?;
+        Ok(Widget::stateless(CupertinoTextFieldWidget(self.field)))
+    }
+}
+
+struct CupertinoTextFieldWidget(TextFormField);
+
+impl StatelessWidget for CupertinoTextFieldWidget {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let theme = CupertinoThemeData::of(context).unwrap_or_default();
+        let mut field = self.0.clone();
+        if field.decoration.text_color.is_none() {
+            field.decoration.text_color = Some(theme.text_color);
+        }
+        if field.decoration.background_color.is_none() {
+            field.decoration.background_color = Some(Color32::TRANSPARENT);
+        }
+        field.into_widget().unwrap_or_else(|_| Widget::empty())
     }
 }
 
