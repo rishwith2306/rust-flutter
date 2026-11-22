@@ -2,6 +2,10 @@
 
 ## Unreleased — 0.1.0 development
 
+- Add an application-owned `FocusNode` that queues pre-mount focus requests,
+  exposes focus changes as a Listenable, and attaches through `Focus` to a
+  descendant `TextFormField`; full Flutter focus scopes and traversal remain open.
+
 - Add `TextEditingController` with validated UTF-16 selection/composition offsets
   and a retained `TextFormField` adapter for forms, including reset, callbacks,
   validation feedback, read-only/password modes and lazy-list focus retention.

@@ -40,6 +40,7 @@ pub mod assets;
 pub mod decoration;
 pub mod display;
 pub mod element;
+pub mod focus;
 pub mod forms;
 #[cfg(any(target_os = "android", test))]
 mod frame_schedule;

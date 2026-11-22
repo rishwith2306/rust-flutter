@@ -1,6 +1,7 @@
 use rust_flutter::{
     egui,
     element::*,
+    focus::{Focus, FocusNode},
     forms::*,
     layout::BoxConstraints,
     notifier::{Listenable, ValueListenable},
@@ -471,4 +472,47 @@ fn text_form_field_keeps_controller_and_form_value_in_sync_across_reset() {
     assert_eq!(controller.text(), "");
     controller.set_text("Grace").unwrap();
     assert!(form.validate().unwrap());
+}
+
+#[test]
+fn focus_node_requests_focus_before_mount_and_notifies_when_text_field_focus_changes() {
+    let context = egui::Context::default();
+    let node = FocusNode::new();
+    let notifications = Rc::new(Cell::new(0));
+    let observed = notifications.clone();
+    let _subscription = node
+        .subscribe(Rc::new(move || observed.set(observed.get() + 1)))
+        .unwrap();
+    assert!(node.request_focus());
+    let child = TextFormField::new("").into_widget().unwrap();
+    let mut tree =
+        ElementTree::new(&context, Focus::new(node.clone(), child).into_widget()).unwrap();
+    let frame = |tree: &mut ElementTree, ctx: &egui::Context| {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(320.0, 120.0),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    tree.show(ui, BoxConstraints::tight(egui::vec2(320.0, 120.0)).unwrap())
+                        .unwrap();
+                });
+            },
+        );
+    };
+    frame(&mut tree, &context);
+    assert!(
+        node.has_focus(),
+        "queued request should apply to the mounted text editor"
+    );
+    node.unfocus();
+    frame(&mut tree, &context);
+    assert!(!node.has_focus());
+    assert!(notifications.get() >= 2);
+    node.set_can_request_focus(false);
+    assert!(!node.request_focus());
 }

@@ -1,7 +1,8 @@
 use super::*;
 use crate::{
     egui,
-    element::{BuildContext, State, StateContext, StatefulWidget, Widget},
+    element::{BuildContext, InheritedNotifier, State, StateContext, StatefulWidget, Widget},
+    focus::FocusNode,
     notifier::ValueListenable,
 };
 mod view;
@@ -448,7 +449,7 @@ impl State<TextFormField> for TextFormFieldState {
         }
         self.owned = new.controller.is_none();
     }
-    fn build(&mut self, widget: &TextFormField, _: &StateContext<Self>) -> Widget {
+    fn build(&mut self, widget: &TextFormField, context: &StateContext<Self>) -> Widget {
         let initial = widget.controller.as_ref().map_or_else(
             || widget.initial_value.clone().unwrap_or_default(),
             TextEditingController::text,
@@ -457,6 +458,11 @@ impl State<TextFormField> for TextFormFieldState {
         let style = widget.style();
         let changed = widget.on_changed.clone();
         let submitted = widget.on_submitted.clone();
+        let focus = context
+            .depend_on::<InheritedNotifier<FocusNode>>()
+            .ok()
+            .flatten()
+            .and_then(|provider| provider.notifier.clone());
         let mut field = FormField::new(initial.clone(), move |_: &BuildContext, field| {
             binding.bind(field.clone());
             Widget::render_object(
@@ -464,6 +470,7 @@ impl State<TextFormField> for TextFormFieldState {
                     binding: binding.clone(),
                     field,
                     style: style.clone(),
+                    focus: focus.clone(),
                     on_changed: changed.clone(),
                     on_submitted: submitted.clone(),
                 },

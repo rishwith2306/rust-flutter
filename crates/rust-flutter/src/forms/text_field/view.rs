@@ -47,6 +47,7 @@ pub(super) struct TextView {
     pub binding: Rc<Binding>,
     pub field: FormFieldController<String>,
     pub style: InputStyle,
+    pub focus: Option<crate::focus::FocusNode>,
     pub on_changed: Option<TextCallback>,
     pub on_submitted: Option<TextCallback>,
 }
@@ -54,6 +55,8 @@ pub struct TextInputRender {
     binding: Rc<Binding>,
     field: FormFieldController<String>,
     style: InputStyle,
+    focus: Option<crate::focus::FocusNode>,
+    focus_target: Option<(crate::focus::FocusNode, Id)>,
     on_changed: Option<TextCallback>,
     on_submitted: Option<TextCallback>,
     context: egui::Context,
@@ -95,6 +98,16 @@ impl TextInputRender {
     }
     fn input_id(&self, ctx: &RenderContext) -> Id {
         Id::new(("rust-flutter-text-field", ctx.element_id().value()))
+    }
+    fn bind_focus(&mut self, ctx: &RenderContext) {
+        if let Some((node, id)) = self.focus_target.take() {
+            node.detach(id);
+        }
+        if let Some(node) = &self.focus {
+            let id = self.input_id(ctx);
+            node.attach(ctx.egui(), id);
+            self.focus_target = Some((node.clone(), id));
+        }
     }
     fn measure(&self, c: BoxConstraints) -> Result<MeasuredField, LayoutError> {
         let width = if c.max().x.is_finite() {
@@ -170,6 +183,8 @@ impl RenderObjectWidget for TextView {
             binding: self.binding.clone(),
             field: self.field.clone(),
             style: self.style.clone(),
+            focus: self.focus.clone(),
+            focus_target: None,
             on_changed: self.on_changed.clone(),
             on_submitted: self.on_submitted.clone(),
             context: ctx.egui().clone(),
@@ -186,17 +201,26 @@ impl RenderObjectWidget for TextView {
         }
     }
     fn update_render_object(&self, o: &mut Self::Object, ctx: &RenderContext) {
-        let identity = !o.field.same_source(&self.field)
+        let field_identity = !o.field.same_source(&self.field)
             || !o.binding.editor().same_source(&self.binding.editor());
-        let layout_changed = o.style != self.style || identity;
+        let focus_identity = match (&o.focus, &self.focus) {
+            (Some(a), Some(b)) => !a.same_source(b),
+            (None, None) => false,
+            _ => true,
+        };
+        let layout_changed = o.style != self.style || field_identity || focus_identity;
         o.binding = self.binding.clone();
         o.field = self.field.clone();
         o.style = self.style.clone();
+        o.focus = self.focus.clone();
         o.on_changed = self.on_changed.clone();
         o.on_submitted = self.on_submitted.clone();
-        if identity {
+        if field_identity {
             o.applied_source = None;
             o.bind(ctx);
+        }
+        if focus_identity {
+            o.bind_focus(ctx);
         }
         if layout_changed {
             let _ = o.handle.mark_needs_layout();
@@ -206,6 +230,7 @@ impl RenderObjectWidget for TextView {
 impl RenderBox for TextInputRender {
     fn attach(&mut self, ctx: &RenderContext) {
         self.bind(ctx);
+        self.bind_focus(ctx);
     }
     fn layout(
         &mut self,
@@ -350,6 +375,9 @@ impl RenderBox for TextInputRender {
                 .inner
         };
         let response = output.response.clone();
+        if let Some(node) = &self.focus {
+            node.sync(response.has_focus());
+        }
         let changed = !self.style.read_only && output.response.changed() && value != text;
         if response.has_focus() {
             if self.keep_alive.is_none() {
@@ -420,5 +448,8 @@ impl RenderBox for TextInputRender {
             drop(s);
         }
         self.keep_alive = None;
+        if let Some((node, id)) = self.focus_target.take() {
+            node.detach(id);
+        }
     }
 }
