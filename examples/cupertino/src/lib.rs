@@ -1,9 +1,10 @@
 use rust_flutter::{
     cupertino::{
-        CupertinoActivityIndicator, CupertinoApp, CupertinoButton, CupertinoListSection,
-        CupertinoListTile, CupertinoNavigationBar, CupertinoPageScaffold, CupertinoSegment,
-        CupertinoSegmentedControl, CupertinoSlider, CupertinoSwitch, CupertinoTabDestination,
-        CupertinoTabScaffold, CupertinoTextField, CupertinoThemeData,
+        CupertinoActivityIndicator, CupertinoAlertDialog, CupertinoApp, CupertinoButton,
+        CupertinoDialogAction, CupertinoListSection, CupertinoListTile, CupertinoNavigationBar,
+        CupertinoPageScaffold, CupertinoSegment, CupertinoSegmentedControl, CupertinoSlider,
+        CupertinoSwitch, CupertinoTabDestination, CupertinoTabScaffold, CupertinoTextField,
+        CupertinoThemeData,
     },
     element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
@@ -21,6 +22,7 @@ pub fn showcase() -> Widget {
         &binding,
         vec![
             CupertinoTabDestination::new("◉", "Controls"),
+            CupertinoTabDestination::new("▣", "Dialog"),
             CupertinoTabDestination::new("ⓘ", "About"),
         ],
         0,
@@ -30,6 +32,32 @@ pub fn showcase() -> Widget {
                     binding: page_binding.clone(),
                     theme,
                 })
+            } else if index == 1 {
+                let actions = vec![
+                    CupertinoDialogAction::new(&page_binding, "Cancel", || {})
+                        .width(320.0)
+                        .theme(theme)
+                        .into_widget()
+                        .expect("valid example dialog action"),
+                    CupertinoDialogAction::new(&page_binding, "Delete", || {})
+                        .width(320.0)
+                        .destructive_action(true)
+                        .theme(theme)
+                        .into_widget()
+                        .expect("valid example dialog action"),
+                ];
+                let dialog = CupertinoAlertDialog::new(Text::new("Delete draft?").into_widget())
+                    .content(Text::new("This action cannot be undone.").into_widget())
+                    .actions(actions)
+                    .width(360.0)
+                    .theme(theme)
+                    .into_widget()
+                    .expect("valid example alert dialog");
+                page(
+                    "Dialog panel",
+                    Widget::padding(Insets::all(16.0), dialog),
+                    theme,
+                )
             } else {
                 page(
                     "About",

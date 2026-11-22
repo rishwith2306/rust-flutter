@@ -28,6 +28,8 @@ use std::{
 
 mod sliding_segmented;
 pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
+mod dialog;
+pub use dialog::{CupertinoAlertDialog, CupertinoDialogAction};
 mod tab_bar;
 pub use tab_bar::{CupertinoTabBar, CupertinoTabDestination};
 mod tab_scaffold;

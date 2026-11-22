@@ -10,6 +10,7 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
+        CupertinoAlertDialog, CupertinoDialogAction,
         CupertinoActivityIndicator, CupertinoListSection, CupertinoListTile,
         CupertinoPageScaffold, CupertinoSlider,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSwitch,
@@ -110,8 +111,24 @@ let tabs_app = CupertinoTabScaffold::new(
 )?
 .theme(theme)
 .into_widget();
+let alert = CupertinoAlertDialog::new(
+    rust_flutter::text::Text::new("Delete draft?").into_widget(),
+)
+.content(rust_flutter::text::Text::new("This action cannot be undone.").into_widget())
+.actions(vec![
+    CupertinoDialogAction::new(&binding, "Cancel", || {})
+        .theme(theme)
+        .into_widget()?,
+    CupertinoDialogAction::new(&binding, "Delete", || {})
+        .destructive_action(true)
+        .theme(theme)
+        .into_widget()?,
+])
+.theme(theme)
+.into_widget()?;
 # let _: Widget = app;
 # let _: Widget = tabs_app;
+# let _: Widget = alert;
 ```
 
 The default theme uses the familiar blue accent for light and dark palettes.
@@ -138,9 +155,16 @@ runs, accessibility semantics, and the broader Cupertino component catalog
 remain to be implemented. Tiles provide a pressed background and allow a custom
 activated color through `background_color_activated`.
 
+`CupertinoAlertDialog` builds a rounded panel with optional explanatory content
+and vertically separated actions. `CupertinoDialogAction` supports default
+emphasis and destructive coloring. The application must place the panel in its
+own route or overlay to present it modally; `CupertinoApp` does not yet provide
+`showCupertinoDialog`, barrier handling, or dismissal routing. Set the panel
+width and action widths together when adapting it to a narrow window.
+
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
-only; routing, localization, system appearance following, dialogs, and pickers
-are separate work. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
+only; routing, localization, system appearance following, modal presentation,
+and pickers remain unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
 and [CupertinoButton](https://api.flutter.dev/flutter/cupertino/CupertinoButton-class.html)
 APIs for the broader Flutter surface. The control references include
 [CupertinoActivityIndicator](https://api.flutter.dev/flutter/cupertino/CupertinoActivityIndicator-class.html),
