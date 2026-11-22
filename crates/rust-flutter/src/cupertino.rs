@@ -32,6 +32,8 @@ mod action_sheet;
 pub use action_sheet::{CupertinoActionSheet, CupertinoActionSheetAction};
 mod dialog;
 pub use dialog::{CupertinoAlertDialog, CupertinoDialogAction};
+mod modal_popup;
+pub use modal_popup::{CupertinoModalPopup, CupertinoModalPopupController};
 mod tab_bar;
 pub use tab_bar::{CupertinoTabBar, CupertinoTabDestination};
 mod tab_scaffold;

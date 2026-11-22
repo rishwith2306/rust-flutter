@@ -18,6 +18,7 @@ use rust_flutter::{
         CupertinoSlidingSegment, CupertinoSlidingSegmentedControl,
         CupertinoTabBar, CupertinoTabDestination, CupertinoTextField,
         CupertinoTabScaffold, CupertinoThemeData,
+        CupertinoModalPopup,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -174,21 +175,28 @@ activated color through `background_color_activated`.
 
 `CupertinoAlertDialog` builds a rounded panel with optional explanatory content
 and vertically separated actions. `CupertinoDialogAction` supports default
-emphasis and destructive coloring. The application must place the panel in its
-own route or overlay to present it modally; `CupertinoApp` does not yet provide
-`showCupertinoDialog`, barrier handling, or dismissal routing. Set the panel
-width and action widths together when adapting it to a narrow window.
+emphasis and destructive coloring. `CupertinoModalPopup` can present the panel
+above a retained page with a scrim and tap-to-dismiss behavior. System back
+handling, transition animation, route results, and restoration remain
+application work. Set the panel width and action widths together when adapting
+it to a narrow window.
 `CupertinoActionSheet` groups a title/message, a list of choice actions, and an
 optional separated cancel action. Its actions support default emphasis and
-destructive coloring. Like the alert panel, it needs an app-owned modal popup
-for bottom-sheet presentation and dismissal; that routing and barrier behavior
-is not part of the current widget.
+destructive coloring. `CupertinoModalPopup` layers either panel above the
+retained page with a scrim and tap-to-dismiss behavior. Its builder receives a
+`CupertinoModalPopupController`; call `present(id)` from a page action and
+return the matching panel while that id is selected. Choose bottom alignment
+for an action sheet. System back handling, transition animation, route results,
+and restoration remain application work.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
-only; routing, localization, system appearance following, modal presentation,
-and pickers remain unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
+only; route navigation, localization, system appearance following, modal
+transition animation, and pickers remain unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
 and [CupertinoButton](https://api.flutter.dev/flutter/cupertino/CupertinoButton-class.html)
-APIs for the broader Flutter surface. The control references include
+APIs for the broader Flutter surface. Flutter's [modal popup API](https://api.flutter.dev/flutter/cupertino/showCupertinoModalPopup.html)
+also supports route results, root navigator selection, configurable barrier
+dismissal, focus requests, and state-restorable route integration; this retained
+host does not implement those features. The control references include
 [CupertinoActivityIndicator](https://api.flutter.dev/flutter/cupertino/CupertinoActivityIndicator-class.html),
 [CupertinoSlider](https://api.flutter.dev/flutter/cupertino/CupertinoSlider-class.html),
 [CupertinoSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSegmentedControl-class.html),

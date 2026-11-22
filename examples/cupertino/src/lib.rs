@@ -2,13 +2,14 @@ use rust_flutter::{
     cupertino::{
         CupertinoActionSheet, CupertinoActionSheetAction, CupertinoActivityIndicator,
         CupertinoAlertDialog, CupertinoApp, CupertinoButton, CupertinoDialogAction,
-        CupertinoListSection, CupertinoListTile, CupertinoNavigationBar, CupertinoPageScaffold,
+        CupertinoListSection, CupertinoListTile, CupertinoModalPopup,
+        CupertinoModalPopupController, CupertinoNavigationBar, CupertinoPageScaffold,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSlider, CupertinoSwitch,
         CupertinoTabDestination, CupertinoTabScaffold, CupertinoTextField, CupertinoThemeData,
     },
     element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
-    layout::{Axis, Insets},
+    layout::{Alignment, Axis, Insets},
     scrolling::{ScrollPosition, SingleChildScrollView},
     text::Text,
 };
@@ -18,7 +19,29 @@ pub fn showcase() -> Widget {
     let binding = GestureBinding::new();
     let theme = CupertinoThemeData::default();
     let page_binding = binding.clone();
-    let tabs = CupertinoTabScaffold::new(
+    let popup = CupertinoModalPopup::new(&binding, move |controller, selected| {
+        let tabs = showcase_tabs(page_binding.clone(), theme, controller.clone());
+        let panel = match selected {
+            Some(0) => Some((alert_panel(&page_binding, theme, controller), None)),
+            Some(1) => Some((
+                action_sheet_panel(&page_binding, theme, controller),
+                Some(Alignment { x: 0.0, y: 1.0 }),
+            )),
+            _ => None,
+        };
+        (tabs, panel)
+    })
+    .into_widget();
+    CupertinoApp::new(popup).theme(theme).into_widget()
+}
+
+fn showcase_tabs(
+    binding: GestureBinding,
+    theme: CupertinoThemeData,
+    popup_controller: CupertinoModalPopupController,
+) -> Widget {
+    let page_binding = binding.clone();
+    CupertinoTabScaffold::new(
         &binding,
         vec![
             CupertinoTabDestination::new("◉", "Controls"),
@@ -34,60 +57,23 @@ pub fn showcase() -> Widget {
                     theme,
                 })
             } else if index == 1 {
-                let actions = vec![
-                    CupertinoDialogAction::new(&page_binding, "Cancel", || {})
-                        .width(320.0)
-                        .theme(theme)
-                        .into_widget()
-                        .expect("valid example dialog action"),
-                    CupertinoDialogAction::new(&page_binding, "Delete", || {})
-                        .width(320.0)
-                        .destructive_action(true)
-                        .theme(theme)
-                        .into_widget()
-                        .expect("valid example dialog action"),
-                ];
-                let dialog = CupertinoAlertDialog::new(Text::new("Delete draft?").into_widget())
-                    .content(Text::new("This action cannot be undone.").into_widget())
-                    .actions(actions)
-                    .width(360.0)
-                    .theme(theme)
-                    .into_widget()
-                    .expect("valid example alert dialog");
-                page(
-                    "Dialog panel",
-                    Widget::padding(Insets::all(16.0), dialog),
-                    theme,
-                )
-            } else if index == 2 {
-                let action = |label: &'static str, destructive: bool| {
-                    CupertinoActionSheetAction::new(&page_binding, label, move || {
-                        println!("Cupertino action selected: {label}");
+                let controller = popup_controller.clone();
+                let button =
+                    CupertinoButton::filled(&page_binding, "Show alert dialog", move || {
+                        let _ = controller.present(0);
                     })
-                    .width(320.0)
-                    .destructive_action(destructive)
-                    .theme(theme)
-                    .into_widget()
-                    .expect("valid example action sheet action")
-                };
-                let sheet = CupertinoActionSheet::new()
-                    .title(Text::new("Choose an action").into_widget())
-                    .message(Text::new("Select how to share this item.").into_widget())
-                    .actions(vec![
-                        action("Save to Files", false),
-                        action("Copy Link", false),
-                        action("Delete", true),
-                    ])
-                    .cancel_button(action("Cancel", false))
-                    .width(340.0)
-                    .theme(theme)
-                    .into_widget()
-                    .expect("valid example action sheet");
-                page(
-                    "Action sheet panel",
-                    Widget::padding(Insets::all(12.0), sheet),
-                    theme,
-                )
+                    .size(rust_flutter::egui::vec2(240.0, 48.0))
+                    .into_widget();
+                page("Dialog", button, theme)
+            } else if index == 2 {
+                let controller = popup_controller.clone();
+                let button =
+                    CupertinoButton::filled(&page_binding, "Show action sheet", move || {
+                        let _ = controller.present(1);
+                    })
+                    .size(rust_flutter::egui::vec2(240.0, 48.0))
+                    .into_widget();
+                page("Action sheet", button, theme)
             } else {
                 page(
                     "About",
@@ -103,8 +89,69 @@ pub fn showcase() -> Widget {
     )
     .expect("valid example tabs")
     .theme(theme)
-    .into_widget();
-    CupertinoApp::new(tabs).theme(theme).into_widget()
+    .into_widget()
+}
+
+fn alert_panel(
+    binding: &GestureBinding,
+    theme: CupertinoThemeData,
+    controller: CupertinoModalPopupController,
+) -> Widget {
+    let close = controller.clone();
+    let cancel = CupertinoDialogAction::new(binding, "Cancel", move || {
+        let _ = close.dismiss();
+    })
+    .width(320.0)
+    .theme(theme)
+    .into_widget()
+    .expect("valid example dialog action");
+    let delete = CupertinoDialogAction::new(binding, "Delete", move || {
+        let _ = controller.dismiss();
+    })
+    .width(320.0)
+    .destructive_action(true)
+    .theme(theme)
+    .into_widget()
+    .expect("valid example dialog action");
+    CupertinoAlertDialog::new(Text::new("Delete draft?").into_widget())
+        .content(Text::new("This action cannot be undone.").into_widget())
+        .actions(vec![cancel, delete])
+        .width(360.0)
+        .theme(theme)
+        .into_widget()
+        .expect("valid example alert dialog")
+}
+
+fn action_sheet_panel(
+    binding: &GestureBinding,
+    theme: CupertinoThemeData,
+    controller: CupertinoModalPopupController,
+) -> Widget {
+    let action = |label: &'static str, destructive: bool| {
+        let close = controller.clone();
+        CupertinoActionSheetAction::new(binding, label, move || {
+            println!("Cupertino action selected: {label}");
+            let _ = close.dismiss();
+        })
+        .width(320.0)
+        .destructive_action(destructive)
+        .theme(theme)
+        .into_widget()
+        .expect("valid example action sheet action")
+    };
+    CupertinoActionSheet::new()
+        .title(Text::new("Choose an action").into_widget())
+        .message(Text::new("Select how to share this item.").into_widget())
+        .actions(vec![
+            action("Save to Files", false),
+            action("Copy Link", false),
+            action("Delete", true),
+        ])
+        .cancel_button(action("Cancel", false))
+        .width(340.0)
+        .theme(theme)
+        .into_widget()
+        .expect("valid example action sheet")
 }
 
 fn page(title: &str, content: Widget, theme: CupertinoThemeData) -> Widget {
