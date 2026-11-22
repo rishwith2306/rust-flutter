@@ -18,6 +18,8 @@ bundle identifier and version. Cross-checking Rust code on Linux is not a macOS
 runtime test. App icons, entitlements, signing, notarization and store delivery
 are not automated yet. The macOS CI job checks source compilation and bundle
 structure; it does not replace interactive window/input/VoiceOver tests.
+The generated layout follows Apple's [macOS bundle structure](https://developer.apple.com/documentation/bundleresources/placing-content-in-a-bundle)
+and [bundle version format](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundleshortversionstring).
 
 ## Android NativeActivity
 

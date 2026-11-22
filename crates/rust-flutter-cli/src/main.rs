@@ -189,6 +189,15 @@ fn create_macos_bundle(cargo_args: &[String]) -> Result<(), String> {
     let package_version = package["version"]
         .as_str()
         .ok_or("Cargo package version is missing")?;
+    let bundle_version = package_version
+        .split(['-', '+'])
+        .next()
+        .filter(|version| {
+            let mut parts = version.split('.');
+            parts.clone().count() == 3
+                && parts.all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
+        })
+        .ok_or("Cargo package version cannot be represented as a macOS bundle version")?;
     let bins = package["targets"]
         .as_array()
         .into_iter()
@@ -267,8 +276,8 @@ fn create_macos_bundle(cargo_args: &[String]) -> Result<(), String> {
         plist_escape(binary_name),
         plist_escape(&identifier),
         plist_escape(&bundle_name),
-        plist_escape(package_version),
-        plist_escape(package_version)
+        plist_escape(bundle_version),
+        plist_escape(bundle_version)
     );
     fs::write(contents.join("Info.plist"), plist)
         .map_err(|error| format!("could not write app Info.plist: {error}"))?;
