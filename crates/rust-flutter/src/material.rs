@@ -10,6 +10,7 @@ use crate::{
 
 mod button;
 mod checkbox;
+mod dialog;
 mod floating_action_button;
 mod list_tile;
 mod navigation_bar;
@@ -21,6 +22,7 @@ mod switch;
 mod text_field;
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use checkbox::Checkbox;
+pub use dialog::{AlertDialog, MaterialDialogController, MaterialDialogHost, MaterialDialogState};
 pub use floating_action_button::FloatingActionButton;
 pub use list_tile::ListTile;
 pub use navigation_bar::{NavigationBar, NavigationDestination};

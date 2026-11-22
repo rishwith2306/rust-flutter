@@ -3,30 +3,58 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::Insets,
     material::{
-        AppBar, Drawer, FloatingActionButton, ListTile, MaterialApp, NavigationDrawer,
-        NavigationDrawerDestination, Scaffold, ThemeData,
+        AlertDialog, AppBar, Drawer, FloatingActionButton, ListTile, MaterialApp,
+        MaterialDialogController, MaterialDialogHost, NavigationDrawer,
+        NavigationDrawerDestination, Scaffold, TextButton, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
 
-/// A small Material application demonstrating Scaffold's retained side drawer.
+/// A small Material application demonstrating drawer, FAB and modal dialog APIs.
 pub fn showcase() -> Widget {
     let binding = GestureBinding::new();
     let theme = ThemeData::default();
-    MaterialApp::new(Widget::stateful(DrawerExample { binding, theme }))
-        .theme(theme)
-        .into_widget()
+    let page_binding = binding.clone();
+    let host = MaterialDialogHost::new(&binding, move |controller, selected| {
+        let page = Widget::stateful(DrawerExample {
+            binding: page_binding.clone(),
+            theme,
+            dialog_controller: controller.clone(),
+        });
+        let dialog = (selected == Some(0)).then(|| {
+            let cancel = controller.clone();
+            let create = controller.clone();
+            AlertDialog::new(Text::new("Create an item?").into_widget())
+                .content(Text::new("This action can be connected to your app data.").into_widget())
+                .actions(vec![
+                    TextButton::new(&page_binding, "Cancel", move || {
+                        let _ = cancel.dismiss();
+                    })
+                    .into_widget(),
+                    TextButton::new(&page_binding, "Create", move || {
+                        let _ = create.dismiss();
+                    })
+                    .into_widget(),
+                ])
+                .theme(theme)
+                .into_widget()
+                .expect("valid example alert dialog")
+        });
+        (page, dialog)
+    })
+    .into_widget();
+    MaterialApp::new(host).theme(theme).into_widget()
 }
 
 struct DrawerExample {
     binding: GestureBinding,
     theme: ThemeData,
+    dialog_controller: MaterialDialogController,
 }
 
 struct DrawerExampleState {
     selected: usize,
     drawer_open: bool,
-    created_count: usize,
 }
 
 impl StatefulWidget for DrawerExample {
@@ -36,7 +64,6 @@ impl StatefulWidget for DrawerExample {
         DrawerExampleState {
             selected: 0,
             drawer_open: false,
-            created_count: 0,
         }
     }
 }
@@ -55,8 +82,7 @@ impl State<DrawerExample> for DrawerExampleState {
         }
         .provide(
             Text::new(format!(
-                "Current destination: {title}\nCreated items: {}",
-                self.created_count
+                "Current destination: {title}\nTap + to open a dialog."
             ))
             .into_widget(),
         );
@@ -100,7 +126,7 @@ impl State<DrawerExample> for DrawerExampleState {
             .into_widget()
             .expect("valid example drawer");
 
-        let create = handle.clone();
+        let show_dialog = widget.dialog_controller.clone();
         Scaffold::new(Widget::padding(Insets::all(24.0), body))
             .app_bar_config(AppBar::new(title).theme(widget.theme))
             .floating_action_button(
@@ -108,7 +134,7 @@ impl State<DrawerExample> for DrawerExampleState {
                     &widget.binding,
                     Text::new("+").into_widget(),
                     move || {
-                        let _ = create.update(|state| state.created_count += 1);
+                        let _ = show_dialog.present(0);
                     },
                 )
                 .theme(widget.theme),

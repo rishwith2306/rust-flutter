@@ -274,3 +274,36 @@ This is an initial implementation: it has no elevation/shadow, tooltip,
 hero transition, disabled state, focus/hover/pressed feedback, or semantic
 button role. Flutter's API includes those options and separate small, regular,
 large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).
+
+`AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
+shows a selected dialog above it, and dismisses that dialog when the user taps
+the scrim. Its builder receives a controller on every build, so a page action
+can present a dialog and dialog actions can dismiss it:
+
+```rust
+use rust_flutter::{
+    element::Widget,
+    gestures::GestureBinding,
+    material::{AlertDialog, MaterialDialogHost},
+    text::Text,
+};
+
+let binding = GestureBinding::new();
+let host = MaterialDialogHost::new(&binding, |controller, selected| {
+    let page = build_page(controller.clone());
+    let dialog = (selected == Some(1)).then(|| {
+        AlertDialog::new(Text::new("Continue?").into_widget())
+            .content(Text::new("The operation can be cancelled.").into_widget())
+            .into_widget()
+            .expect("valid dialog")
+    });
+    (page, dialog)
+});
+# fn build_page(_: rust_flutter::material::MaterialDialogController) -> Widget { Widget::empty() }
+# let _ = host;
+```
+
+The host currently returns no dialog result and has no configurable barrier
+dismissal, system-back binding, route transition, alert icon, or automatic
+scrolling. Flutter's [AlertDialog API](https://api.flutter.dev/flutter/material/AlertDialog-class.html)
+is displayed with `showDialog`, which also owns routing and result delivery.
