@@ -3,7 +3,10 @@ use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke},
     element::{FlexItem, FlexStyle, StackItem, StackStyle, Widget},
-    gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
+    gestures::{
+        GestureBinding, GestureButton, GestureDetector, GestureTargetConfig, TapCallbacks,
+        TapConfig,
+    },
     layout::{
         Alignment, Axis, BoxConstraints, Clip, CrossAxisAlignment, HitTestBehavior, Insets,
         Positioned, StackFit,
@@ -64,6 +67,7 @@ struct DrawerSlot {
     binding: GestureBinding,
     child: Widget,
     open: bool,
+    on_open: Rc<dyn Fn()>,
     on_dismiss: Rc<dyn Fn()>,
 }
 
@@ -158,6 +162,7 @@ impl AppBar {
 pub struct Scaffold {
     body: Widget,
     app_bar: Option<Widget>,
+    app_bar_config: Option<AppBar>,
     bottom_navigation_bar: Option<Widget>,
     drawer: Option<DrawerSlot>,
     background_color: Color32,
@@ -169,6 +174,7 @@ impl Scaffold {
         Self {
             body,
             app_bar: None,
+            app_bar_config: None,
             bottom_navigation_bar: None,
             drawer: None,
             background_color: ThemeData::default().color_scheme.surface,
@@ -178,6 +184,15 @@ impl Scaffold {
 
     pub fn app_bar(mut self, app_bar: Widget) -> Self {
         self.app_bar = Some(app_bar);
+        self.app_bar_config = None;
+        self
+    }
+
+    /// Configure an app bar that can add the drawer menu action automatically.
+    /// An explicit `.leading(...)` keeps its custom action.
+    pub fn app_bar_config(mut self, app_bar: AppBar) -> Self {
+        self.app_bar = None;
+        self.app_bar_config = Some(app_bar);
         self
     }
 
@@ -193,12 +208,14 @@ impl Scaffold {
         binding: &GestureBinding,
         child: Widget,
         open: bool,
+        on_open: impl Fn() + 'static,
         on_dismiss: impl Fn() + 'static,
     ) -> Self {
         self.drawer = Some(DrawerSlot {
             binding: binding.clone(),
             child,
             open,
+            on_open: Rc::new(on_open),
             on_dismiss: Rc::new(on_dismiss),
         });
         self
@@ -216,8 +233,22 @@ impl Scaffold {
     }
 
     pub fn into_widget(self) -> Widget {
+        let app_bar = self.app_bar_config.map(|mut app_bar| {
+            if app_bar.leading.is_none()
+                && let Some(drawer) = &self.drawer
+            {
+                let on_open = drawer.on_open.clone();
+                app_bar.leading = Some(
+                    GestureButton::new(&drawer.binding, "☰", move || on_open())
+                        .size(egui::vec2(48.0, 48.0))
+                        .into_widget(),
+                );
+            }
+            app_bar.into_widget()
+        });
+        let app_bar = app_bar.or(self.app_bar);
         let mut children = Vec::with_capacity(3);
-        if let Some(app_bar) = self.app_bar {
+        if let Some(app_bar) = app_bar {
             children.push(FlexItem::fixed(app_bar));
         }
         children.push(FlexItem::expanded(self.body, 1));

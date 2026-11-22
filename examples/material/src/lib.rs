@@ -1,6 +1,6 @@
 use rust_flutter::{
     element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::GestureBinding,
     layout::{Axis, Insets},
     material::{AppBar, Drawer, FilledButton, MaterialApp, Scaffold, TextButton, ThemeData},
     text::{DefaultTextStyle, Text, TextStyle},
@@ -39,12 +39,6 @@ impl StatefulWidget for DrawerExample {
 impl State<DrawerExample> for DrawerExampleState {
     fn build(&mut self, widget: &DrawerExample, context: &StateContext<Self>) -> Widget {
         let handle = context.handle();
-        let open = handle.clone();
-        let menu_button = GestureButton::new(&widget.binding, "☰", move || {
-            let _ = open.update(|state| state.drawer_open = true);
-        })
-        .size(rust_flutter::egui::vec2(48.0, 48.0))
-        .into_widget();
         let title = ["Home", "Projects", "Settings"][self.selected];
         let body = DefaultTextStyle {
             style: TextStyle {
@@ -92,15 +86,18 @@ impl State<DrawerExample> for DrawerExampleState {
             .expect("valid example drawer");
 
         Scaffold::new(Widget::padding(Insets::all(24.0), body))
-            .app_bar(
-                AppBar::new(title)
-                    .leading(menu_button)
-                    .theme(widget.theme)
-                    .into_widget(),
+            .app_bar_config(AppBar::new(title).theme(widget.theme))
+            .drawer(
+                &widget.binding,
+                drawer,
+                self.drawer_open,
+                move || {
+                    let _ = handle.update(|state| state.drawer_open = true);
+                },
+                move || {
+                    let _ = dismiss.update(|state| state.drawer_open = false);
+                },
             )
-            .drawer(&widget.binding, drawer, self.drawer_open, move || {
-                let _ = dismiss.update(|state| state.drawer_open = false);
-            })
             .theme(widget.theme)
             .into_widget()
     }
