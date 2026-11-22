@@ -11,9 +11,10 @@ Usage:
   rust-flutter doctor [--android]
   rust-flutter devices
   rust-flutter run [--android] [--release] [--target <triple>] [--device <serial>]
-  rust-flutter build [--android] [--release] [--target <triple>]
+  rust-flutter build [--android] [--macos-bundle] [--release] [--target <triple>]
 
 Run build/run inside the app directory. Android requires cargo-apk and SDK/NDK.
+On macOS, --macos-bundle creates an unsigned .app in target/{debug,release}.
 create pins GitHub dependencies to the CLI source revision. No hot reload is provided.";
 
 fn main() -> ExitCode {
@@ -108,13 +109,35 @@ fn execute(args: Vec<String>) -> Result<(), String> {
             }
         }
         "run" | "build" => {
-            let cargo_args = build_args(command, &args[1..])?;
+            let bundle = args[1..]
+                .iter()
+                .filter(|arg| arg.as_str() == "--macos-bundle")
+                .count();
+            if bundle > 1 {
+                return Err("--macos-bundle may only be specified once".into());
+            }
+            let macos_bundle = bundle == 1;
+            if macos_bundle && command != "build" {
+                return Err("--macos-bundle requires build".into());
+            }
+            if macos_bundle && cfg!(not(target_os = "macos")) {
+                return Err("--macos-bundle must run on macOS with its SDK installed".into());
+            }
+            let cargo_flags = args[1..]
+                .iter()
+                .filter(|arg| arg.as_str() != "--macos-bundle")
+                .cloned()
+                .collect::<Vec<_>>();
+            let cargo_args = build_args(command, &cargo_flags)?;
             let mut cargo = Command::new("cargo");
-            cargo.args(cargo_args);
+            cargo.args(&cargo_args);
             let status = cargo
                 .status()
                 .map_err(|e| format!("could not start cargo: {e}"))?;
             if status.success() {
+                if macos_bundle {
+                    create_macos_bundle(&cargo_args)?;
+                }
                 Ok(())
             } else {
                 Err(format!("cargo exited with {status}"))
@@ -122,6 +145,140 @@ fn execute(args: Vec<String>) -> Result<(), String> {
         }
         _ => Err(format!("unknown command or options\n{HELP}")),
     }
+}
+
+fn create_macos_bundle(cargo_args: &[String]) -> Result<(), String> {
+    if !cfg!(target_os = "macos") {
+        return Err("macOS app bundles can only be created on macOS".into());
+    }
+    let metadata = Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .output()
+        .map_err(|error| format!("could not inspect Cargo project: {error}"))?;
+    if !metadata.status.success() {
+        return Err(format!(
+            "cargo metadata failed: {}",
+            String::from_utf8_lossy(&metadata.stderr).trim()
+        ));
+    }
+    let metadata: serde_json::Value = serde_json::from_slice(&metadata.stdout)
+        .map_err(|error| format!("cargo returned invalid metadata: {error}"))?;
+    let manifest = env::current_dir()
+        .map_err(|error| format!("could not read current directory: {error}"))?
+        .join("Cargo.toml");
+    let manifest = manifest
+        .canonicalize()
+        .map_err(|error| format!("app Cargo.toml is unavailable: {error}"))?;
+    let package = metadata["packages"]
+        .as_array()
+        .and_then(|packages| {
+            packages.iter().find(|package| {
+                package["manifest_path"]
+                    .as_str()
+                    .and_then(|path| Path::new(path).canonicalize().ok())
+                    .is_some_and(|path| path == manifest)
+            })
+        })
+        .ok_or("the current Cargo.toml must define an application package")?;
+    let package_name = package["name"]
+        .as_str()
+        .ok_or("Cargo package name is missing")?;
+    let package_version = package["version"]
+        .as_str()
+        .ok_or("Cargo package version is missing")?;
+    let bins = package["targets"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|target| {
+            target["kind"]
+                .as_array()
+                .is_some_and(|kinds| kinds.iter().any(|kind| kind.as_str() == Some("bin")))
+        })
+        .collect::<Vec<_>>();
+    if bins.len() != 1 {
+        return Err(format!(
+            "macOS app bundling requires exactly one binary target; found {}",
+            bins.len()
+        ));
+    }
+    let binary_name = bins[0]["name"]
+        .as_str()
+        .ok_or("Cargo binary target name is missing")?;
+    let target_dir = metadata["target_directory"]
+        .as_str()
+        .ok_or("Cargo target directory is missing")?;
+    let release = cargo_args.iter().any(|arg| arg == "--release");
+    let profile = if release { "release" } else { "debug" };
+    let target = cargo_args
+        .windows(2)
+        .find(|args| args[0] == "--target")
+        .map(|args| args[1].as_str());
+    let mut executable = PathBuf::from(target_dir);
+    if let Some(target) = target {
+        executable.push(target);
+    }
+    executable.push(profile);
+    executable.push(binary_name);
+    if !executable.is_file() {
+        return Err(format!(
+            "Cargo build output is missing: {}",
+            executable.display()
+        ));
+    }
+
+    let bundle_name = package_name.replace('-', " ");
+    let safe_bundle = package_name
+        .chars()
+        .map(|character| if character == '_' { '-' } else { character })
+        .filter(|character| character.is_ascii_alphanumeric() || *character == '-')
+        .collect::<String>();
+    if safe_bundle.is_empty() {
+        return Err("Cargo package name cannot form a macOS bundle identifier".into());
+    }
+    let output = PathBuf::from(target_dir).join(profile);
+    fs::create_dir_all(&output)
+        .map_err(|error| format!("could not create bundle output directory: {error}"))?;
+    let bundle = output.join(format!("{bundle_name}.app"));
+    let staging = output.join(format!(".{bundle_name}.app-staging"));
+    if staging.exists() {
+        fs::remove_dir_all(&staging)
+            .map_err(|error| format!("could not clear old app bundle staging: {error}"))?;
+    }
+    let contents = staging.join("Contents");
+    let macos = contents.join("MacOS");
+    let resources = contents.join("Resources");
+    fs::create_dir_all(&macos)
+        .and_then(|_| fs::create_dir_all(&resources))
+        .map_err(|error| format!("could not create app bundle directories: {error}"))?;
+    fs::copy(&executable, macos.join(binary_name))
+        .map_err(|error| format!("could not copy app executable: {error}"))?;
+    let identifier = format!("dev.rustflutter.{}", safe_bundle.to_ascii_lowercase());
+    let plist = format!(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\"><dict>\n<key>CFBundleExecutable</key><string>{}</string>\n<key>CFBundleIdentifier</key><string>{}</string>\n<key>CFBundleName</key><string>{}</string>\n<key>CFBundlePackageType</key><string>APPL</string>\n<key>CFBundleShortVersionString</key><string>{}</string>\n<key>CFBundleVersion</key><string>{}</string>\n<key>NSHighResolutionCapable</key><true/>\n<key>NSPrincipalClass</key><string>NSApplication</string>\n</dict></plist>\n",
+        plist_escape(binary_name),
+        plist_escape(&identifier),
+        plist_escape(&bundle_name),
+        plist_escape(package_version),
+        plist_escape(package_version)
+    );
+    fs::write(contents.join("Info.plist"), plist)
+        .map_err(|error| format!("could not write app Info.plist: {error}"))?;
+    if bundle.exists() {
+        fs::remove_dir_all(&bundle)
+            .map_err(|error| format!("could not replace old app bundle: {error}"))?;
+    }
+    fs::rename(&staging, &bundle)
+        .map_err(|error| format!("could not finalize macOS app bundle: {error}"))?;
+    println!("Created unsigned macOS app bundle at {}", bundle.display());
+    Ok(())
+}
+
+fn plist_escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn valid_name(name: &str) -> bool {
@@ -277,7 +434,7 @@ fn create(destination: &Path, name: &str, framework: Option<&Path>) -> Result<()
         fs::write(
             destination.join("README.md"),
             format!(
-                "# {name}\n\nRun `rust-flutter run` for desktop or `rust-flutter run --android` for Android.\nRun `rust-flutter doctor` to inspect build prerequisites.\nThe framework and renderer patch sources are specified in Cargo.toml; commit Cargo.lock for reproducible builds. Preserve the root [patch.crates-io] section for Android color precision.\n\nFiles in `assets/` are embedded by `build.rs`; edit `assets.json` to declare additional directories. Numeric density folders such as `2x/` are discovered automatically.\n"
+                "# {name}\n\nRun `rust-flutter run` for desktop or `rust-flutter run --android` for Android. On macOS, `rust-flutter build --release --macos-bundle` creates an app bundle.\nRun `rust-flutter doctor` to inspect build prerequisites.\nThe framework and renderer patch sources are specified in Cargo.toml; commit Cargo.lock for reproducible builds. Preserve the root [patch.crates-io] section for Android color precision.\n\nFiles in `assets/` are embedded by `build.rs`; edit `assets.json` to declare additional directories. Numeric density folders such as `2x/` are discovered automatically.\n"
             ),
         )?;
         Ok(())

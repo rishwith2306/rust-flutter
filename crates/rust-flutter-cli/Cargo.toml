@@ -7,6 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[dependencies]
+serde_json = "=1.0.154"
+
 [[bin]]
 name = "rust-flutter"
 path = "src/main.rs"

@@ -77,7 +77,10 @@ rust-flutter run
 
 `rust-flutter doctor --android` checks Android build prerequisites.
 `rust-flutter devices` lists connected devices. `build` and `run` accept
-`--android`, `--release`, and `--target`; Android `run` also accepts `--device`. Generated projects pin both framework crates to the CLI source commit on GitHub.
+`--android`, `--release`, and `--target`; Android `run` also accepts `--device`.
+On macOS, `rust-flutter build --release --macos-bundle` creates an unsigned
+`.app` bundle under `target/release`. Generated projects pin both framework
+crates to the CLI source commit on GitHub.
 Commit the generated `Cargo.lock` when sharing your app. Contributors can use
 `rust-flutter create my-app --framework-path /path/to/rust-flutter` to test local changes.
 

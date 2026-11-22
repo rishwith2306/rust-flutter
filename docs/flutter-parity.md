@@ -46,7 +46,7 @@ remains. Verification is recorded separately in `verification.md`.
 | Android deployment | NativeActivity cdylib and package metadata | Partial; emulator touch/text/back/resume/restart and three same-process activity recreations pass; OS/device matrix and release packaging remain |
 | iOS, Windows, Linux, web | Linux host works toward testing; backend has other targets | Outside first targets; Flutter-wide deployment parity still pending |
 | Hot reload | Ordinary Cargo rebuild | Missing state-preserving Rust code reload; rebuild is not hot reload |
-| CLI/project generation | `create`, `doctor`, `run`, `build`; shared-source retained-widget template | Partial; device selection, richer diagnostics, hot reload |
+| CLI/project generation | `create`, `doctor`, `run`, `build`; shared-source retained-widget template; unsigned macOS `.app` bundle generation | Partial; device selection, richer diagnostics, hot reload, bundle icons/signing/notarization |
 | Inspector and profiling | Standard Rust tooling and backend inspection APIs | Missing widget inspector, frame timeline, memory tooling integration |
 | Testing | Core integration and headless pointer tests | Partial; golden tests, device automation, full widget harness |
 | Documentation and examples | Getting started, architecture, gallery, platform guide | Partial; complete API cookbook and migration guide |

@@ -33,6 +33,13 @@ jobs:
           cargo run -p rust-flutter-cli -- create "$RUNNER_TEMP/generated-app" --framework-path "$GITHUB_WORKSPACE"
           cargo check --manifest-path "$RUNNER_TEMP/generated-app/Cargo.toml"
           python3 scripts/check-renderer-selection.py --manifest-path "$RUNNER_TEMP/generated-app/Cargo.toml"
+      - name: Build and validate generated macOS app bundle
+        if: runner.os == 'macOS'
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          cargo run --manifest-path "$GITHUB_WORKSPACE/crates/rust-flutter-cli/Cargo.toml" -- build --macos-bundle
+          test -x 'target/debug/generated app.app/Contents/MacOS/generated-app'
+          plutil -lint 'target/debug/generated app.app/Contents/Info.plist'
       - name: Linux rendered interaction and restoration test
         if: runner.os == 'Linux'
         run: |

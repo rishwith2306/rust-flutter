@@ -11,10 +11,13 @@ cargo build -p rust-flutter-gallery --release
 
 The executable appears in `target/release/rust-flutter-gallery`. Building an Apple
 Silicon or Intel executable requires the corresponding Rust target on a Mac with
-an appropriate SDK. Cross-checking Rust code on Linux is not a macOS runtime test.
-App bundle creation, icons, entitlements, signing, notarization and store delivery
-are not automated yet. The macOS CI job checks source compilation and core tests;
-it does not replace interactive window/input/VoiceOver tests.
+an appropriate SDK. For generated projects, `rust-flutter build --release
+--macos-bundle` creates an unsigned app bundle at
+`target/release/<package name>.app`; Cargo package metadata supplies its executable,
+bundle identifier and version. Cross-checking Rust code on Linux is not a macOS
+runtime test. App icons, entitlements, signing, notarization and store delivery
+are not automated yet. The macOS CI job checks source compilation and bundle
+structure; it does not replace interactive window/input/VoiceOver tests.
 
 ## Android NativeActivity
 
