@@ -10,6 +10,7 @@ use crate::{
 
 mod button;
 mod checkbox;
+mod list_tile;
 mod navigation_bar;
 mod navigation_drawer;
 mod radio;
@@ -19,6 +20,7 @@ mod switch;
 mod text_field;
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use checkbox::Checkbox;
+pub use list_tile::ListTile;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
 pub use radio::Radio;

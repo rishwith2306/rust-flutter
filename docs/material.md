@@ -219,6 +219,32 @@ surface, including prefix/suffix widgets and floating-label animation.
 This is an initial theme layer, not Material 3 parity. The palette is static,
 does not derive tonal roles from a seed, and does not yet include every Flutter
 `ColorScheme` role, `TextTheme`, component themes, `MaterialApp`, scaffold
-drawers/sheets/FAB/inset handling, icon assets, or most of the Material control catalog. The
+sheets/FAB/inset handling, icon assets, or most of the Material control catalog. The
 role names and app-level/subtree theming model were checked against Flutter's
 [ColorScheme API](https://api.flutter.dev/flutter/material/ColorScheme-class.html).
+
+`ListTile` composes leading, title, optional subtitle, and trailing widgets in a
+fixed-height row. It supports dense and three-line sizing, selection colors,
+disabled state, custom padding, and a whole-row tap callback:
+
+```rust
+use rust_flutter::{
+    gestures::GestureBinding,
+    material::{ListTile, ThemeData},
+    text::Text,
+};
+
+let binding = GestureBinding::new();
+let tile = ListTile::new(&binding, Text::new("Account").into_widget())
+    .leading(Text::new("◉").into_widget())
+    .subtitle(Text::new("Profile and sign-in").into_widget())
+    .trailing(Text::new("›").into_widget())
+    .on_tap(|| {})
+    .theme(ThemeData::default())
+    .into_widget()?;
+# let _ = tile;
+```
+
+The tile currently has no ink splash, pressed/focus/hover state or semantic
+button role. Flutter exposes those states and additional alignment, color and
+accessibility options through its [ListTile API](https://api.flutter.dev/flutter/material/ListTile-class.html).

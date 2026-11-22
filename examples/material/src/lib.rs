@@ -3,8 +3,8 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::Insets,
     material::{
-        AppBar, Drawer, MaterialApp, NavigationDrawer, NavigationDrawerDestination, Scaffold,
-        ThemeData,
+        AppBar, Drawer, ListTile, MaterialApp, NavigationDrawer, NavigationDrawerDestination,
+        Scaffold, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -70,6 +70,17 @@ impl State<DrawerExample> for DrawerExampleState {
             },
         )
         .header(Text::new("WORKSPACE").into_widget())
+        .footer(
+            ListTile::new(
+                &widget.binding,
+                Text::new("About this example").into_widget(),
+            )
+            .leading(Text::new("ⓘ").into_widget())
+            .trailing(Text::new("0.1").into_widget())
+            .theme(widget.theme)
+            .into_widget()
+            .expect("valid example list tile"),
+        )
         .width(256.0)
         .theme(widget.theme)
         .into_widget()
