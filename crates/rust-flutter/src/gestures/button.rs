@@ -20,6 +20,7 @@ pub struct GestureButton {
     size: Vec2,
     fill: Option<Color32>,
     stroke: Option<egui::Stroke>,
+    corner_radius: Option<egui::CornerRadius>,
     enabled: bool,
     activate: Rc<dyn Fn()>,
 }
@@ -35,6 +36,7 @@ impl GestureButton {
             size: egui::vec2(80.0, 24.0),
             fill: None,
             stroke: None,
+            corner_radius: None,
             enabled: true,
             activate: Rc::new(activate),
         }
@@ -49,6 +51,10 @@ impl GestureButton {
     }
     pub fn stroke(mut self, stroke: egui::Stroke) -> Self {
         self.stroke = Some(stroke);
+        self
+    }
+    pub fn corner_radius(mut self, radius: impl Into<egui::CornerRadius>) -> Self {
+        self.corner_radius = Some(radius.into());
         self
     }
     pub fn enabled(mut self, enabled: bool) -> Self {
@@ -260,6 +266,9 @@ impl RenderBox for GestureButtonRenderBox {
         }
         if let Some(stroke) = self.config.stroke {
             button = button.stroke(stroke);
+        }
+        if let Some(radius) = self.config.corner_radius {
+            button = button.corner_radius(radius);
         }
         let mut scope =
             egui::UiBuilder::new().id(("rust-flutter-gesture-button", ctx.element_id()));

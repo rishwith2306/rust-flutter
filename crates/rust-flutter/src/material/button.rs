@@ -60,7 +60,8 @@ impl StatelessWidget for ButtonWidget {
         )
         .size(self.size)
         .enabled(self.enabled)
-        .stroke(stroke);
+        .stroke(stroke)
+        .corner_radius(egui::CornerRadius::same(20));
         let button = if matches!(self.variant, Variant::Text) {
             button
         } else {

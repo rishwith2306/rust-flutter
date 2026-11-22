@@ -52,9 +52,36 @@ let themed_page = theme.provide(page);
 The scaffold does not add safe-area padding or keyboard insets automatically.
 Compose those behaviors explicitly around the relevant child.
 
+`NavigationBar` is controlled: provide destinations, the selected index and a
+callback, then update the index in the owning state when the callback runs.
+Destination icons are app-supplied text glyphs until a Material icon/font asset
+catalog is implemented.
+
+```rust
+use rust_flutter::{
+    element::Widget,
+    gestures::GestureBinding,
+    material::{NavigationBar, NavigationDestination, Scaffold, ThemeData},
+};
+
+let binding = GestureBinding::new();
+let bar = NavigationBar::new(
+    &binding,
+    vec![
+        NavigationDestination::new("⌂", "Home"),
+        NavigationDestination::new("⚙", "Settings"),
+    ],
+    0,
+    |selected_index| { let _ = selected_index; },
+).into_widget();
+let page = ThemeData::default()
+    .provide(Scaffold::new(Widget::empty()).bottom_navigation_bar(bar).into_widget());
+# let _ = page;
+```
+
 This is an initial theme layer, not Material 3 parity. The palette is static,
 does not derive tonal roles from a seed, and does not yet include every Flutter
 `ColorScheme` role, `TextTheme`, component themes, `MaterialApp`, scaffold
-drawers/sheets/FAB/inset handling, or most of the Material control catalog. The
+drawers/sheets/FAB/inset handling, icon assets, or most of the Material control catalog. The
 role names and app-level/subtree theming model were checked against Flutter's
 [ColorScheme API](https://api.flutter.dev/flutter/material/ColorScheme-class.html).

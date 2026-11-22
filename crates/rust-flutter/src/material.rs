@@ -8,8 +8,10 @@ use crate::{
 };
 
 mod button;
+mod navigation_bar;
 mod scaffold;
 pub use button::{FilledButton, OutlinedButton, TextButton};
+pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use scaffold::{AppBar, Scaffold};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -289,5 +291,34 @@ mod tests {
         });
         assert!(body_painted.get());
         assert!(bottom_painted.get());
+    }
+
+    #[test]
+    fn navigation_bar_builds_controlled_destinations_inside_theme_scope() {
+        let context = egui::Context::default();
+        let binding = crate::gestures::GestureBinding::new();
+        let nav = crate::material::NavigationBar::new(
+            &binding,
+            vec![
+                crate::material::NavigationDestination::new("⌂", "Home"),
+                crate::material::NavigationDestination::new("⌕", "Search").selected_icon("⌕"),
+                crate::material::NavigationDestination::new("⚙", "Settings"),
+            ],
+            1,
+            |_| {},
+        )
+        .into_widget();
+        let root = ThemeData::default().provide(
+            crate::material::Scaffold::new(Widget::empty())
+                .bottom_navigation_bar(nav)
+                .into_widget(),
+        );
+        let mut tree = ElementTree::new(&context, root).unwrap();
+        let _ = context.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                tree.show(ui, BoxConstraints::tight(egui::vec2(360.0, 720.0)).unwrap())
+                    .unwrap();
+            });
+        });
     }
 }
