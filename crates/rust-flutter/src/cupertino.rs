@@ -28,6 +28,8 @@ use std::{
 
 mod sliding_segmented;
 pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
+mod tab_bar;
+pub use tab_bar::{CupertinoTabBar, CupertinoTabDestination};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
@@ -190,6 +192,7 @@ impl CupertinoNavigationBar {
 pub struct CupertinoPageScaffold {
     child: Widget,
     navigation_bar: Option<Widget>,
+    tab_bar: Option<Widget>,
     background_color: Color32,
 }
 
@@ -198,12 +201,18 @@ impl CupertinoPageScaffold {
         Self {
             child,
             navigation_bar: None,
+            tab_bar: None,
             background_color: CupertinoThemeData::default().scaffold_background_color,
         }
     }
 
     pub fn navigation_bar(mut self, navigation_bar: Widget) -> Self {
         self.navigation_bar = Some(navigation_bar);
+        self
+    }
+
+    pub fn tab_bar(mut self, tab_bar: Widget) -> Self {
+        self.tab_bar = Some(tab_bar);
         self
     }
 
@@ -220,6 +229,7 @@ impl CupertinoPageScaffold {
     pub fn into_widget(self) -> Widget {
         let mut children = Vec::with_capacity(2);
         let has_navigation_bar = self.navigation_bar.is_some();
+        let has_tab_bar = self.tab_bar.is_some();
         if let Some(navigation_bar) = self.navigation_bar {
             children.push(FlexItem::fixed(Widget::safe_area_with(
                 SafeAreaOptions {
@@ -234,12 +244,12 @@ impl CupertinoPageScaffold {
                 navigation_bar,
             )));
         }
-        let body_edges = if has_navigation_bar {
+        let body_edges = if has_navigation_bar || has_tab_bar {
             ViewEdges {
                 left: true,
-                top: false,
+                top: !has_navigation_bar,
                 right: true,
-                bottom: true,
+                bottom: !has_tab_bar,
             }
         } else {
             ViewEdges::ALL
@@ -254,6 +264,20 @@ impl CupertinoPageScaffold {
             ),
             1,
         ));
+        if let Some(tab_bar) = self.tab_bar {
+            children.push(FlexItem::fixed(Widget::safe_area_with(
+                SafeAreaOptions {
+                    edges: ViewEdges {
+                        left: true,
+                        top: false,
+                        right: true,
+                        bottom: true,
+                    },
+                    ..Default::default()
+                },
+                tab_bar,
+            )));
+        }
         let mut style = FlexStyle::new(Axis::Vertical);
         style.cross_alignment = CrossAxisAlignment::Stretch;
         DecoratedBox::new(BoxDecoration::solid(self.background_color))

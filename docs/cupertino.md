@@ -14,7 +14,8 @@ use rust_flutter::{
         CupertinoPageScaffold, CupertinoSlider,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSwitch,
         CupertinoSlidingSegment, CupertinoSlidingSegmentedControl,
-        CupertinoTextField, CupertinoThemeData,
+        CupertinoTabBar, CupertinoTabDestination, CupertinoTextField,
+        CupertinoThemeData,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -66,6 +67,16 @@ let view = CupertinoSlidingSegmentedControl::new(
     |value| { let _ = value; },
 )?
 .into_widget()?;
+let tabs = CupertinoTabBar::new(
+    &binding,
+    vec![
+        CupertinoTabDestination::new("⌂", "Home"),
+        CupertinoTabDestination::new("⚙", "Settings"),
+    ],
+    0,
+    |index| { let _ = index; },
+)
+.into_widget()?;
 let content = Widget::flex(
     rust_flutter::element::FlexStyle::new(rust_flutter::layout::Axis::Vertical),
     vec![
@@ -81,6 +92,7 @@ let content = Widget::flex(
 );
 let page = CupertinoPageScaffold::new(content)
     .navigation_bar(CupertinoNavigationBar::new("Home").theme(theme).into_widget())
+    .tab_bar(tabs)
     .theme(theme)
     .into_widget();
 let app = CupertinoApp::new(page).theme(theme).into_widget();
@@ -90,8 +102,11 @@ let app = CupertinoApp::new(page).theme(theme).into_widget();
 The default theme uses the familiar blue accent for light and dark palettes.
 Applications can provide custom primary, text, disabled, and background colors
 through `CupertinoThemeData`. The page scaffold expands its body below an
-optional navigation bar, centers the title between equal leading/trailing slots,
-and applies measured safe-area insets to the bar and body. Native translucency,
+optional navigation and tab bars, centers the title between equal
+leading/trailing slots, and applies measured safe-area insets around all three
+regions. The tab bar is controlled: the owner updates its selected index after
+the callback. It currently retains the page body as one child; separate tab
+stacks and offstage page retention are not built in. Native translucency,
 scroll-under blur, large-title transitions, and status-bar tap-to-scroll remain
 unfinished. System appearance integration remains explicit application work.
 The initial text field uses the shared
@@ -118,5 +133,7 @@ APIs for the broader Flutter surface. The control references include
 [CupertinoSlidingSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSlidingSegmentedControl-class.html),
 [CupertinoListTile](https://api.flutter.dev/flutter/cupertino/CupertinoListTile-class.html),
 [CupertinoListSection](https://api.flutter.dev/flutter/cupertino/CupertinoListSection-class.html),
+[CupertinoTabBar](https://api.flutter.dev/flutter/cupertino/CupertinoTabBar-class.html),
+[CupertinoTabScaffold](https://api.flutter.dev/flutter/cupertino/CupertinoTabScaffold-class.html),
 [CupertinoSwitch](https://api.flutter.dev/flutter/cupertino/CupertinoSwitch-class.html),
 and [CupertinoTextField](https://api.flutter.dev/flutter/cupertino/CupertinoTextField-class.html).
