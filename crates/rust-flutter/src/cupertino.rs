@@ -7,8 +7,11 @@ use crate::{
     egui::{self, Color32, Stroke, Vec2},
     element::{BuildContext, DependencyError, FlexItem, FlexStyle, StatelessWidget, Widget},
     forms::{TextEditingController, TextFormField},
-    gestures::{GestureBinding, GestureButton},
-    layout::{Axis, BoxConstraints, CrossAxisAlignment, Insets},
+    gestures::{
+        GestureBinding, GestureButton, GestureDetector, GestureTargetConfig, TapCallbacks,
+        TapConfig,
+    },
+    layout::{Axis, BoxConstraints, CrossAxisAlignment, HitTestBehavior, Insets},
     text::{DefaultTextStyle, Text, TextStyle},
 };
 use std::rc::Rc;
@@ -210,6 +213,188 @@ impl CupertinoPageScaffold {
         style.cross_alignment = CrossAxisAlignment::Stretch;
         DecoratedBox::new(BoxDecoration::solid(self.background_color))
             .into_widget(Widget::flex(style, children))
+    }
+}
+
+/// A Cupertino settings-style row with optional supporting content and action.
+pub struct CupertinoListTile {
+    binding: GestureBinding,
+    title: Widget,
+    subtitle: Option<Widget>,
+    additional_info: Option<Widget>,
+    leading: Option<Widget>,
+    trailing: Option<Widget>,
+    on_tap: Option<Rc<dyn Fn()>>,
+    enabled: bool,
+    background_color: Color32,
+    leading_size: Vec2,
+    leading_to_title: f32,
+    notched: bool,
+}
+
+impl CupertinoListTile {
+    pub fn new(binding: &GestureBinding, title: Widget) -> Self {
+        Self {
+            binding: binding.clone(),
+            title,
+            subtitle: None,
+            additional_info: None,
+            leading: None,
+            trailing: None,
+            on_tap: None,
+            enabled: true,
+            background_color: CupertinoThemeData::default().scaffold_background_color,
+            leading_size: Vec2::splat(28.0),
+            leading_to_title: 12.0,
+            notched: false,
+        }
+    }
+
+    pub fn subtitle(mut self, subtitle: Widget) -> Self {
+        self.subtitle = Some(subtitle);
+        self
+    }
+
+    pub fn additional_info(mut self, info: Widget) -> Self {
+        self.additional_info = Some(info);
+        self
+    }
+
+    pub fn leading(mut self, leading: Widget) -> Self {
+        self.leading = Some(leading);
+        self
+    }
+
+    pub fn leading_size(mut self, size: Vec2) -> Self {
+        self.leading_size = size;
+        self
+    }
+
+    pub fn leading_to_title(mut self, spacing: f32) -> Self {
+        self.leading_to_title = spacing;
+        self
+    }
+
+    pub fn trailing(mut self, trailing: Widget) -> Self {
+        self.trailing = Some(trailing);
+        self
+    }
+
+    pub fn on_tap(mut self, callback: impl Fn() + 'static) -> Self {
+        self.on_tap = Some(Rc::new(callback));
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = color;
+        self
+    }
+
+    /// Use an inset, rounded tile style similar to grouped iOS lists.
+    pub fn notched(mut self) -> Self {
+        self.notched = true;
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if !self.leading_size.is_finite()
+            || self.leading_size.x < 0.0
+            || self.leading_size.y < 0.0
+            || !self.leading_to_title.is_finite()
+            || self.leading_to_title < 0.0
+        {
+            return Err("invalid Cupertino list tile leading size or spacing");
+        }
+        let mut title_column = vec![FlexItem::fixed(self.title)];
+        if let Some(subtitle) = self.subtitle {
+            title_column.push(FlexItem::fixed(subtitle));
+        }
+        let mut title_style = FlexStyle::new(Axis::Vertical);
+        title_style.cross_alignment = CrossAxisAlignment::Stretch;
+        let mut row_items = Vec::with_capacity(4);
+        if let Some(leading) = self.leading {
+            let limits =
+                BoxConstraints::tight_for(Some(self.leading_size.x), Some(self.leading_size.y))
+                    .map_err(|_| "invalid Cupertino list tile leading constraints")?;
+            row_items.push(FlexItem::fixed(Widget::padding(
+                Insets {
+                    right: self.leading_to_title,
+                    ..Default::default()
+                },
+                Widget::constrained(limits, leading),
+            )));
+        }
+        row_items.push(FlexItem::expanded(
+            Widget::flex(title_style, title_column),
+            1,
+        ));
+        if let Some(info) = self.additional_info {
+            row_items.push(FlexItem::fixed(info));
+        }
+        if let Some(trailing) = self.trailing {
+            row_items.push(FlexItem::fixed(trailing));
+        }
+        let mut row_style = FlexStyle::new(Axis::Horizontal);
+        row_style.cross_alignment = CrossAxisAlignment::Center;
+        let content = Widget::padding(
+            Insets {
+                left: 16.0,
+                right: 16.0,
+                top: 10.0,
+                bottom: 10.0,
+            },
+            Widget::flex(row_style, row_items),
+        );
+        let min_height = BoxConstraints::new(
+            egui::vec2(0.0, 44.0),
+            egui::vec2(f32::INFINITY, f32::INFINITY),
+        )
+        .map_err(|_| "invalid Cupertino list tile minimum height")?;
+        let decoration = BoxDecoration {
+            color: self.background_color,
+            corner_radius: if self.notched {
+                egui::CornerRadius::same(9)
+            } else {
+                egui::CornerRadius::ZERO
+            },
+            ..Default::default()
+        };
+        let mut tile =
+            DecoratedBox::new(decoration).into_widget(Widget::constrained(min_height, content));
+        if self.notched {
+            tile = Widget::padding(
+                Insets {
+                    left: 16.0,
+                    right: 16.0,
+                    ..Default::default()
+                },
+                tile,
+            );
+        }
+        if self.enabled
+            && let Some(callback) = self.on_tap
+        {
+            let config = GestureTargetConfig {
+                tap: Some((
+                    TapConfig::default(),
+                    TapCallbacks {
+                        on_tap: Some(Rc::new(move |_| callback())),
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
+            };
+            tile = GestureDetector::new(&self.binding, config)
+                .expect("valid Cupertino list tile tap gesture")
+                .behavior(HitTestBehavior::Opaque)
+                .into_widget(tile);
+        }
+        Ok(tile)
     }
 }
 
