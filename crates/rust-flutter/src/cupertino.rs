@@ -3,9 +3,12 @@
 //! This is a small starting point for Cupertino styling, not a complete iOS
 //! component catalog or native macOS/iOS behavior layer.
 use crate::{
+    decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Vec2},
-    element::{BuildContext, DependencyError, StatelessWidget, Widget},
+    element::{BuildContext, DependencyError, FlexItem, FlexStyle, StatelessWidget, Widget},
     gestures::{GestureBinding, GestureButton},
+    layout::{Axis, BoxConstraints, CrossAxisAlignment, Insets},
+    text::{DefaultTextStyle, Text, TextStyle},
 };
 use std::rc::Rc;
 
@@ -85,6 +88,124 @@ impl CupertinoApp {
 
     pub fn into_widget(self) -> Widget {
         self.theme.provide(self.home)
+    }
+}
+
+/// A 44-point Cupertino navigation bar with optional leading and trailing slots.
+pub struct CupertinoNavigationBar {
+    title: String,
+    leading: Option<Widget>,
+    trailing: Option<Widget>,
+    background_color: Color32,
+    foreground_color: Color32,
+}
+
+impl CupertinoNavigationBar {
+    pub fn new(title: impl Into<String>) -> Self {
+        let theme = CupertinoThemeData::default();
+        Self {
+            title: title.into(),
+            leading: None,
+            trailing: None,
+            background_color: theme.scaffold_background_color,
+            foreground_color: theme.text_color,
+        }
+    }
+
+    pub fn leading(mut self, widget: Widget) -> Self {
+        self.leading = Some(widget);
+        self
+    }
+
+    pub fn trailing(mut self, widget: Widget) -> Self {
+        self.trailing = Some(widget);
+        self
+    }
+
+    pub fn theme(mut self, theme: CupertinoThemeData) -> Self {
+        self.background_color = theme.scaffold_background_color;
+        self.foreground_color = theme.text_color;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        let title = DefaultTextStyle {
+            style: TextStyle {
+                font_size: Some(17.0),
+                color: Some(self.foreground_color),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+        .provide(Text::new(self.title).into_widget());
+        let slot = |child: Option<Widget>| {
+            let width = BoxConstraints::tight_for(Some(72.0), None)
+                .expect("finite Cupertino navigation slot width is valid");
+            Widget::constrained(width, child.unwrap_or_else(Widget::empty))
+        };
+        let mut row_style = FlexStyle::new(Axis::Horizontal);
+        row_style.cross_alignment = CrossAxisAlignment::Center;
+        let row = Widget::flex(
+            row_style,
+            vec![
+                FlexItem::fixed(slot(self.leading)),
+                FlexItem::expanded(title, 1),
+                FlexItem::fixed(slot(self.trailing)),
+            ],
+        );
+        let row = Widget::padding(Insets::all(8.0), row);
+        let height = BoxConstraints::tight_for(None, Some(44.0))
+            .expect("finite Cupertino navigation bar height is valid");
+        DecoratedBox::new(BoxDecoration {
+            color: self.background_color,
+            border: egui::Stroke::new(0.5_f32, self.foreground_color.gamma_multiply(0.2)),
+            ..Default::default()
+        })
+        .into_widget(Widget::constrained(height, row))
+    }
+}
+
+/// Cupertino page shell with an optional navigation bar and expanding body.
+pub struct CupertinoPageScaffold {
+    child: Widget,
+    navigation_bar: Option<Widget>,
+    background_color: Color32,
+}
+
+impl CupertinoPageScaffold {
+    pub fn new(child: Widget) -> Self {
+        Self {
+            child,
+            navigation_bar: None,
+            background_color: CupertinoThemeData::default().scaffold_background_color,
+        }
+    }
+
+    pub fn navigation_bar(mut self, navigation_bar: Widget) -> Self {
+        self.navigation_bar = Some(navigation_bar);
+        self
+    }
+
+    pub fn theme(mut self, theme: CupertinoThemeData) -> Self {
+        self.background_color = theme.scaffold_background_color;
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = color;
+        self
+    }
+
+    pub fn into_widget(self) -> Widget {
+        let mut children = Vec::with_capacity(2);
+        if let Some(navigation_bar) = self.navigation_bar {
+            children.push(FlexItem::fixed(navigation_bar));
+        }
+        children.push(FlexItem::expanded(self.child, 1));
+        let mut style = FlexStyle::new(Axis::Vertical);
+        style.cross_alignment = CrossAxisAlignment::Stretch;
+        DecoratedBox::new(BoxDecoration::solid(self.background_color))
+            .into_widget(Widget::flex(style, children))
     }
 }
 
