@@ -49,6 +49,21 @@ callback receives the next controlled value. This first version uses check and
 dash glyphs and does not provide the complete Material state, semantics, or
 adaptive platform styling surface.
 
+`Switch` is also controlled: supply its value and update that value in the
+owner after the callback. The current thumb uses a text glyph and switches
+without an animated slide, which differs from Flutter's Material switch:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::Switch};
+
+let binding = GestureBinding::new();
+let notifications = Switch::new(&binding, true, |next| {
+    let _ = next;
+})
+.into_widget();
+# let _ = notifications;
+```
+
 `Scaffold` provides a vertical page shell with an expanding body and optional
 `AppBar` / bottom-navigation slots. Pass the same theme to those shell widgets
 for their surface colors, and provide it above the page so buttons in the body

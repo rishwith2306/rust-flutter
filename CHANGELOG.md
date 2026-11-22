@@ -5,8 +5,9 @@
 - Add an initial Material theme foundation with core semantic `ColorScheme`
   roles, inherited `ThemeData`, an egui global-style adapter, and retained
   filled/outlined/text buttons, `AppBar`, an expanding-body `Scaffold`, and a
-  controlled `NavigationBar`, themed `TextField`, and owner-controlled `Checkbox`
-  with optional tristate cycling. Navigation and checkbox icons are text glyphs.
+  controlled `NavigationBar`, themed `TextField`, owner-controlled `Checkbox`
+  with optional tristate cycling, and a controlled `Switch`. Navigation,
+  checkbox, and switch icons use text glyphs.
   Dynamic palette generation and most of the Material component catalog remain
   open.
 
