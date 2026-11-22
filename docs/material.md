@@ -46,12 +46,13 @@ let selected = Checkbox::new(&binding, Some(false), |next| {
 
 For tristate selection, pass an `Option<bool>` and call `.tristate(true)`; the
 callback receives the next controlled value. This first version uses check and
-dash glyphs and does not provide the complete Material state, semantics, or
-adaptive platform styling surface.
+dash marks painted by the framework. It does not yet provide the complete
+Material interaction-state or accessibility semantics surface.
 
 `Switch` is also controlled: supply its value and update that value in the
-owner after the callback. The current thumb uses a text glyph and switches
-without an animated slide, which differs from Flutter's Material switch:
+owner after the callback. The framework paints its track and moving thumb, but
+the thumb currently jumps between states without the animated slide Flutter
+provides:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::Switch};

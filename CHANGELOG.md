@@ -6,8 +6,9 @@
   roles, inherited `ThemeData`, an egui global-style adapter, and retained
   filled/outlined/text buttons, `AppBar`, an expanding-body `Scaffold`, and a
   controlled `NavigationBar`, themed `TextField`, owner-controlled `Checkbox`
-  with optional tristate cycling, and a controlled `Switch`. Navigation,
-  checkbox, and switch icons use text glyphs.
+  with optional tristate cycling, and a controlled `Switch`. Navigation icons
+  still use text glyphs; Checkbox/Switch use custom paint, and switch transitions
+  do not animate yet.
   Dynamic palette generation and most of the Material component catalog remain
   open.
 

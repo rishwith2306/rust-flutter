@@ -9,6 +9,7 @@ use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
+type ButtonPaint = Rc<dyn Fn(&egui::Painter, egui::Rect)>;
 
 /// An opt-in egui-painted button whose pointer action participates in the shared
 /// gesture arena. Ordinary egui buttons remain independent. Keyboard Enter/Space
@@ -21,6 +22,7 @@ pub struct GestureButton {
     fill: Option<Color32>,
     stroke: Option<egui::Stroke>,
     corner_radius: Option<egui::CornerRadius>,
+    paint_content: Option<ButtonPaint>,
     enabled: bool,
     activate: Rc<dyn Fn()>,
 }
@@ -37,6 +39,7 @@ impl GestureButton {
             fill: None,
             stroke: None,
             corner_radius: None,
+            paint_content: None,
             enabled: true,
             activate: Rc::new(activate),
         }
@@ -55,6 +58,12 @@ impl GestureButton {
     }
     pub fn corner_radius(mut self, radius: impl Into<egui::CornerRadius>) -> Self {
         self.corner_radius = Some(radius.into());
+        self
+    }
+    /// Paint custom content over the button face while retaining its shared
+    /// gesture, focus and keyboard activation behavior.
+    pub fn paint_content(mut self, paint: impl Fn(&egui::Painter, egui::Rect) + 'static) -> Self {
+        self.paint_content = Some(Rc::new(paint));
         self
     }
     pub fn enabled(mut self, enabled: bool) -> Self {
@@ -298,6 +307,9 @@ impl RenderBox for GestureButtonRenderBox {
                 ui.put(ui.max_rect(), button)
             })
             .inner;
+        if let Some(paint_content) = &self.config.paint_content {
+            paint_content(ui.painter(), response.rect);
+        }
         self.state.focus.set(Some(response.id));
         if let Some(node) = &self.focus_node {
             node.attach(ui.ctx(), response.id);
