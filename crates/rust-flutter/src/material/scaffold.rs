@@ -164,6 +164,7 @@ pub struct Scaffold {
     floating_action_button: Option<Widget>,
     app_bar: Option<Widget>,
     app_bar_config: Option<AppBar>,
+    bottom_sheet: Option<Widget>,
     bottom_navigation_bar: Option<Widget>,
     drawer: Option<DrawerSlot>,
     background_color: Color32,
@@ -177,6 +178,7 @@ impl Scaffold {
             floating_action_button: None,
             app_bar: None,
             app_bar_config: None,
+            bottom_sheet: None,
             bottom_navigation_bar: None,
             drawer: None,
             background_color: ThemeData::default().color_scheme.surface,
@@ -200,6 +202,13 @@ impl Scaffold {
 
     pub fn bottom_navigation_bar(mut self, bar: Widget) -> Self {
         self.bottom_navigation_bar = Some(bar);
+        self
+    }
+
+    /// Add a persistent bottom sheet. The sheet remains part of the page while
+    /// the user interacts with the body; modal dismissal is handled separately.
+    pub fn bottom_sheet(mut self, sheet: Widget) -> Self {
+        self.bottom_sheet = Some(sheet);
         self
     }
 
@@ -280,11 +289,14 @@ impl Scaffold {
                 ],
             );
         }
-        let mut children = Vec::with_capacity(3);
+        let mut children = Vec::with_capacity(4);
         if let Some(app_bar) = app_bar {
             children.push(FlexItem::fixed(app_bar));
         }
         children.push(FlexItem::expanded(body, 1));
+        if let Some(bottom_sheet) = self.bottom_sheet {
+            children.push(FlexItem::fixed(bottom_sheet));
+        }
         if let Some(bottom) = self.bottom_navigation_bar {
             children.push(FlexItem::fixed(bottom));
         }

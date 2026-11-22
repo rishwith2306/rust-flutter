@@ -118,7 +118,13 @@ This first version does not provide value indicators, secondary tracks,
 keyboard adjustments, or slider accessibility semantics.
 
 `Scaffold` provides a vertical page shell with an expanding body, optional
-`AppBar` / bottom-navigation slots, and a controlled modal `Drawer`. The owner
+`AppBar`, persistent `bottom_sheet`, bottom-navigation slots, and a controlled
+modal `Drawer`. A persistent sheet stays visible while the user interacts with
+the body. It can be any widget; `Scaffold.bottom_sheet` places it between the
+body and bottom-navigation bar. Modal sheets, which block interaction and
+dismiss through a route, are a separate feature. Flutter describes the same
+distinction on [`Scaffold.bottomSheet`](https://api.flutter.dev/flutter/material/Scaffold/bottomSheet.html).
+The owner
 supplies whether the drawer is open and updates that state from `on_open` and
 `on_dismiss`. `.app_bar_config(AppBar)` adds a menu action when a drawer is
 configured and the app bar has no explicit leading widget; `.app_bar(Widget)`
@@ -152,6 +158,7 @@ let destinations = NavigationDrawer::new(
 let drawer = Drawer::new(destinations).theme(theme).into_widget()?;
 let page = Scaffold::new(Widget::empty())
     .app_bar_config(AppBar::new("Home").theme(theme))
+    .bottom_sheet(Text::new("Persistent panel").into_widget())
     .drawer(&binding, drawer, false, || {}, || {})
     .theme(theme)
     .into_widget();
