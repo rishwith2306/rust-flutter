@@ -62,6 +62,7 @@ jobs:
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang"
           cargo build -p rust-flutter-gallery --lib --target aarch64-linux-android --locked
+          cargo build -p rust-flutter-cupertino-example --lib --target aarch64-linux-android --locked
           cargo clippy -p rust-flutter --target aarch64-linux-android --locked -- -D warnings
   android-runtime:
     runs-on: ubuntu-latest
