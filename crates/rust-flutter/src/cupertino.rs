@@ -462,6 +462,111 @@ impl StatelessWidget for CupertinoSwitchView {
     }
 }
 
+/// A Cupertino-style radial activity indicator with optional static progress.
+pub struct CupertinoActivityIndicator {
+    animating: bool,
+    radius: f32,
+    color: Option<Color32>,
+    progress: Option<f32>,
+}
+
+impl CupertinoActivityIndicator {
+    pub fn new() -> Self {
+        Self {
+            animating: true,
+            radius: 10.0,
+            color: None,
+            progress: None,
+        }
+    }
+
+    pub fn partially_revealed(progress: f32) -> Self {
+        Self {
+            animating: false,
+            radius: 10.0,
+            color: None,
+            progress: Some(progress),
+        }
+    }
+
+    pub fn animating(mut self, animating: bool) -> Self {
+        self.animating = animating;
+        self
+    }
+
+    pub fn radius(mut self, radius: f32) -> Self {
+        self.radius = radius;
+        self
+    }
+
+    pub fn color(mut self, color: Color32) -> Self {
+        self.color = Some(color);
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if !self.radius.is_finite()
+            || self.radius <= 0.0
+            || self
+                .progress
+                .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
+        {
+            return Err("invalid Cupertino activity indicator radius or progress");
+        }
+        Ok(Widget::stateless(CupertinoActivityIndicatorView(self)))
+    }
+}
+
+impl Default for CupertinoActivityIndicator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+struct CupertinoActivityIndicatorView(CupertinoActivityIndicator);
+
+impl StatelessWidget for CupertinoActivityIndicatorView {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let indicator = &self.0;
+        let color = indicator.color.unwrap_or_else(|| {
+            CupertinoThemeData::of(context)
+                .unwrap_or_default()
+                .text_color
+        });
+        let radius = indicator.radius;
+        let animating = indicator.animating;
+        let progress = indicator.progress;
+        Widget::leaf(Vec2::splat(radius * 2.0), move |ui| {
+            let bounds = ui.max_rect();
+            let center = bounds.center();
+            let current_tick = if animating {
+                ui.ctx().request_repaint();
+                (ui.input(|input| input.time) * 12.0).floor() as usize % 12
+            } else {
+                0
+            };
+            let visible_ticks = progress.map_or(12, |value| (value * 12.0).ceil() as usize);
+            for tick in 0..visible_ticks {
+                let angle =
+                    std::f32::consts::TAU * tick as f32 / 12.0 - std::f32::consts::FRAC_PI_2;
+                let direction = egui::vec2(angle.cos(), angle.sin());
+                let start = center + direction * (radius * 0.43);
+                let end = center + direction * (radius * 0.88);
+                let age = (tick + 12 - current_tick) % 12;
+                let alpha = if animating {
+                    0.2 + 0.8 * (11 - age) as f32 / 11.0
+                } else {
+                    0.25 + 0.75 * tick as f32 / 11.0
+                };
+                ui.painter().line_segment(
+                    [start, end],
+                    egui::Stroke::new((radius * 0.13).max(1.0), color.gamma_multiply(alpha)),
+                );
+            }
+        })
+    }
+}
+
 /// Owner-controlled Cupertino button with regular or filled styling.
 #[derive(Clone)]
 pub struct CupertinoButton {

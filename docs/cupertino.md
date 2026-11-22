@@ -10,8 +10,8 @@ it does not reproduce native UIKit/AppKit controls.
 use rust_flutter::{
     cupertino::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
-        CupertinoPageScaffold, CupertinoSlider, CupertinoSwitch, CupertinoTextField,
-        CupertinoThemeData,
+        CupertinoActivityIndicator, CupertinoPageScaffold, CupertinoSlider,
+        CupertinoSwitch, CupertinoTextField, CupertinoThemeData,
     },
     element::Widget,
     gestures::GestureBinding,
@@ -31,12 +31,14 @@ let volume = CupertinoSlider::new(&binding, 0.5, |value| {
 .range(0.0, 1.0)
 .divisions(Some(10))
 .into_widget()?;
+let loading = CupertinoActivityIndicator::new().into_widget()?;
 let content = Widget::flex(
     rust_flutter::element::FlexStyle::new(rust_flutter::layout::Axis::Vertical),
     vec![
         rust_flutter::element::FlexItem::fixed(field),
         rust_flutter::element::FlexItem::fixed(switch),
         rust_flutter::element::FlexItem::fixed(volume),
+        rust_flutter::element::FlexItem::fixed(loading),
         rust_flutter::element::FlexItem::fixed(button),
     ],
 );
@@ -58,11 +60,17 @@ styling remains basic and does not match native insets, borders, clear-button,
 or keyboard accessory APIs. The switch is controlled and uses the iOS green on
 state. The slider supports continuous or discrete ranges, drag callbacks, and
 theme-based Cupertino track colors while reusing the shared gesture engine.
-Switch thumb animation, slider indicators and semantics, accessibility, and the
-broader Cupertino component catalog remain to be implemented.
+The activity indicator draws a rotating radial tick pattern and supports a
+static partially revealed progress value. Switch thumb animation, slider value
+indicators and semantics, accessibility, and the broader Cupertino component
+catalog remain to be implemented.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; routing, localization, system appearance following, dialogs, and pickers
 are separate work. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
 and [CupertinoButton](https://api.flutter.dev/flutter/cupertino/CupertinoButton-class.html)
-APIs for the broader Flutter surface.
+APIs for the broader Flutter surface. The control references include
+[CupertinoActivityIndicator](https://api.flutter.dev/flutter/cupertino/CupertinoActivityIndicator-class.html),
+[CupertinoSlider](https://api.flutter.dev/flutter/cupertino/CupertinoSlider-class.html),
+[CupertinoSwitch](https://api.flutter.dev/flutter/cupertino/CupertinoSwitch-class.html),
+and [CupertinoTextField](https://api.flutter.dev/flutter/cupertino/CupertinoTextField-class.html).
