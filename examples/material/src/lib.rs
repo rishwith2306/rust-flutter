@@ -1,9 +1,9 @@
 use rust_flutter::{
-    element::{State, StateContext, StatefulWidget, Widget},
+    element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
-    layout::Insets,
+    layout::{Axis, CrossAxisAlignment, Insets},
     material::{
-        AlertDialog, AppBar, Card, CardVariant, Drawer, FloatingActionButton, ListTile,
+        AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
         MaterialApp, MaterialDialogController, MaterialDialogHost, NavigationDrawer,
         NavigationDrawerDestination, Scaffold, TextButton, ThemeData,
     },
@@ -96,6 +96,29 @@ impl State<DrawerExample> for DrawerExampleState {
     fn build(&mut self, widget: &DrawerExample, context: &StateContext<Self>) -> Widget {
         let handle = context.handle();
         let title = ["Home", "Projects", "Settings"][self.selected];
+        let mut card_style = FlexStyle::new(Axis::Vertical);
+        card_style.cross_alignment = CrossAxisAlignment::Stretch;
+        card_style.spacing = 8.0;
+        let card_content = Widget::flex(
+            card_style,
+            vec![
+                FlexItem::fixed(Text::new(format!("Current destination: {title}")).into_widget()),
+                FlexItem::fixed(
+                    Divider::new()
+                        .theme(widget.theme)
+                        .into_widget()
+                        .expect("valid example Material divider"),
+                ),
+                FlexItem::fixed(
+                    Text::new(match widget.result.get() {
+                        Some(true) => "Dialog result: create",
+                        Some(false) => "Dialog result: cancel",
+                        None => "Tap + to open a dialog.",
+                    })
+                    .into_widget(),
+                ),
+            ],
+        );
         let card_content = DefaultTextStyle {
             style: TextStyle {
                 font_size: Some(22.0),
@@ -104,17 +127,7 @@ impl State<DrawerExample> for DrawerExampleState {
             },
             ..Default::default()
         }
-        .provide(
-            Text::new(format!(
-                "Current destination: {title}\n{}\nTap + to open a dialog.",
-                match widget.result.get() {
-                    Some(true) => "Dialog result: create",
-                    Some(false) => "Dialog result: cancel",
-                    None => "",
-                }
-            ))
-            .into_widget(),
-        );
+        .provide(card_content);
         let body = Card::new(Widget::padding(Insets::all(20.0), card_content))
             .variant(CardVariant::Filled)
             .theme(widget.theme)

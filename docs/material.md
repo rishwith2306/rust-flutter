@@ -297,6 +297,22 @@ surface tint, child clipping, ink feedback, semantic grouping, and card theme
 data remain incomplete. Flutter's [Card API](https://api.flutter.dev/flutter/material/Card-class.html)
 provides those shape and elevation options.
 
+`Divider` and `VerticalDivider` draw thin themed lines with configurable extent,
+thickness, and leading/trailing insets:
+
+```rust
+use rust_flutter::material::{Divider, VerticalDivider};
+
+let separator = Divider::new().indent(16.0).end_indent(16.0).into_widget()?;
+let column_separator = VerticalDivider::new().width(32.0).into_widget()?;
+# let _ = (separator, column_separator);
+```
+
+Rounded line ends and automatic resolution from a nearest inherited theme are
+not implemented yet. See Flutter's [Divider](https://api.flutter.dev/flutter/material/Divider-class.html)
+and [VerticalDivider](https://api.flutter.dev/flutter/material/VerticalDivider-class.html)
+APIs for their full sizing and styling options.
+
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
 shows a selected dialog above it, and dismisses that dialog when the user taps
 the scrim. Its builder receives a controller on every build, so a page action
