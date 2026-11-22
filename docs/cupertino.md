@@ -90,8 +90,11 @@ let app = CupertinoApp::new(page).theme(theme).into_widget();
 The default theme uses the familiar blue accent for light and dark palettes.
 Applications can provide custom primary, text, disabled, and background colors
 through `CupertinoThemeData`. The page scaffold expands its body below an
-optional 44-point navigation bar. Safe areas and system appearance integration
-remain explicit application work. The initial text field uses the shared
+optional navigation bar, centers the title between equal leading/trailing slots,
+and applies measured safe-area insets to the bar and body. Native translucency,
+scroll-under blur, large-title transitions, and status-bar tap-to-scroll remain
+unfinished. System appearance integration remains explicit application work.
+The initial text field uses the shared
 retained editor for controller, selection, validation, and input behavior. Its
 styling remains basic and does not match native insets, borders, clear-button,
 or keyboard accessory APIs. The switch is controlled and uses the iOS green on

@@ -4,10 +4,11 @@
 //! component catalog or native macOS/iOS behavior layer.
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
+    display::ViewEdges,
     egui::{self, Color32, Stroke, Vec2},
     element::{
         BuildContext, DependencyError, FlexItem, FlexStyle, RenderBox, RenderContext,
-        RenderObjectWidget, StatelessWidget, Widget,
+        RenderObjectWidget, SafeAreaOptions, StatelessWidget, Widget,
     },
     forms::{TextEditingController, TextFormField},
     gestures::{
@@ -153,7 +154,11 @@ impl CupertinoNavigationBar {
             },
             ..Default::default()
         }
-        .provide(Text::new(self.title).into_widget());
+        .provide({
+            let mut text = Text::new(self.title);
+            text.align = Some(egui::Align::Center);
+            text.into_widget()
+        });
         let slot = |child: Option<Widget>| {
             let width = BoxConstraints::tight_for(Some(72.0), None)
                 .expect("finite Cupertino navigation slot width is valid");
@@ -214,10 +219,41 @@ impl CupertinoPageScaffold {
 
     pub fn into_widget(self) -> Widget {
         let mut children = Vec::with_capacity(2);
+        let has_navigation_bar = self.navigation_bar.is_some();
         if let Some(navigation_bar) = self.navigation_bar {
-            children.push(FlexItem::fixed(navigation_bar));
+            children.push(FlexItem::fixed(Widget::safe_area_with(
+                SafeAreaOptions {
+                    edges: ViewEdges {
+                        left: true,
+                        top: true,
+                        right: true,
+                        bottom: false,
+                    },
+                    ..Default::default()
+                },
+                navigation_bar,
+            )));
         }
-        children.push(FlexItem::expanded(self.child, 1));
+        let body_edges = if has_navigation_bar {
+            ViewEdges {
+                left: true,
+                top: false,
+                right: true,
+                bottom: true,
+            }
+        } else {
+            ViewEdges::ALL
+        };
+        children.push(FlexItem::expanded(
+            Widget::safe_area_with(
+                SafeAreaOptions {
+                    edges: body_edges,
+                    ..Default::default()
+                },
+                self.child,
+            ),
+            1,
+        ));
         let mut style = FlexStyle::new(Axis::Vertical);
         style.cross_alignment = CrossAxisAlignment::Stretch;
         DecoratedBox::new(BoxDecoration::solid(self.background_color))
