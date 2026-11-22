@@ -4,8 +4,9 @@ use rust_flutter::{
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
         AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
-        MaterialApp, MaterialDialogController, MaterialDialogHost, NavigationDrawer,
-        NavigationDrawerDestination, Scaffold, TextButton, ThemeData,
+        MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
+        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold, TextButton,
+        ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -19,46 +20,99 @@ pub fn showcase() -> Widget {
 pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let binding = GestureBinding::new();
     let theme = ThemeData::default();
-    let page_binding = binding.clone();
     let back_controller = Rc::new(RefCell::new(None::<MaterialDialogController>));
-    let build_controller = back_controller.clone();
+    let sheet_back_controller = Rc::new(RefCell::new(None::<ModalBottomSheetController>));
+    let current_sheet_controller = sheet_back_controller.clone();
     let result = Rc::new(Cell::new(None::<bool>));
-    let build_result = result.clone();
-    let host = MaterialDialogHost::new(&binding, move |controller, selected| {
-        *build_controller.borrow_mut() = Some(controller.clone());
-        if let Ok(Some(value)) = controller.take_result::<bool>() {
-            build_result.set(Some(value));
-        }
-        let page = Widget::stateful(DrawerExample {
-            binding: page_binding.clone(),
-            theme,
-            dialog_controller: controller.clone(),
-            result: build_result.clone(),
+    let dialog_host = {
+        let binding = binding.clone();
+        let back_controller = back_controller.clone();
+        let result = result.clone();
+        let sheet_controller = current_sheet_controller.clone();
+        Rc::new(move || {
+            let page_binding = binding.clone();
+            let build_controller = back_controller.clone();
+            let build_result = result.clone();
+            let current_sheet_controller = sheet_controller.clone();
+            MaterialDialogHost::new(&binding, move |controller, selected| {
+                *build_controller.borrow_mut() = Some(controller.clone());
+                if let Ok(Some(value)) = controller.take_result::<bool>() {
+                    build_result.set(Some(value));
+                }
+                let page = Widget::stateful(DrawerExample {
+                    binding: page_binding.clone(),
+                    theme,
+                    dialog_controller: controller.clone(),
+                    sheet_controller: current_sheet_controller
+                        .borrow()
+                        .clone()
+                        .expect("modal sheet host builds before its page"),
+                    result: build_result.clone(),
+                });
+                let dialog = (selected == Some(0)).then(|| {
+                    let cancel = controller.clone();
+                    let create = controller.clone();
+                    AlertDialog::new(Text::new("Create an item?").into_widget())
+                        .content(
+                            Text::new("This action can be connected to your app data.")
+                                .into_widget(),
+                        )
+                        .actions(vec![
+                            TextButton::new(&page_binding, "Cancel", move || {
+                                let _ = cancel.dismiss_with_result(false);
+                            })
+                            .into_widget(),
+                            TextButton::new(&page_binding, "Create", move || {
+                                let _ = create.dismiss_with_result(true);
+                            })
+                            .into_widget(),
+                        ])
+                        .theme(theme)
+                        .into_widget()
+                        .expect("valid example alert dialog")
+                });
+                (page, dialog)
+            })
+            .into_widget()
+        })
+    };
+    let sheet_binding = binding.clone();
+    let sheet_build_controller = sheet_back_controller.clone();
+    let dialog_host_builder = dialog_host.clone();
+    let host = ModalBottomSheetHost::new(&binding, move |controller, is_presented| {
+        *sheet_build_controller.borrow_mut() = Some(controller.clone());
+        let page = dialog_host_builder();
+        let sheet = is_presented.then(|| {
+            let dismiss = controller.clone();
+            let mut style = FlexStyle::new(Axis::Vertical);
+            style.spacing = 12.0;
+            Widget::padding(
+                Insets::all(24.0),
+                Widget::flex(
+                    style,
+                    vec![
+                        FlexItem::fixed(Text::new("Choose an option").into_widget()),
+                        FlexItem::fixed(
+                            TextButton::new(&sheet_binding, "Dismiss", move || {
+                                let _ = dismiss.dismiss_with_result("dismissed");
+                            })
+                            .into_widget(),
+                        ),
+                    ],
+                ),
+            )
         });
-        let dialog = (selected == Some(0)).then(|| {
-            let cancel = controller.clone();
-            let create = controller.clone();
-            AlertDialog::new(Text::new("Create an item?").into_widget())
-                .content(Text::new("This action can be connected to your app data.").into_widget())
-                .actions(vec![
-                    TextButton::new(&page_binding, "Cancel", move || {
-                        let _ = cancel.dismiss_with_result(false);
-                    })
-                    .into_widget(),
-                    TextButton::new(&page_binding, "Create", move || {
-                        let _ = create.dismiss_with_result(true);
-                    })
-                    .into_widget(),
-                ])
-                .theme(theme)
-                .into_widget()
-                .expect("valid example alert dialog")
-        });
-        (page, dialog)
+        (page, sheet)
     })
+    .theme(theme)
     .into_widget();
     let root = MaterialApp::new(host).theme(theme).into_widget();
     let on_back = move || {
+        let sheet_controller = sheet_back_controller.borrow().clone();
+        if let Some(controller) = sheet_controller.filter(ModalBottomSheetController::is_presented)
+        {
+            return controller.dismiss().is_ok();
+        }
         let controller = back_controller.borrow().clone();
         if let Some(controller) = controller.filter(MaterialDialogController::is_presented) {
             controller.dismiss().is_ok()
@@ -74,6 +128,7 @@ struct DrawerExample {
     theme: ThemeData,
     dialog_controller: MaterialDialogController,
     result: Rc<Cell<Option<bool>>>,
+    sheet_controller: ModalBottomSheetController,
 }
 
 struct DrawerExampleState {
@@ -113,7 +168,7 @@ impl State<DrawerExample> for DrawerExampleState {
                     Text::new(match widget.result.get() {
                         Some(true) => "Dialog result: create",
                         Some(false) => "Dialog result: cancel",
-                        None => "Tap + to open a dialog.",
+                        None => "Use + for a dialog or the button below for a sheet.",
                     })
                     .into_widget(),
                 ),
@@ -128,11 +183,26 @@ impl State<DrawerExample> for DrawerExampleState {
             ..Default::default()
         }
         .provide(card_content);
-        let body = Card::new(Widget::padding(Insets::all(20.0), card_content))
+        let open_sheet = widget.sheet_controller.clone();
+        let mut body_style = FlexStyle::new(Axis::Vertical);
+        body_style.spacing = 12.0;
+        let card = Card::new(Widget::padding(Insets::all(20.0), card_content))
             .variant(CardVariant::Filled)
             .theme(widget.theme)
             .into_widget()
             .expect("valid example Material card");
+        let body = Widget::flex(
+            body_style,
+            vec![
+                FlexItem::fixed(card),
+                FlexItem::fixed(
+                    TextButton::new(&widget.binding, "Open bottom sheet", move || {
+                        let _ = open_sheet.present();
+                    })
+                    .into_widget(),
+                ),
+            ],
+        );
 
         let select = handle.clone();
         let drawer_contents = NavigationDrawer::new(

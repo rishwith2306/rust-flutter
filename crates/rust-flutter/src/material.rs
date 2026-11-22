@@ -10,6 +10,7 @@ use crate::{
 };
 use std::{collections::HashMap, rc::Rc};
 
+mod bottom_sheet;
 mod button;
 mod card;
 mod checkbox;
@@ -25,6 +26,7 @@ mod scaffold;
 mod slider;
 mod switch;
 mod text_field;
+pub use bottom_sheet::{ModalBottomSheetController, ModalBottomSheetHost, ModalBottomSheetState};
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use card::{Card, CardVariant};
 pub use checkbox::Checkbox;

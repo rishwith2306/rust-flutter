@@ -388,3 +388,32 @@ It still has no route transition, alert icon, or automatic scrolling, and
 Android back handling must be wired by the app. Flutter's
 [AlertDialog API](https://api.flutter.dev/flutter/material/AlertDialog-class.html)
 is displayed with `showDialog`, which also owns route and result delivery.
+
+`ModalBottomSheetHost` provides a retained modal sheet with the same page and
+typed-result pattern. It positions a themed sheet at the bottom of the viewport,
+adds a scrim, and supports a configurable height limit and barrier dismissal:
+
+```rust
+use rust_flutter::{
+    element::Widget,
+    gestures::GestureBinding,
+    material::ModalBottomSheetHost,
+    text::Text,
+};
+
+let binding = GestureBinding::new();
+let host = ModalBottomSheetHost::new(&binding, |controller, is_presented| {
+    let page = build_page(controller.clone());
+    let sheet = is_presented.then(|| Text::new("Choose an option").into_widget());
+    (page, sheet)
+})
+.max_height(560.0)?;
+# fn build_page(_: rust_flutter::material::ModalBottomSheetController) -> Widget { Widget::empty() }
+# let _ = host;
+```
+
+Sheet actions can call `dismiss_with_result(value)`; the page reads it with
+`take_result::<T>()`. Drag dismissal, route/back integration, transitions,
+keyboard insets, and Flutter's full shape and elevation options remain to be
+implemented. See Flutter's
+[showModalBottomSheet API](https://api.flutter.dev/flutter/material/showModalBottomSheet.html).
