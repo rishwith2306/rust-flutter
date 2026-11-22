@@ -1,5 +1,7 @@
 # Changelog
 
+- Start a retained Cupertino design layer with inherited theme data, `CupertinoApp`, and regular/filled `CupertinoButton` widgets.
+
 ## Unreleased — 0.1.0 development
 
 - Add an initial Material theme foundation with core semantic `ColorScheme`
