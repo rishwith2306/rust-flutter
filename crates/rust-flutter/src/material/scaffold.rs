@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{FloatingActionButton, ThemeData};
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke},
@@ -161,6 +161,7 @@ impl AppBar {
 /// gestures, end drawers, and keyboard insets remain explicit app work.
 pub struct Scaffold {
     body: Widget,
+    floating_action_button: Option<Widget>,
     app_bar: Option<Widget>,
     app_bar_config: Option<AppBar>,
     bottom_navigation_bar: Option<Widget>,
@@ -173,6 +174,7 @@ impl Scaffold {
     pub fn new(body: Widget) -> Self {
         Self {
             body,
+            floating_action_button: None,
             app_bar: None,
             app_bar_config: None,
             bottom_navigation_bar: None,
@@ -198,6 +200,11 @@ impl Scaffold {
 
     pub fn bottom_navigation_bar(mut self, bar: Widget) -> Self {
         self.bottom_navigation_bar = Some(bar);
+        self
+    }
+
+    pub fn floating_action_button(mut self, button: FloatingActionButton) -> Self {
+        self.floating_action_button = Some(button.into_widget());
         self
     }
 
@@ -247,11 +254,32 @@ impl Scaffold {
             app_bar.into_widget()
         });
         let app_bar = app_bar.or(self.app_bar);
+        let mut body = self.body;
+        if let Some(button) = self.floating_action_button {
+            body = Widget::stack(
+                StackStyle {
+                    alignment: Alignment::TOP_LEFT,
+                    fit: StackFit::Expand,
+                    clip: Clip::HardEdge,
+                },
+                vec![
+                    StackItem::new(body),
+                    StackItem::positioned(
+                        button,
+                        Positioned {
+                            right: Some(16.0),
+                            bottom: Some(16.0),
+                            ..Default::default()
+                        },
+                    ),
+                ],
+            );
+        }
         let mut children = Vec::with_capacity(3);
         if let Some(app_bar) = app_bar {
             children.push(FlexItem::fixed(app_bar));
         }
-        children.push(FlexItem::expanded(self.body, 1));
+        children.push(FlexItem::expanded(body, 1));
         if let Some(bottom) = self.bottom_navigation_bar {
             children.push(FlexItem::fixed(bottom));
         }

@@ -3,8 +3,8 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::Insets,
     material::{
-        AppBar, Drawer, ListTile, MaterialApp, NavigationDrawer, NavigationDrawerDestination,
-        Scaffold, ThemeData,
+        AppBar, Drawer, FloatingActionButton, ListTile, MaterialApp, NavigationDrawer,
+        NavigationDrawerDestination, Scaffold, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -26,6 +26,7 @@ struct DrawerExample {
 struct DrawerExampleState {
     selected: usize,
     drawer_open: bool,
+    created_count: usize,
 }
 
 impl StatefulWidget for DrawerExample {
@@ -35,6 +36,7 @@ impl StatefulWidget for DrawerExample {
         DrawerExampleState {
             selected: 0,
             drawer_open: false,
+            created_count: 0,
         }
     }
 }
@@ -51,7 +53,13 @@ impl State<DrawerExample> for DrawerExampleState {
             },
             ..Default::default()
         }
-        .provide(Text::new(format!("Current destination: {title}")).into_widget());
+        .provide(
+            Text::new(format!(
+                "Current destination: {title}\nCreated items: {}",
+                self.created_count
+            ))
+            .into_widget(),
+        );
 
         let select = handle.clone();
         let drawer_contents = NavigationDrawer::new(
@@ -92,8 +100,19 @@ impl State<DrawerExample> for DrawerExampleState {
             .into_widget()
             .expect("valid example drawer");
 
+        let create = handle.clone();
         Scaffold::new(Widget::padding(Insets::all(24.0), body))
             .app_bar_config(AppBar::new(title).theme(widget.theme))
+            .floating_action_button(
+                FloatingActionButton::new(
+                    &widget.binding,
+                    Text::new("+").into_widget(),
+                    move || {
+                        let _ = create.update(|state| state.created_count += 1);
+                    },
+                )
+                .theme(widget.theme),
+            )
             .drawer(
                 &widget.binding,
                 drawer,

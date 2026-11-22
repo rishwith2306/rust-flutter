@@ -219,7 +219,7 @@ surface, including prefix/suffix widgets and floating-label animation.
 This is an initial theme layer, not Material 3 parity. The palette is static,
 does not derive tonal roles from a seed, and does not yet include every Flutter
 `ColorScheme` role, `TextTheme`, component themes, `MaterialApp`, scaffold
-sheets/FAB/inset handling, icon assets, or most of the Material control catalog. The
+sheets/inset handling, icon assets, or most of the Material control catalog. The
 role names and app-level/subtree theming model were checked against Flutter's
 [ColorScheme API](https://api.flutter.dev/flutter/material/ColorScheme-class.html).
 
@@ -248,3 +248,29 @@ let tile = ListTile::new(&binding, Text::new("Account").into_widget())
 The tile currently has no ink splash, pressed/focus/hover state or semantic
 button role. Flutter exposes those states and additional alignment, color and
 accessibility options through its [ListTile API](https://api.flutter.dev/flutter/material/ListTile-class.html).
+
+`FloatingActionButton` builds a themed circular action button, with mini, large
+and extended variants. `Scaffold::floating_action_button` places it over the body
+near the bottom-right corner, above the optional bottom navigation bar:
+
+```rust
+use rust_flutter::{
+    gestures::GestureBinding,
+    material::{FloatingActionButton, Scaffold},
+    text::Text,
+};
+
+let binding = GestureBinding::new();
+let page = Scaffold::new(body)
+    .floating_action_button(FloatingActionButton::new(
+        &binding,
+        Text::new("+").into_widget(),
+        || {},
+    ));
+# let _ = page;
+```
+
+This is an initial implementation: it has no elevation/shadow, tooltip,
+hero transition, disabled state, focus/hover/pressed feedback, or semantic
+button role. Flutter's API includes those options and separate small, regular,
+large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).
