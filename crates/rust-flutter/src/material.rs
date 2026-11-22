@@ -11,6 +11,7 @@ use crate::{
 mod button;
 mod checkbox;
 mod navigation_bar;
+mod navigation_drawer;
 mod radio;
 mod scaffold;
 mod slider;
@@ -19,6 +20,7 @@ mod text_field;
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use checkbox::Checkbox;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
+pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
 pub use radio::Radio;
 pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;

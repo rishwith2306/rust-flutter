@@ -121,11 +121,29 @@ Pass the same theme to those shell widgets for their surface colors, and
 provide it above the page so buttons in the body can resolve inherited colors:
 
 ```rust
-use rust_flutter::{element::Widget, material::{AppBar, Drawer, Scaffold, ThemeData}, gestures::GestureBinding};
+use rust_flutter::{
+    element::Widget,
+    gestures::GestureBinding,
+    material::{AppBar, Drawer, NavigationDrawer, NavigationDrawerDestination, Scaffold, ThemeData},
+    text::Text,
+};
 
 let theme = ThemeData::default();
 let binding = GestureBinding::new();
-let drawer = Drawer::new(Widget::empty()).theme(theme).into_widget()?;
+let destinations = NavigationDrawer::new(
+    &binding,
+    vec![
+        NavigationDrawerDestination::new("⌂", "Home"),
+        NavigationDrawerDestination::new("▣", "Projects"),
+        NavigationDrawerDestination::new("⚙", "Settings"),
+    ],
+    Some(0),
+    |index| { let _ = index; },
+)
+.header(Text::new("WORKSPACE").into_widget())
+.theme(theme)
+.into_widget()?;
+let drawer = Drawer::new(destinations).theme(theme).into_widget()?;
 let page = Scaffold::new(Widget::empty())
     .app_bar_config(AppBar::new("Home").theme(theme))
     .drawer(&binding, drawer, false, || {}, || {})
@@ -144,6 +162,13 @@ compose that behavior explicitly around the relevant child. Flutter's [Drawer](h
 and [Scaffold](https://api.flutter.dev/flutter/material/Scaffold-class.html)
 also provide automatic app-bar integration, swipe handling, and route-based
 dismissal that this implementation does not yet match.
+
+`NavigationDrawer` provides a controlled selected destination, optional header
+and footer, selected icon glyph, disabled items, and Material 3 selected
+colors. Destination icons are text glyphs, and the destination list does not
+scroll or virtualize yet. Flutter also supports arbitrary children and theme,
+shape, elevation, and semantics customization through [NavigationDrawer](https://api.flutter.dev/flutter/material/NavigationDrawer-class.html)
+and [NavigationDrawerDestination](https://api.flutter.dev/flutter/material/NavigationDrawerDestination-class.html).
 
 `NavigationBar` is controlled: provide destinations, the selected index and a
 callback, then update the index in the owning state when the callback runs.

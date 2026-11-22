@@ -1,8 +1,11 @@
 use rust_flutter::{
-    element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
+    element::{State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
-    layout::{Axis, Insets},
-    material::{AppBar, Drawer, FilledButton, MaterialApp, Scaffold, TextButton, ThemeData},
+    layout::Insets,
+    material::{
+        AppBar, Drawer, MaterialApp, NavigationDrawer, NavigationDrawerDestination, Scaffold,
+        ThemeData,
+    },
     text::{DefaultTextStyle, Text, TextStyle},
 };
 
@@ -50,34 +53,27 @@ impl State<DrawerExample> for DrawerExampleState {
         }
         .provide(Text::new(format!("Current destination: {title}")).into_widget());
 
-        let mut destinations = vec![FlexItem::fixed(Text::new("WORKSPACE").into_widget())];
-        for (index, name) in ["Home", "Projects", "Settings"].into_iter().enumerate() {
-            let state = handle.clone();
-            let button = if self.selected == index {
-                FilledButton::new(&widget.binding, name, move || {
-                    let _ = state.update(move |state| {
-                        state.selected = index;
-                        state.drawer_open = false;
-                    });
-                })
-                .size(rust_flutter::egui::vec2(256.0, 48.0))
-                .into_widget()
-            } else {
-                TextButton::new(&widget.binding, name, move || {
-                    let _ = state.update(move |state| {
-                        state.selected = index;
-                        state.drawer_open = false;
-                    });
-                })
-                .size(rust_flutter::egui::vec2(256.0, 48.0))
-                .into_widget()
-            };
-            destinations.push(FlexItem::fixed(button));
-        }
-        let mut drawer_style = FlexStyle::new(Axis::Vertical);
-        drawer_style.spacing = 8.0;
-        let drawer_contents =
-            Widget::padding(Insets::all(16.0), Widget::flex(drawer_style, destinations));
+        let select = handle.clone();
+        let drawer_contents = NavigationDrawer::new(
+            &widget.binding,
+            vec![
+                NavigationDrawerDestination::new("⌂", "Home").selected_icon("⌂"),
+                NavigationDrawerDestination::new("▣", "Projects"),
+                NavigationDrawerDestination::new("⚙", "Settings"),
+            ],
+            Some(self.selected),
+            move |selected| {
+                let _ = select.update(move |state| {
+                    state.selected = selected;
+                    state.drawer_open = false;
+                });
+            },
+        )
+        .header(Text::new("WORKSPACE").into_widget())
+        .width(256.0)
+        .theme(widget.theme)
+        .into_widget()
+        .expect("valid example navigation drawer");
         let dismiss = handle.clone();
         let drawer = Drawer::new(drawer_contents)
             .width(288.0)
