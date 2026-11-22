@@ -567,6 +567,148 @@ impl StatelessWidget for CupertinoActivityIndicatorView {
     }
 }
 
+/// A labeled option for [`CupertinoSegmentedControl`].
+pub struct CupertinoSegment<T> {
+    pub value: T,
+    pub label: String,
+    pub enabled: bool,
+}
+
+impl<T> CupertinoSegment<T> {
+    pub fn new(value: T, label: impl Into<String>) -> Self {
+        Self {
+            value,
+            label: label.into(),
+            enabled: true,
+        }
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+}
+
+/// A controlled, mutually exclusive Cupertino segmented control.
+pub struct CupertinoSegmentedControl<T: Clone + PartialEq + 'static> {
+    binding: GestureBinding,
+    segments: Vec<CupertinoSegment<T>>,
+    selected: T,
+    width: f32,
+    height: f32,
+    on_changed: Rc<dyn Fn(T)>,
+}
+
+impl<T: Clone + PartialEq + 'static> CupertinoSegmentedControl<T> {
+    pub fn new(
+        binding: &GestureBinding,
+        segments: Vec<CupertinoSegment<T>>,
+        selected: T,
+        on_changed: impl Fn(T) + 'static,
+    ) -> Result<Self, &'static str> {
+        if segments.is_empty()
+            || !segments.iter().any(|segment| segment.value == selected)
+            || segments.iter().enumerate().any(|(index, segment)| {
+                segments[..index]
+                    .iter()
+                    .any(|previous| previous.value == segment.value)
+            })
+        {
+            return Err("segmented control requires unique options and a selected value");
+        }
+        Ok(Self {
+            binding: binding.clone(),
+            segments,
+            selected,
+            width: 96.0,
+            height: 32.0,
+            on_changed: Rc::new(on_changed),
+        })
+    }
+
+    pub fn segment_width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.height = height;
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if !self.width.is_finite()
+            || self.width <= 0.0
+            || !self.height.is_finite()
+            || self.height <= 0.0
+        {
+            return Err("segmented control dimensions must be positive and finite");
+        }
+        Ok(Widget::stateless(CupertinoSegmentedControlView(self)))
+    }
+}
+
+struct CupertinoSegmentedControlView<T: Clone + PartialEq + 'static>(CupertinoSegmentedControl<T>);
+
+impl<T: Clone + PartialEq + 'static> StatelessWidget for CupertinoSegmentedControlView<T> {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let control = &self.0;
+        let theme = CupertinoThemeData::of(context).unwrap_or_default();
+        let selected = control.selected.clone();
+        let on_changed = control.on_changed.clone();
+        let mut children = Vec::with_capacity(control.segments.len());
+        for (index, segment) in control.segments.iter().enumerate() {
+            let is_selected = segment.value == selected;
+            let value = segment.value.clone();
+            let selected_value = selected.clone();
+            let callback = on_changed.clone();
+            let button = GestureButton::new(
+                &control.binding,
+                egui::RichText::new(segment.label.clone()).color(if segment.enabled {
+                    if is_selected {
+                        Color32::WHITE
+                    } else {
+                        theme.primary_color
+                    }
+                } else {
+                    theme.disabled_color
+                }),
+                move || {
+                    if value != selected_value {
+                        callback(value.clone());
+                    }
+                },
+            )
+            .size(Vec2::new(control.width, control.height))
+            .enabled(segment.enabled)
+            .fill(if is_selected {
+                theme.primary_color
+            } else {
+                theme.scaffold_background_color
+            })
+            .corner_radius(egui::CornerRadius::same(6))
+            .paint_content(move |painter, bounds| {
+                if index > 0 {
+                    painter.line_segment(
+                        [bounds.left_top(), bounds.left_bottom()],
+                        Stroke::new(0.5_f32, theme.primary_color.gamma_multiply(0.45)),
+                    );
+                }
+            });
+            children.push(FlexItem::fixed(button.into_widget()));
+        }
+        let mut row = FlexStyle::new(Axis::Horizontal);
+        row.cross_alignment = CrossAxisAlignment::Center;
+        let content = Widget::flex(row, children);
+        DecoratedBox::new(BoxDecoration {
+            color: theme.scaffold_background_color,
+            border: Stroke::new(1.0_f32, theme.primary_color.gamma_multiply(0.45)),
+            corner_radius: egui::CornerRadius::same(6),
+        })
+        .into_widget(content)
+    }
+}
+
 /// Owner-controlled Cupertino button with regular or filled styling.
 #[derive(Clone)]
 pub struct CupertinoButton {
