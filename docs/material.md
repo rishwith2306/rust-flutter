@@ -65,6 +65,23 @@ let notifications = Switch::new(&binding, true, |next| {
 # let _ = notifications;
 ```
 
+`Radio<T>` draws one option from an owner-managed selection group. Give every
+option the same current `group_value` and handle callbacks in the owning state:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::Radio};
+
+let binding = GestureBinding::new();
+let option = Radio::new(&binding, "compact", Some("comfortable"), |value| {
+    let _ = value;
+})
+.into_widget();
+# let _ = option;
+```
+
+This initial radio does not implement toggleable groups, focus/hover color
+properties, or screen-reader selection semantics.
+
 `Scaffold` provides a vertical page shell with an expanding body and optional
 `AppBar` / bottom-navigation slots. Pass the same theme to those shell widgets
 for their surface colors, and provide it above the page so buttons in the body
