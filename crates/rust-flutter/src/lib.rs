@@ -129,8 +129,8 @@ pub mod prelude {
         focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
         material::{
             AppBar, Brightness, Checkbox, ColorScheme, FilledButton, NavigationBar,
-            NavigationDestination, OutlinedButton, Radio, Scaffold, Switch, TextButton, TextField,
-            ThemeData,
+            NavigationDestination, OutlinedButton, Radio, Scaffold, Slider, Switch, TextButton,
+            TextField, ThemeData,
         },
         navigation::Navigator,
         state::Signal,

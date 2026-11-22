@@ -20,9 +20,9 @@ For inherited lookup inside a retained component, call `ThemeData::of(ctx)`;
 for a subtree, use `theme.provide(child)`. A custom brand palette can be made
 with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
-The first retained controls are `FilledButton`, `OutlinedButton`, and
-`TextButton`. They use the nearest scheme and the framework gesture binding.
-`Checkbox` is owner-controlled and supports optional tristate cycling:
+`FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
+the framework gesture binding. `Checkbox` is owner-controlled and supports
+optional tristate cycling:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::{FilledButton, ThemeData}};
@@ -81,6 +81,29 @@ let option = Radio::new(&binding, "compact", Some("comfortable"), |value| {
 
 This initial radio does not implement toggleable groups, focus/hover color
 properties, or screen-reader selection semantics.
+
+`Slider` supports controlled continuous values and discrete intervals. Taps on
+the track and horizontal drags update the owner with clamped values:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::Slider};
+
+let binding = GestureBinding::new();
+let volume = Slider::new(&binding, 0.5, |value| {
+    let _ = value;
+})
+.range(0.0, 1.0)
+.divisions(Some(10))
+.into_widget()?;
+# let _ = volume;
+```
+
+Optional `.on_change_start` and `.on_change_end` callbacks report the value at
+the beginning and end of a drag. Discrete sliders take the number of intervals
+with `.divisions(Some(count))`.
+
+This first version does not provide value indicators, secondary tracks,
+keyboard adjustments, or slider accessibility semantics.
 
 `Scaffold` provides a vertical page shell with an expanding body and optional
 `AppBar` / bottom-navigation slots. Pass the same theme to those shell widgets
