@@ -2,6 +2,9 @@
 
 ## Unreleased — 0.1.0 development
 
+- Connect inherited `FocusNode` handles to retained `GestureButton` controls as
+  well as text fields, preserving one-control focus ownership.
+
 - Add an application-owned `FocusNode` that queues pre-mount focus requests,
   exposes focus changes as a Listenable, and attaches through `Focus` to a
   descendant `TextFormField`; full Flutter focus scopes and traversal remain open.

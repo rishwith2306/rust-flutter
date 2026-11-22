@@ -3,6 +3,7 @@ use rust_flutter::{
     element::*,
     focus::{Focus, FocusNode},
     forms::*,
+    gestures::{GestureBinding, GestureButton},
     layout::BoxConstraints,
     notifier::{Listenable, ValueListenable},
 };
@@ -515,4 +516,31 @@ fn focus_node_requests_focus_before_mount_and_notifies_when_text_field_focus_cha
     assert!(notifications.get() >= 2);
     node.set_can_request_focus(false);
     assert!(!node.request_focus());
+}
+
+#[test]
+fn focus_node_can_attach_to_a_retained_gesture_button() {
+    let context = egui::Context::default();
+    let node = FocusNode::new();
+    let binding = GestureBinding::new();
+    let child = GestureButton::new(&binding, "Continue", || {}).into_widget();
+    let mut tree =
+        ElementTree::new(&context, Focus::new(node.clone(), child).into_widget()).unwrap();
+    assert!(node.request_focus());
+    let _ = context.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(180.0, 64.0),
+            )),
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                tree.show(ui, BoxConstraints::tight(egui::vec2(180.0, 64.0)).unwrap())
+                    .unwrap();
+            });
+        },
+    );
+    assert!(node.has_primary_focus());
 }

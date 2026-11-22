@@ -1,7 +1,8 @@
 //! Retained keyboard-focus handles for framework text controls.
 //!
 //! This is an adapter to egui focus, not Flutter's complete focus tree or
-//! traversal manager. A node currently attaches to one descendant text field.
+//! traversal manager. A node currently attaches to one descendant text field or
+//! retained gesture button.
 use crate::{
     egui,
     element::Widget,
@@ -126,8 +127,9 @@ impl PartialEq for FocusNode {
     }
 }
 
-/// Provides a focus node to descendants. `TextFormField` attaches its egui
-/// editor to this node so callers can request focus and observe focus changes.
+/// Provides a focus node to descendants. `TextFormField` and `GestureButton`
+/// attach their egui control to this node so callers can request focus and
+/// observe focus changes.
 pub struct Focus {
     pub node: FocusNode,
     pub autofocus: bool,

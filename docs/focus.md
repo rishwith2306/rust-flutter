@@ -1,8 +1,8 @@
 # Focus
 
-`FocusNode` is an application-owned handle that can request and observe the
-focus of one descendant `TextFormField`. A request made before the field mounts
-is queued and applied when its editor attaches.
+`FocusNode` is an application-owned handle that can request and observe one
+descendant `TextFormField` or retained `GestureButton`. A request made before
+the control mounts is queued and applied when its egui focus target attaches.
 
 ```rust
 use rust_flutter::{focus::{Focus, FocusNode}, forms::TextFormField};
@@ -24,10 +24,11 @@ the current target. `unfocus()` clears its request. `has_primary_focus()` is
 currently equivalent to `has_focus()` because this implementation does not yet
 build an ancestor focus tree.
 
-This is a first focus adapter for text input, not Flutter's full focus system.
+This is a first focus adapter for framework controls, not Flutter's full focus system.
 Focus scopes, ancestor focus aggregation, traversal policies, key bubbling,
 Shortcuts, Actions, traversal groups and screen-reader focus semantics remain
-unimplemented. Ordinary egui controls do not yet attach to `FocusNode`.
+unimplemented. A node attaches to one control at a time; ordinary egui controls
+do not yet attach to `FocusNode`.
 
 The API shape was checked against the official [Flutter Focus](https://api.flutter.dev/flutter/widgets/Focus-class.html)
 and [FocusNode](https://api.flutter.dev/flutter/widgets/FocusNode-class.html)
