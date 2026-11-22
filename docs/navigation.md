@@ -29,6 +29,11 @@ the retained route view, which rebuilds the current page while preserving
 matching keyed state in the tree. The controller is UI-local; it is not a
 thread-safe navigation service.
 
+`NavigatorController::view` builds only the current route. Use
+`NavigatorController::retained_view` when inactive routes must stay mounted;
+it keeps every route offstage with its own element key and mutes inactive route
+tickers. `CupertinoTabScaffold` uses this retained view for each tab's stack.
+
 Use a shared `BackDispatcher` for route stacks and modal overlays. The highest-priority
 live handler receives Back first; equal priorities use newest-first order. A
 handler returns `true` when it handled the event.

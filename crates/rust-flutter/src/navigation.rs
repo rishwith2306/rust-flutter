@@ -1,10 +1,11 @@
 //! Typed route stacks. The root route cannot be popped.
 use crate::{
-    element::{BuildContext, Widget},
+    element::{BuildContext, StackItem, StackStyle, Widget},
+    layout::{Clip, StackFit},
     notifier::{Disposed, ValueNotifier},
 };
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     rc::{Rc, Weak},
 };
 
@@ -134,22 +135,32 @@ impl<R> Navigator<R> {
 /// A UI-local route stack that notifies its retained view when pages change.
 #[derive(Clone)]
 pub struct NavigatorController<R: Clone + PartialEq + 'static> {
-    routes: ValueNotifier<Vec<R>>,
+    routes: ValueNotifier<Vec<RouteEntry<R>>>,
+    next_route_id: Rc<Cell<u64>>,
+}
+
+#[derive(Clone, PartialEq)]
+struct RouteEntry<R> {
+    id: u64,
+    route: R,
 }
 
 impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
     pub fn new(root: R) -> Self {
         Self {
-            routes: ValueNotifier::new(vec![root]),
+            routes: ValueNotifier::new(vec![RouteEntry { id: 0, route: root }]),
+            next_route_id: Rc::new(Cell::new(1)),
         }
     }
 
     pub fn routes(&self) -> Vec<R> {
-        self.routes.get()
+        self.routes
+            .read(|routes| routes.iter().map(|entry| entry.route.clone()).collect())
     }
 
     pub fn current(&self) -> Option<R> {
-        self.routes.read(|routes| routes.last().cloned())
+        self.routes
+            .read(|routes| routes.last().map(|entry| entry.route.clone()))
     }
 
     pub fn can_pop(&self) -> bool {
@@ -164,9 +175,13 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
     }
 
     pub fn push(&self, route: R) -> Result<bool, Disposed> {
+        let entry = RouteEntry {
+            id: self.allocate_route_id(),
+            route,
+        };
         self.routes.update(|routes| {
             let mut next = routes.clone();
-            next.push(route);
+            next.push(entry);
             next
         })
     }
@@ -177,7 +192,7 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
             .update(|routes| {
                 let mut next = routes.clone();
                 if next.len() > 1 {
-                    popped = next.pop();
+                    popped = next.pop().map(|entry| entry.route);
                 }
                 next
             })
@@ -186,11 +201,15 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
 
     pub fn replace(&self, route: R) -> Result<Option<R>, Disposed> {
         let mut replaced = None;
+        let entry = RouteEntry {
+            id: self.allocate_route_id(),
+            route,
+        };
         self.routes
             .update(|routes| {
                 let mut next = routes.clone();
                 if let Some(current) = next.last_mut() {
-                    replaced = Some(std::mem::replace(current, route));
+                    replaced = Some(std::mem::replace(current, entry).route);
                 }
                 next
             })
@@ -198,7 +217,10 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
     }
 
     pub fn reset(&self, root: R) -> Result<bool, Disposed> {
-        self.routes.set(vec![root])
+        self.routes.set(vec![RouteEntry {
+            id: self.allocate_route_id(),
+            route: root,
+        }])
     }
 
     /// Rebuild the current route's widget whenever the stack changes.
@@ -207,7 +229,41 @@ impl<R: Clone + PartialEq + 'static> NavigatorController<R> {
         Widget::value_listenable_builder(self.routes.clone(), move |context, routes| {
             routes
                 .last()
-                .map_or_else(Widget::empty, |route| builder(context, route))
+                .map_or_else(Widget::empty, |route| builder(context, &route.route))
         })
+    }
+
+    /// Build every route in an expanding stack and keep inactive routes mounted
+    /// offstage. This preserves route-local state while later routes are pushed.
+    pub fn retained_view(&self, builder: impl Fn(&BuildContext, &R) -> Widget + 'static) -> Widget {
+        let builder = Rc::new(builder);
+        Widget::value_listenable_builder(self.routes.clone(), move |context, routes| {
+            let current = routes.len().saturating_sub(1);
+            let pages = routes
+                .iter()
+                .enumerate()
+                .map(|(index, entry)| {
+                    let active = index == current;
+                    let page = builder(context, &entry.route);
+                    let page = Widget::ticker_mode(active, page);
+                    StackItem::new(Widget::offstage(!active, page).keyed(entry.id))
+                })
+                .collect();
+            Widget::stack(
+                StackStyle {
+                    fit: StackFit::Expand,
+                    clip: Clip::HardEdge,
+                    ..Default::default()
+                },
+                pages,
+            )
+        })
+    }
+
+    fn allocate_route_id(&self) -> u64 {
+        let id = self.next_route_id.get();
+        self.next_route_id
+            .set(id.checked_add(1).expect("navigator route id exhausted"));
+        id
     }
 }

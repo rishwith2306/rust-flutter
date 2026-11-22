@@ -5,7 +5,8 @@ use rust_flutter::{
         CupertinoListSection, CupertinoListTile, CupertinoModalPopup,
         CupertinoModalPopupController, CupertinoNavigationBar, CupertinoPageScaffold,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSlider, CupertinoSwitch,
-        CupertinoTabDestination, CupertinoTabScaffold, CupertinoTextField, CupertinoThemeData,
+        CupertinoTabDestination, CupertinoTabNavigationController, CupertinoTabScaffold,
+        CupertinoTextField, CupertinoThemeData,
     },
     element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
     gestures::GestureBinding,
@@ -25,8 +26,25 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let theme = CupertinoThemeData::default();
     let page_binding = binding.clone();
     let back_dispatcher = rust_flutter::navigation::BackDispatcher::new();
+    let tab_navigation = CupertinoTabNavigationController::new(
+        vec![
+            rust_flutter::navigation::NavigatorController::new("controls".to_owned()),
+            rust_flutter::navigation::NavigatorController::new("dialog".to_owned()),
+            rust_flutter::navigation::NavigatorController::new("actions".to_owned()),
+            rust_flutter::navigation::NavigatorController::new("about".to_owned()),
+        ],
+        0,
+    )
+    .expect("valid example tab navigators");
+    let route_back = tab_navigation.register_back_handler(&back_dispatcher);
+    let page_navigation = tab_navigation.clone();
     let popup = CupertinoModalPopup::new(&binding, move |controller, selected| {
-        let tabs = showcase_tabs(page_binding.clone(), theme, controller.clone());
+        let tabs = showcase_tabs(
+            page_binding.clone(),
+            theme,
+            controller.clone(),
+            page_navigation.clone(),
+        );
         let panel = match selected {
             Some(0) => Some((alert_panel(&page_binding, theme, controller), None)),
             Some(1) => Some((
@@ -40,7 +58,10 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     .back_dispatcher(&back_dispatcher)
     .into_widget();
     let root = CupertinoApp::new(popup).theme(theme).into_widget();
-    let on_back = back_dispatcher.handler();
+    let on_back = move || {
+        let _keep_route_handler = &route_back;
+        back_dispatcher.dispatch()
+    };
     (root, on_back)
 }
 
@@ -48,9 +69,10 @@ fn showcase_tabs(
     binding: GestureBinding,
     theme: CupertinoThemeData,
     popup_controller: CupertinoModalPopupController,
+    navigation: CupertinoTabNavigationController<String>,
 ) -> Widget {
     let page_binding = binding.clone();
-    CupertinoTabScaffold::new(
+    CupertinoTabScaffold::with_navigation_controller(
         &binding,
         vec![
             CupertinoTabDestination::new("◉", "Controls"),
@@ -58,23 +80,50 @@ fn showcase_tabs(
             CupertinoTabDestination::new("☰", "Actions"),
             CupertinoTabDestination::new("ⓘ", "About"),
         ],
-        0,
-        move |_, index| {
-            if index == 0 {
+        navigation.clone(),
+        move |_, index, route| {
+            if index == 0 && route == "controls" {
                 Widget::stateful(ControlsPage {
                     binding: page_binding.clone(),
                     theme,
                 })
-            } else if index == 1 {
+            } else if index == 1 && route == "dialog" {
                 let controller = popup_controller.clone();
-                let button =
+                let show_alert =
                     CupertinoButton::filled(&page_binding, "Show alert dialog", move || {
                         let _ = controller.present(0);
                     })
                     .size(rust_flutter::egui::vec2(240.0, 48.0))
                     .into_widget();
-                page("Dialog", button, theme)
-            } else if index == 2 {
+                let detail_navigation = navigation.navigator(index).unwrap();
+                let open_details =
+                    CupertinoButton::filled(&page_binding, "Open tab detail route", move || {
+                        let _ = detail_navigation.push("dialog_details".to_owned());
+                    })
+                    .size(rust_flutter::egui::vec2(240.0, 48.0))
+                    .into_widget();
+                let mut style = FlexStyle::new(Axis::Vertical);
+                style.spacing = 10.0;
+                page(
+                    "Dialog",
+                    Widget::flex(
+                        style,
+                        vec![
+                            rust_flutter::element::FlexItem::fixed(show_alert),
+                            rust_flutter::element::FlexItem::fixed(open_details),
+                        ],
+                    ),
+                    theme,
+                )
+            } else if index == 1 && route == "dialog_details" {
+                let back = navigation.navigator(index).unwrap();
+                let button = CupertinoButton::new(&page_binding, "Pop this tab route", move || {
+                    let _ = back.pop();
+                })
+                .size(rust_flutter::egui::vec2(240.0, 48.0))
+                .into_widget();
+                page("Dialog detail", button, theme)
+            } else if index == 2 && route == "actions" {
                 let controller = popup_controller.clone();
                 let button =
                     CupertinoButton::filled(&page_binding, "Show action sheet", move || {
@@ -83,7 +132,7 @@ fn showcase_tabs(
                     .size(rust_flutter::egui::vec2(240.0, 48.0))
                     .into_widget();
                 page("Action sheet", button, theme)
-            } else {
+            } else if index == 3 && route == "about" {
                 page(
                     "About",
                     Widget::padding(
@@ -93,10 +142,12 @@ fn showcase_tabs(
                     ),
                     theme,
                 )
+            } else {
+                Widget::empty()
             }
         },
     )
-    .expect("valid example tabs")
+    .expect("valid example tab navigators")
     .theme(theme)
     .into_widget()
 }

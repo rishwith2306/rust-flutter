@@ -113,6 +113,27 @@ let tabs_app = CupertinoTabScaffold::new(
 )?
 .theme(theme)
 .into_widget();
+let (tabs_with_routes, tab_navigation) = CupertinoTabScaffold::with_navigators(
+    &binding,
+    vec![
+        CupertinoTabDestination::new("⌂", "Home"),
+        CupertinoTabDestination::new("⚙", "Settings"),
+    ],
+    vec![
+        rust_flutter::navigation::NavigatorController::new("home"),
+        rust_flutter::navigation::NavigatorController::new("settings"),
+    ],
+    0,
+    |_: &rust_flutter::element::BuildContext, tab, route| {
+        rust_flutter::text::Text::new(format!("Tab {tab}: {route}")).into_widget()
+    },
+)?;
+let _current_tab_navigator = tab_navigation.current_navigator();
+let _ = tab_navigation.push("details");
+let back = rust_flutter::navigation::BackDispatcher::new();
+let _tab_back = tab_navigation.register_back_handler(&back);
+let _handle_back = back.handler();
+let navigable_tabs = tabs_with_routes.theme(theme).into_widget();
 let alert = CupertinoAlertDialog::new(
     rust_flutter::text::Text::new("Delete draft?").into_widget(),
 )
@@ -145,6 +166,7 @@ let sheet = CupertinoActionSheet::new()
     .into_widget()?;
 # let _: Widget = app;
 # let _: Widget = tabs_app;
+# let _: Widget = navigable_tabs;
 # let _: Widget = alert;
 # let _: Widget = sheet;
 ```
@@ -156,8 +178,13 @@ optional navigation and tab bars, centers the title between equal
 leading/trailing slots, and applies measured safe-area insets around all three
 regions. The standalone tab bar is controlled: the owner updates its selected
 index after the callback. `CupertinoTabScaffold` manages selection, keeps each
-tab subtree mounted, hides inactive pages, and mutes their tickers. Per-tab
-navigation stacks and state restoration are not built in. Native translucency,
+tab subtree and each pushed route mounted, hides inactive pages, and mutes their
+tickers.
+`with_navigators` gives each tab an independent `NavigatorController`; its
+returned controller pushes on the active tab and can register Back handling.
+For parent rebuilds, retain a `CupertinoTabNavigationController` and pass it to
+`with_navigation_controller` so selection and route state stay shared. Route
+restoration is not built in. Native translucency,
 scroll-under blur, large-title transitions, and status-bar tap-to-scroll remain
 unfinished. System appearance integration remains explicit application work.
 The initial text field uses the shared

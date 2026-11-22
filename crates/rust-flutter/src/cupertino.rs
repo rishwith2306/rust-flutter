@@ -37,7 +37,7 @@ pub use modal_popup::{CupertinoModalPopup, CupertinoModalPopupController};
 mod tab_bar;
 pub use tab_bar::{CupertinoTabBar, CupertinoTabDestination};
 mod tab_scaffold;
-pub use tab_scaffold::CupertinoTabScaffold;
+pub use tab_scaffold::{CupertinoTabNavigationController, CupertinoTabScaffold};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
