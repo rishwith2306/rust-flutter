@@ -177,9 +177,10 @@ activated color through `background_color_activated`.
 and vertically separated actions. `CupertinoDialogAction` supports default
 emphasis and destructive coloring. `CupertinoModalPopup` can present the panel
 above a retained page with a scrim and tap-to-dismiss behavior. System back
-handling, transition animation, route results, and restoration remain
-application work. Set the panel width and action widths together when adapting
-it to a narrow window.
+can dismiss the popup when the application connects the controller to
+`run_widget_with_options_and_back`; the runnable showcase includes this wiring.
+Transition animation, route results, and restoration remain unfinished. Set
+the panel width and action widths together when adapting it to a narrow window.
 `CupertinoActionSheet` groups a title/message, a list of choice actions, and an
 optional separated cancel action. Its actions support default emphasis and
 destructive coloring. `CupertinoModalPopup` layers either panel above the
@@ -187,7 +188,8 @@ retained page with a scrim and tap-to-dismiss behavior. Its builder receives a
 `CupertinoModalPopupController`; call `present(id)` from a page action and
 return the matching panel while that id is selected. Choose bottom alignment
 for an action sheet. System back handling, transition animation, route results,
-and restoration remain application work.
+and restoration remain application work; the showcase demonstrates back-handler
+wiring for dismissal.
 
 This is not full Cupertino parity. `CupertinoApp` currently provides theme data
 only; route navigation, localization, system appearance following, modal

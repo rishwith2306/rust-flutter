@@ -5,7 +5,7 @@ use crate::{
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{Alignment, Clip, HitTestBehavior, Positioned, StackFit},
 };
-use std::rc::Rc;
+use std::{cell::Cell, rc::Rc};
 
 type ModalBuilder = dyn Fn(
     CupertinoModalPopupController,
@@ -20,6 +20,7 @@ type ModalBuilder = dyn Fn(
 pub struct CupertinoModalPopup {
     binding: GestureBinding,
     builder: Rc<ModalBuilder>,
+    selected: Rc<Cell<Option<u8>>>,
     alignment: Alignment,
     barrier_color: Color32,
 }
@@ -36,6 +37,7 @@ impl CupertinoModalPopup {
         Self {
             binding: binding.clone(),
             builder: Rc::new(builder),
+            selected: Rc::new(Cell::new(None)),
             alignment: Alignment::CENTER,
             barrier_color: Color32::from_rgba_unmultiplied(0, 0, 0, 112),
         }
@@ -66,16 +68,25 @@ pub struct ModalState {
 #[derive(Clone)]
 pub struct CupertinoModalPopupController {
     state: StateHandle<ModalState>,
+    selected: Rc<Cell<Option<u8>>>,
 }
 
 impl CupertinoModalPopupController {
+    pub fn is_presented(&self) -> bool {
+        self.selected.get().is_some()
+    }
+
     pub fn present(&self, popup_id: u8) -> Result<(), crate::element::Unmounted> {
         self.state
-            .update(move |state| state.selected = Some(popup_id))
+            .update(move |state| state.selected = Some(popup_id))?;
+        self.selected.set(Some(popup_id));
+        Ok(())
     }
 
     pub fn dismiss(&self) -> Result<(), crate::element::Unmounted> {
-        self.state.update(|state| state.selected = None)
+        self.state.update(|state| state.selected = None)?;
+        self.selected.set(None);
+        Ok(())
     }
 }
 
@@ -91,7 +102,9 @@ impl State<CupertinoModalPopup> for ModalState {
     fn build(&mut self, widget: &CupertinoModalPopup, context: &StateContext<Self>) -> Widget {
         let controller = CupertinoModalPopupController {
             state: context.handle(),
+            selected: widget.selected.clone(),
         };
+        widget.selected.set(self.selected);
         let (page, popup) = (widget.builder)(controller.clone(), self.selected);
         let mut layers = vec![StackItem::new(page)];
         if let Some((popup, alignment)) = popup {

@@ -13,13 +13,22 @@ use rust_flutter::{
     scrolling::{ScrollPosition, SingleChildScrollView},
     text::Text,
 };
+use std::{cell::RefCell, rc::Rc};
 
 /// A focused runnable catalog for the retained Cupertino controls.
 pub fn showcase() -> Widget {
+    showcase_with_back_handler().0
+}
+
+/// Create the showcase and a native-back callback that dismisses its open popup.
+pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let binding = GestureBinding::new();
     let theme = CupertinoThemeData::default();
     let page_binding = binding.clone();
+    let back_controller = Rc::new(RefCell::new(None::<CupertinoModalPopupController>));
+    let build_controller = back_controller.clone();
     let popup = CupertinoModalPopup::new(&binding, move |controller, selected| {
+        *build_controller.borrow_mut() = Some(controller.clone());
         let tabs = showcase_tabs(page_binding.clone(), theme, controller.clone());
         let panel = match selected {
             Some(0) => Some((alert_panel(&page_binding, theme, controller), None)),
@@ -32,7 +41,16 @@ pub fn showcase() -> Widget {
         (tabs, panel)
     })
     .into_widget();
-    CupertinoApp::new(popup).theme(theme).into_widget()
+    let root = CupertinoApp::new(popup).theme(theme).into_widget();
+    let on_back = move || {
+        let controller = back_controller.borrow().clone();
+        if let Some(controller) = controller.filter(CupertinoModalPopupController::is_presented) {
+            controller.dismiss().is_ok()
+        } else {
+            false
+        }
+    };
+    (root, on_back)
 }
 
 fn showcase_tabs(
@@ -330,13 +348,15 @@ impl State<ControlsPage> for ControlsState {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: rust_flutter::AndroidApp) {
-    rust_flutter::run_widget_with_options(
+    let (root, on_back) = showcase_with_back_handler();
+    rust_flutter::run_widget_with_options_and_back(
         "Rust Flutter Cupertino Showcase",
         rust_flutter::NativeOptions {
             android_app: Some(app),
             ..rust_flutter::native_options(rust_flutter::GraphicsBackend::Gles)
         },
-        showcase(),
+        root,
+        on_back,
     )
     .expect("Android Cupertino showcase failed");
 }
