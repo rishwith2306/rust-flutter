@@ -155,13 +155,40 @@ let themed_page = theme.provide(page);
 
 The runnable [`Material` showcase](../examples/material) shows an app-bar action
 opening the drawer, selected destination updates, and scrim dismissal. The
-app bar gets its menu action from `app_bar_config`. The drawer has no entrance
+app bar gets its menu action from `app_bar_config`, which builds an `IconButton`.
+The drawer has no entrance
 animation, edge-swipe gesture, end-drawer counterpart, or native-back
 integration yet. The scaffold does not add keyboard insets automatically;
 compose that behavior explicitly around the relevant child. Flutter's [Drawer](https://api.flutter.dev/flutter/material/Drawer-class.html)
 and [Scaffold](https://api.flutter.dev/flutter/material/Scaffold-class.html)
 also provide automatic app-bar integration, swipe handling, and route-based
 dismissal that this implementation does not yet match.
+
+`IconButton` accepts an icon widget and callback and supports standard, filled,
+filled-tonal and outlined variants. Selection is controlled by the owner, which
+may supply a separate selected icon:
+
+```rust
+use rust_flutter::{
+    gestures::GestureBinding,
+    material::{IconButton, IconButtonVariant, ThemeData},
+    text::Text,
+};
+
+let binding = GestureBinding::new();
+let favorite = IconButton::new(&binding, Text::new("♡").into_widget(), || {})
+    .selected_icon(Text::new("♥").into_widget())
+    .selected(true)
+    .variant(IconButtonVariant::FilledTonal)
+    .theme(ThemeData::default())
+    .into_widget()?;
+# let _ = favorite;
+```
+
+The widget currently has no tooltip, ink splash, focus/hover feedback, or
+semantic button role. Material Icons are not bundled; applications supply an
+icon widget or asset. Flutter's [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
+also offers these accessibility and interaction features.
 
 `NavigationDrawer` provides a controlled selected destination, optional header
 and footer, selected icon glyph, disabled items, and Material 3 selected

@@ -1,12 +1,9 @@
-use super::{FloatingActionButton, ThemeData};
+use super::{FloatingActionButton, IconButton, ThemeData};
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke},
     element::{FlexItem, FlexStyle, StackItem, StackStyle, Widget},
-    gestures::{
-        GestureBinding, GestureButton, GestureDetector, GestureTargetConfig, TapCallbacks,
-        TapConfig,
-    },
+    gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{
         Alignment, Axis, BoxConstraints, Clip, CrossAxisAlignment, HitTestBehavior, Insets,
         Positioned, StackFit,
@@ -78,6 +75,7 @@ pub struct AppBar {
     actions: Vec<Widget>,
     background_color: Color32,
     foreground_color: Color32,
+    theme: ThemeData,
 }
 
 impl AppBar {
@@ -89,6 +87,7 @@ impl AppBar {
             actions: Vec::new(),
             background_color: scheme.surface,
             foreground_color: scheme.on_surface,
+            theme: ThemeData::default(),
         }
     }
 
@@ -113,6 +112,7 @@ impl AppBar {
     }
 
     pub fn theme(mut self, theme: ThemeData) -> Self {
+        self.theme = theme;
         self.background_color = theme.color_scheme.surface;
         self.foreground_color = theme.color_scheme.on_surface;
         self
@@ -246,9 +246,14 @@ impl Scaffold {
             {
                 let on_open = drawer.on_open.clone();
                 app_bar.leading = Some(
-                    GestureButton::new(&drawer.binding, "☰", move || on_open())
-                        .size(egui::vec2(48.0, 48.0))
-                        .into_widget(),
+                    IconButton::new(&drawer.binding, Text::new("☰").into_widget(), move || {
+                        on_open()
+                    })
+                    .theme(app_bar.theme)
+                    .foreground_color(app_bar.foreground_color)
+                    .size(egui::vec2(48.0, 48.0))
+                    .into_widget()
+                    .expect("valid automatic Material drawer icon button"),
                 );
             }
             app_bar.into_widget()
