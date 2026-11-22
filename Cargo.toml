@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rust-flutter", "crates/rust-flutter-assets", "examples/gallery", "examples/cupertino", "crates/rust-flutter-cli"]
+members = ["crates/rust-flutter", "crates/rust-flutter-assets", "examples/gallery", "examples/cupertino", "examples/material", "crates/rust-flutter-cli"]
 resolver = "2"
 exclude = ["vendor/wgpu-hal"]
 

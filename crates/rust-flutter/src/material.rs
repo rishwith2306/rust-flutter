@@ -20,7 +20,7 @@ pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use checkbox::Checkbox;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use radio::Radio;
-pub use scaffold::{AppBar, Scaffold};
+pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;
 pub(crate) use slider::SliderColors;
 pub use switch::Switch;

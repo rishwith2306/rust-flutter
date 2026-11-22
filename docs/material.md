@@ -111,25 +111,38 @@ with `.divisions(Some(count))`.
 This first version does not provide value indicators, secondary tracks,
 keyboard adjustments, or slider accessibility semantics.
 
-`Scaffold` provides a vertical page shell with an expanding body and optional
-`AppBar` / bottom-navigation slots. Pass the same theme to those shell widgets
-for their surface colors, and provide it above the page so buttons in the body
-can resolve inherited colors:
+`Scaffold` provides a vertical page shell with an expanding body, optional
+`AppBar` / bottom-navigation slots, and a controlled modal `Drawer`. The owner
+supplies whether the drawer is open and updates that state when `on_dismiss`
+runs after a scrim tap. The drawer remains mounted while closed. Pass the same
+theme to those shell widgets for their surface colors, and provide it above the
+page so buttons in the body can resolve inherited colors:
 
 ```rust
-use rust_flutter::{element::Widget, material::{AppBar, Scaffold, ThemeData}};
+use rust_flutter::{element::Widget, material::{AppBar, Drawer, Scaffold, ThemeData}, gestures::GestureBinding};
 
 let theme = ThemeData::default();
+let binding = GestureBinding::new();
+let drawer = Drawer::new(Widget::empty()).theme(theme).into_widget()?;
 let page = Scaffold::new(Widget::empty())
     .app_bar(AppBar::new("Home").theme(theme).into_widget())
+    .drawer(&binding, drawer, false, || {})
     .theme(theme)
     .into_widget();
 let themed_page = theme.provide(page);
 # let _ = themed_page;
 ```
 
-The scaffold does not add safe-area padding or keyboard insets automatically.
-Compose those behaviors explicitly around the relevant child.
+The runnable [`Material` showcase](../examples/material) shows an app-bar action
+opening the drawer, selected destination updates, and scrim dismissal. The
+app bar needs an explicit leading action; automatic menu-button insertion is
+not implemented. The drawer has no entrance animation, edge-swipe gesture,
+end-drawer counterpart, or native-back integration yet. The scaffold does not
+add keyboard insets automatically; compose that behavior explicitly around the
+relevant child. Flutter's [Drawer](https://api.flutter.dev/flutter/material/Drawer-class.html)
+and [Scaffold](https://api.flutter.dev/flutter/material/Scaffold-class.html)
+also provide automatic app-bar integration, swipe handling, and route-based
+dismissal that this implementation does not yet match.
 
 `NavigationBar` is controlled: provide destinations, the selected index and a
 callback, then update the index in the owning state when the callback runs.

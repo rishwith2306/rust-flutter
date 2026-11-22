@@ -1,0 +1,121 @@
+use rust_flutter::{
+    element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
+    gestures::{GestureBinding, GestureButton},
+    layout::{Axis, Insets},
+    material::{AppBar, Drawer, FilledButton, MaterialApp, Scaffold, TextButton, ThemeData},
+    text::{DefaultTextStyle, Text, TextStyle},
+};
+
+/// A small Material application demonstrating Scaffold's retained side drawer.
+pub fn showcase() -> Widget {
+    let binding = GestureBinding::new();
+    let theme = ThemeData::default();
+    MaterialApp::new(Widget::stateful(DrawerExample { binding, theme }))
+        .theme(theme)
+        .into_widget()
+}
+
+struct DrawerExample {
+    binding: GestureBinding,
+    theme: ThemeData,
+}
+
+struct DrawerExampleState {
+    selected: usize,
+    drawer_open: bool,
+}
+
+impl StatefulWidget for DrawerExample {
+    type State = DrawerExampleState;
+
+    fn create_state(&self) -> DrawerExampleState {
+        DrawerExampleState {
+            selected: 0,
+            drawer_open: false,
+        }
+    }
+}
+
+impl State<DrawerExample> for DrawerExampleState {
+    fn build(&mut self, widget: &DrawerExample, context: &StateContext<Self>) -> Widget {
+        let handle = context.handle();
+        let open = handle.clone();
+        let menu_button = GestureButton::new(&widget.binding, "☰", move || {
+            let _ = open.update(|state| state.drawer_open = true);
+        })
+        .size(rust_flutter::egui::vec2(48.0, 48.0))
+        .into_widget();
+        let title = ["Home", "Projects", "Settings"][self.selected];
+        let body = DefaultTextStyle {
+            style: TextStyle {
+                font_size: Some(22.0),
+                color: Some(widget.theme.color_scheme.on_surface),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+        .provide(Text::new(format!("Current destination: {title}")).into_widget());
+
+        let mut destinations = vec![FlexItem::fixed(Text::new("WORKSPACE").into_widget())];
+        for (index, name) in ["Home", "Projects", "Settings"].into_iter().enumerate() {
+            let state = handle.clone();
+            let button = if self.selected == index {
+                FilledButton::new(&widget.binding, name, move || {
+                    let _ = state.update(move |state| {
+                        state.selected = index;
+                        state.drawer_open = false;
+                    });
+                })
+                .size(rust_flutter::egui::vec2(256.0, 48.0))
+                .into_widget()
+            } else {
+                TextButton::new(&widget.binding, name, move || {
+                    let _ = state.update(move |state| {
+                        state.selected = index;
+                        state.drawer_open = false;
+                    });
+                })
+                .size(rust_flutter::egui::vec2(256.0, 48.0))
+                .into_widget()
+            };
+            destinations.push(FlexItem::fixed(button));
+        }
+        let mut drawer_style = FlexStyle::new(Axis::Vertical);
+        drawer_style.spacing = 8.0;
+        let drawer_contents =
+            Widget::padding(Insets::all(16.0), Widget::flex(drawer_style, destinations));
+        let dismiss = handle.clone();
+        let drawer = Drawer::new(drawer_contents)
+            .width(288.0)
+            .theme(widget.theme)
+            .into_widget()
+            .expect("valid example drawer");
+
+        Scaffold::new(Widget::padding(Insets::all(24.0), body))
+            .app_bar(
+                AppBar::new(title)
+                    .leading(menu_button)
+                    .theme(widget.theme)
+                    .into_widget(),
+            )
+            .drawer(&widget.binding, drawer, self.drawer_open, move || {
+                let _ = dismiss.update(|state| state.drawer_open = false);
+            })
+            .theme(widget.theme)
+            .into_widget()
+    }
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(app: rust_flutter::AndroidApp) {
+    rust_flutter::run_widget_with_options(
+        "Rust Flutter Material Showcase",
+        rust_flutter::NativeOptions {
+            android_app: Some(app),
+            ..rust_flutter::native_options(rust_flutter::GraphicsBackend::Gles)
+        },
+        showcase(),
+    )
+    .expect("Android Material showcase failed");
+}
