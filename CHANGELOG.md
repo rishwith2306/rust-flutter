@@ -18,6 +18,10 @@
 - Generate new CLI projects with a retained `MaterialApp` root, themed
   `Scaffold`, controller-backed stateful counter and the shared desktop/Android
   widget host.
+
+- Add a listenable `NavigatorController<R>` for retained route views, including
+  root-safe pop, replace and reset operations, and a `run_widget` back handler
+  hook for application-owned stack integration.
   Dynamic palette generation and most of the Material component catalog remain
   open.
 

@@ -498,10 +498,15 @@ mod tests {
         assert!(
             fs::read_to_string(directory.join("src/main.rs"))
                 .unwrap()
-                .contains("my_app::App")
+                .contains("my_app::app()")
         );
         assert!(
             fs::read_to_string(directory.join("src/lib.rs"))
+                .unwrap()
+                .contains("MaterialApp::new")
+        );
+        assert!(
+            fs::read_to_string(directory.join("src/main.rs"))
                 .unwrap()
                 .contains("android_main")
         );

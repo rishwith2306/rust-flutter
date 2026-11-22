@@ -115,13 +115,38 @@ pub fn run_widget_with_options(
     options: NativeOptions,
     root: element::Widget,
 ) -> Result<(), Error> {
-    run_with_options(title, options, WidgetApplication::new(root))
+    run_with_options(title, options, WidgetApplication::new(root, None))
+}
+
+/// Run a retained tree and let the application decide whether native back
+/// requests are consumed. Return `true` to keep the app open.
+pub fn run_widget_with_options_and_back(
+    title: &str,
+    options: NativeOptions,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+) -> Result<(), Error> {
+    run_with_options(
+        title,
+        options,
+        WidgetApplication::new(root, Some(std::rc::Rc::new(on_back))),
+    )
 }
 
 /// Run a retained framework widget tree on macOS, Linux, or Windows.
 #[cfg(not(target_os = "android"))]
 pub fn run_widget(title: &str, root: element::Widget) -> Result<(), Error> {
     run_widget_with_options(title, NativeOptions::default(), root)
+}
+
+/// Run a retained widget tree with a native back-request handler.
+#[cfg(not(target_os = "android"))]
+pub fn run_widget_with_back_handler(
+    title: &str,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+) -> Result<(), Error> {
+    run_widget_with_options_and_back(title, NativeOptions::default(), root, on_back)
 }
 
 #[cfg(target_os = "android")]
@@ -147,7 +172,22 @@ pub fn run_widget_android(
     title: &str,
     root: element::Widget,
 ) -> Result<(), Error> {
-    run_android(activity, title, WidgetApplication::new(root))
+    run_android(activity, title, WidgetApplication::new(root, None))
+}
+
+/// Run a retained Android widget tree with a back-request handler.
+#[cfg(target_os = "android")]
+pub fn run_widget_android_with_back_handler(
+    activity: AndroidApp,
+    title: &str,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+) -> Result<(), Error> {
+    run_android(
+        activity,
+        title,
+        WidgetApplication::new(root, Some(std::rc::Rc::new(on_back))),
+    )
 }
 
 struct WidgetApplication {
@@ -155,15 +195,17 @@ struct WidgetApplication {
     tree: Option<element::ElementTree>,
     gestures: gestures::GestureBinding,
     startup_error: Option<String>,
+    on_back: Option<std::rc::Rc<dyn Fn() -> bool>>,
 }
 
 impl WidgetApplication {
-    fn new(root: element::Widget) -> Self {
+    fn new(root: element::Widget, on_back: Option<std::rc::Rc<dyn Fn() -> bool>>) -> Self {
         Self {
             root: Some(root),
             tree: None,
             gestures: gestures::GestureBinding::new(),
             startup_error: None,
+            on_back,
         }
     }
 }
@@ -206,6 +248,16 @@ impl Application for WidgetApplication {
         }
     }
 
+    fn on_event(&mut self, _: &egui::Context, event: AppEvent) -> EventResponse {
+        if event == AppEvent::BackRequested
+            && self.on_back.as_ref().is_some_and(|handler| handler())
+        {
+            EventResponse::Consumed
+        } else {
+            EventResponse::Continue
+        }
+    }
+
     fn shutdown(&mut self) {
         self.tree = None;
     }
@@ -221,7 +273,7 @@ pub mod prelude {
             NavigationDestination, OutlinedButton, Radio, Scaffold, Slider, Switch, TextButton,
             TextField, ThemeData,
         },
-        navigation::Navigator,
+        navigation::{Navigator, NavigatorController},
         state::Signal,
         widgets::*,
     };
