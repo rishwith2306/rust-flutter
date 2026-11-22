@@ -304,7 +304,7 @@ impl MaterialApp {
         navigator: &NavigatorController<R>,
         builder: impl Fn(&BuildContext, &R) -> Widget + 'static,
     ) -> Self {
-        Self::new(navigator.view(builder))
+        Self::new(navigator.retained_view(builder))
     }
 
     /// Create an app backed by a string route table and an existing route
@@ -341,7 +341,7 @@ impl MaterialApp {
         }
         let table = Rc::new(table);
         let unknown_route: Rc<UnknownRouteBuilder> = Rc::new(unknown_route);
-        let home = navigator.view(move |context, name| {
+        let home = navigator.retained_view(move |context, name| {
             table
                 .get(name)
                 .map_or_else(|| unknown_route(context, name), |builder| builder(context))

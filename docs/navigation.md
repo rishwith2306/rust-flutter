@@ -12,7 +12,7 @@ use rust_flutter::{
 
 let navigator = NavigatorController::new("home");
 let controller = navigator.clone();
-let pages = navigator.view(move |_: &BuildContext, route| {
+let pages = navigator.retained_view(move |_: &BuildContext, route| {
     match *route {
         "home" => Widget::empty(),
         "settings" => Widget::empty(),
@@ -48,7 +48,7 @@ use rust_flutter::{
 };
 
 let navigator = NavigatorController::new("home");
-let root = MaterialApp::new(navigator.view(|_: &BuildContext, route| {
+let root = MaterialApp::new(navigator.retained_view(|_: &BuildContext, route| {
     match *route {
         "home" => Widget::empty(),
         "settings" => Widget::empty(),

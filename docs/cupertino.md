@@ -99,6 +99,12 @@ let page = CupertinoPageScaffold::new(content)
     .theme(theme)
     .into_widget();
 let app = CupertinoApp::new(page).theme(theme).into_widget();
+let navigator = rust_flutter::navigation::NavigatorController::new("home");
+let routed_app = CupertinoApp::with_navigator(&navigator, |_, route| {
+    rust_flutter::text::Text::new(format!("Cupertino route: {route}")).into_widget()
+})
+.theme(theme)
+.into_widget();
 let tabs_app = CupertinoTabScaffold::new(
     &binding,
     vec![
@@ -165,6 +171,7 @@ let sheet = CupertinoActionSheet::new()
     .theme(theme)
     .into_widget()?;
 # let _: Widget = app;
+# let _: Widget = routed_app;
 # let _: Widget = tabs_app;
 # let _: Widget = navigable_tabs;
 # let _: Widget = alert;
@@ -218,9 +225,10 @@ return the matching panel while that id is selected. Choose bottom alignment
 for an action sheet. Transition animation, route results, and restoration
 remain unfinished.
 
-This is not full Cupertino parity. `CupertinoApp` currently provides theme data
-only; route navigation, localization, system appearance following, modal
-transition animation, and pickers remain unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
+This is not full Cupertino parity. `CupertinoApp` provides theme data and can
+render a `NavigatorController` route view; a named route table, localization,
+system appearance following, modal transition animation, and pickers remain
+unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
 and [CupertinoButton](https://api.flutter.dev/flutter/cupertino/CupertinoButton-class.html)
 APIs for the broader Flutter surface. Flutter's [modal popup API](https://api.flutter.dev/flutter/cupertino/showCupertinoModalPopup.html)
 also supports route results, root navigator selection, configurable barrier

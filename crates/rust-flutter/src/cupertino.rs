@@ -19,6 +19,7 @@ use crate::{
         Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
         HitTestBehavior, Insets, IntrinsicDimension, LayoutError, TextBaseline,
     },
+    navigation::NavigatorController,
     text::{DefaultTextStyle, Text, TextStyle},
 };
 use std::{
@@ -106,6 +107,14 @@ impl CupertinoApp {
             home,
             theme: CupertinoThemeData::default(),
         }
+    }
+
+    /// Create a Cupertino root whose home page follows a retained route stack.
+    pub fn with_navigator<R: Clone + PartialEq + 'static>(
+        navigator: &NavigatorController<R>,
+        builder: impl Fn(&BuildContext, &R) -> Widget + 'static,
+    ) -> Self {
+        Self::new(navigator.retained_view(builder))
     }
 
     pub fn theme(mut self, theme: CupertinoThemeData) -> Self {
