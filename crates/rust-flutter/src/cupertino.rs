@@ -13,6 +13,9 @@ use crate::{
 };
 use std::rc::Rc;
 
+mod sliding_segmented;
+pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
     Light,

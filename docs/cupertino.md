@@ -12,6 +12,7 @@ use rust_flutter::{
         CupertinoApp, CupertinoButton, CupertinoNavigationBar,
         CupertinoActivityIndicator, CupertinoPageScaffold, CupertinoSlider,
         CupertinoSegment, CupertinoSegmentedControl, CupertinoSwitch,
+        CupertinoSlidingSegment, CupertinoSlidingSegmentedControl,
         CupertinoTextField, CupertinoThemeData,
     },
     element::Widget,
@@ -43,6 +44,17 @@ let density = CupertinoSegmentedControl::new(
     |value| { let _ = value; },
 )?
 .into_widget()?;
+let view = CupertinoSlidingSegmentedControl::new(
+    &binding,
+    vec![
+        CupertinoSlidingSegment::new("day", "Day"),
+        CupertinoSlidingSegment::new("week", "Week"),
+        CupertinoSlidingSegment::new("month", "Month"),
+    ],
+    "week",
+    |value| { let _ = value; },
+)?
+.into_widget()?;
 let content = Widget::flex(
     rust_flutter::element::FlexStyle::new(rust_flutter::layout::Axis::Vertical),
     vec![
@@ -51,6 +63,7 @@ let content = Widget::flex(
         rust_flutter::element::FlexItem::fixed(volume),
         rust_flutter::element::FlexItem::fixed(loading),
         rust_flutter::element::FlexItem::fixed(density),
+        rust_flutter::element::FlexItem::fixed(view),
         rust_flutter::element::FlexItem::fixed(button),
     ],
 );
@@ -85,5 +98,6 @@ APIs for the broader Flutter surface. The control references include
 [CupertinoActivityIndicator](https://api.flutter.dev/flutter/cupertino/CupertinoActivityIndicator-class.html),
 [CupertinoSlider](https://api.flutter.dev/flutter/cupertino/CupertinoSlider-class.html),
 [CupertinoSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSegmentedControl-class.html),
+[CupertinoSlidingSegmentedControl](https://api.flutter.dev/flutter/cupertino/CupertinoSlidingSegmentedControl-class.html),
 [CupertinoSwitch](https://api.flutter.dev/flutter/cupertino/CupertinoSwitch-class.html),
 and [CupertinoTextField](https://api.flutter.dev/flutter/cupertino/CupertinoTextField-class.html).
