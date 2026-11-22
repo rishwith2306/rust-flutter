@@ -6,6 +6,22 @@ notifications invalidate layout; successful decoration notifications request
 paint only. Animation ticks do not rebuild child widget descriptions. This is
 a render-object implementation rather than Flutter's AnimatedWidget build path.
 
+`SlideTransition` also consumes an `Animation<egui::Vec2>`. Each component is a
+fraction of the laid-out child's matching dimension, so `(1, 0)` offsets by one
+child width and `(0, -1)` offsets by one child height. It retains child size and
+supports dry layout, intrinsic queries and translated baselines.
+
+```rust
+use rust_flutter::{animation::{AlwaysStoppedAnimation, SlideTransition},
+    egui, element::Widget};
+let position = AlwaysStoppedAnimation::new(egui::vec2(1.0, 0.0));
+let sliding = SlideTransition::new(position.clone()).into_widget(
+    Widget::leaf(egui::vec2(80.0, 40.0), |ui| { ui.label("Slide in"); })
+);
+# let _ = sliding;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
 ```rust
 use rust_flutter::{egui, animation::{AnimationConfig, AnimationController, SizeTransition},
     element::{ElementTree, Widget}, layout::BoxConstraints};
@@ -79,7 +95,7 @@ probes require 12→24→12-point widths and unchanged geometry while muted.
 See [verification](verification.md) for platform evidence.
 
 Full AnimatedWidget/AnimatedBuilder APIs, directional AlignmentGeometry,
-Fade/Slide/Scale/Rotation/Positioned and other transitions, compositor layers,
+Fade/Scale/Rotation/Positioned and other transitions, compositor layers,
 complete focus/semantics behavior and full member compatibility remain unfinished.
 Clipping does not establish native IME or screen-reader parity. Reviewed the
 [SizeTransition API](https://api.flutter.dev/flutter/widgets/SizeTransition-class.html),

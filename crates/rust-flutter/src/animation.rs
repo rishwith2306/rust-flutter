@@ -16,7 +16,7 @@ pub use controller::{
 };
 pub use implicit::{TweenAnimationBuilder, TweenAnimationState, TweenValue};
 use std::time::Duration;
-pub use transitions::{AlignTransition, DecoratedBoxTransition, SizeTransition};
+pub use transitions::{AlignTransition, DecoratedBoxTransition, SizeTransition, SlideTransition};
 pub use tweens::{
     Animatable, AnimationDrive, CallbackAnimatable, ChainedAnimatable, ConstantTween, CurveTween,
     DrivenAnimation, SequenceItem, TweenSequence, ValueTween, WeakCurveTween, WeakDrivenAnimation,

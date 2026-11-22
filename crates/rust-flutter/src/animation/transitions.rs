@@ -556,3 +556,122 @@ impl<P: Animation<BoxDecoration> + Clone> RenderBox for DecoratedBoxTransitionRe
         self.source.stop();
     }
 }
+
+/// Animates a retained child by a fraction of its own size on each axis.
+/// Values `(1, 0)` and `(-1, 0)` move the child one child-width right or left.
+#[derive(Clone)]
+pub struct SlideTransition<P: Animation<egui::Vec2> + Clone> {
+    pub position: P,
+}
+
+impl<P: Animation<egui::Vec2> + Clone> SlideTransition<P> {
+    pub fn new(position: P) -> Self {
+        Self { position }
+    }
+
+    pub fn into_widget(self, child: Widget) -> Widget {
+        Widget::render_object(self, vec![child])
+    }
+}
+
+pub struct SlideTransitionRenderBox<P: Animation<egui::Vec2> + Clone> {
+    source: SourceLink<P, egui::Vec2>,
+}
+
+impl<P: Animation<egui::Vec2> + Clone> RenderObjectWidget for SlideTransition<P> {
+    type Object = SlideTransitionRenderBox<P>;
+
+    fn create_render_object(&self, context: &RenderContext) -> Self::Object {
+        SlideTransitionRenderBox {
+            source: SourceLink::new(&self.position, context, true),
+        }
+    }
+
+    fn update_render_object(&self, object: &mut Self::Object, context: &RenderContext) {
+        object.source.bind(&self.position, context);
+    }
+}
+
+impl<P: Animation<egui::Vec2> + Clone> SlideTransitionRenderBox<P> {
+    fn validate(&self, child_count: usize) -> Result<egui::Vec2, LayoutError> {
+        single(child_count)?;
+        let offset = self.source.value()?;
+        if !offset.is_finite() {
+            return Err(LayoutError::InvalidConfiguration(
+                "slide transition position must be finite",
+            ));
+        }
+        Ok(offset)
+    }
+}
+
+impl<P: Animation<egui::Vec2> + Clone> RenderBox for SlideTransitionRenderBox<P> {
+    fn layout_revision(&self) -> u64 {
+        self.source.revision()
+    }
+
+    fn dry_layout(
+        &self,
+        constraints: BoxConstraints,
+        children: &BoxQueries<'_>,
+    ) -> Result<egui::Vec2, LayoutError> {
+        self.validate(children.len())?;
+        children.dry_layout(0, constraints)
+    }
+
+    fn dry_baseline(
+        &self,
+        constraints: BoxConstraints,
+        kind: TextBaseline,
+        children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        let offset = self.validate(children.len())?;
+        let Some(baseline) = children.dry_baseline(0, constraints, kind)? else {
+            return Ok(None);
+        };
+        let size = children.dry_layout(0, constraints)?;
+        let result = baseline + offset.y * size.y;
+        if !result.is_finite() {
+            return Err(LayoutError::InvalidConfiguration(
+                "translated slide baseline must be finite",
+            ));
+        }
+        Ok(Some(result))
+    }
+
+    fn intrinsic(
+        &self,
+        dimension: IntrinsicDimension,
+        extent: f32,
+        children: &BoxQueries<'_>,
+    ) -> Result<f32, LayoutError> {
+        self.validate(children.len())?;
+        children.intrinsic(0, dimension, extent)
+    }
+
+    fn layout(
+        &mut self,
+        constraints: BoxConstraints,
+        children: &mut BoxChildren<'_>,
+        _: &RenderContext,
+    ) -> Result<BoxGeometry, LayoutError> {
+        let offset = self.validate(children.len())?;
+        let child = children.layout(0, constraints)?;
+        let translation = egui::vec2(offset.x * child.x, offset.y * child.y);
+        children.place(0, translation)?;
+        let mut geometry = BoxGeometry::new(child);
+        geometry.baselines = Baselines {
+            alphabetic: children
+                .baseline(0, TextBaseline::Alphabetic, true)?
+                .map(|baseline| baseline + translation.y),
+            ideographic: children
+                .baseline(0, TextBaseline::Ideographic, true)?
+                .map(|baseline| baseline + translation.y),
+        };
+        Ok(geometry)
+    }
+
+    fn dispose(&mut self) {
+        self.source.stop();
+    }
+}
