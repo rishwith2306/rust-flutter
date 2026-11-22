@@ -128,8 +128,8 @@ pub mod prelude {
         animation::*,
         focus::{Focus, FocusNode, FocusScope, FocusScopeNode},
         material::{
-            AppBar, Brightness, ColorScheme, FilledButton, NavigationBar, NavigationDestination,
-            OutlinedButton, Scaffold, TextButton, TextField, ThemeData,
+            AppBar, Brightness, Checkbox, ColorScheme, FilledButton, NavigationBar,
+            NavigationDestination, OutlinedButton, Scaffold, TextButton, TextField, ThemeData,
         },
         navigation::Navigator,
         state::Signal,

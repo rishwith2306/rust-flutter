@@ -21,7 +21,8 @@ for a subtree, use `theme.provide(child)`. A custom brand palette can be made
 with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
 The first retained controls are `FilledButton`, `OutlinedButton`, and
-`TextButton`. They use the nearest scheme and the framework gesture binding:
+`TextButton`. They use the nearest scheme and the framework gesture binding.
+`Checkbox` is owner-controlled and supports optional tristate cycling:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::{FilledButton, ThemeData}};
@@ -31,6 +32,22 @@ let save = FilledButton::new(&binding, "Save", || {}).into_widget();
 let themed_save = ThemeData::default().provide(save);
 # let _ = themed_save;
 ```
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::Checkbox};
+
+let binding = GestureBinding::new();
+let selected = Checkbox::new(&binding, Some(false), |next| {
+    let _ = next;
+})
+.into_widget()?;
+# let _ = selected;
+```
+
+For tristate selection, pass an `Option<bool>` and call `.tristate(true)`; the
+callback receives the next controlled value. This first version uses check and
+dash glyphs and does not provide the complete Material state, semantics, or
+adaptive platform styling surface.
 
 `Scaffold` provides a vertical page shell with an expanding body and optional
 `AppBar` / bottom-navigation slots. Pass the same theme to those shell widgets

@@ -8,10 +8,12 @@ use crate::{
 };
 
 mod button;
+mod checkbox;
 mod navigation_bar;
 mod scaffold;
 mod text_field;
 pub use button::{FilledButton, OutlinedButton, TextButton};
+pub use checkbox::Checkbox;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use scaffold::{AppBar, Scaffold};
 pub use text_field::TextField;

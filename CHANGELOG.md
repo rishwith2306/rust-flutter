@@ -5,9 +5,10 @@
 - Add an initial Material theme foundation with core semantic `ColorScheme`
   roles, inherited `ThemeData`, an egui global-style adapter, and retained
   filled/outlined/text buttons, `AppBar`, an expanding-body `Scaffold`, and a
-  controlled `NavigationBar`, and themed `TextField`. Navigation icons are text
-  glyphs. Dynamic palette generation and most of the Material component catalog
-  remain open.
+  controlled `NavigationBar`, themed `TextField`, and owner-controlled `Checkbox`
+  with optional tristate cycling. Navigation and checkbox icons are text glyphs.
+  Dynamic palette generation and most of the Material component catalog remain
+  open.
 
 - Add `FocusScopeNode` / `FocusScope` to group retained text/button targets,
   queue initial requests, explicitly traverse mounted targets, and cycle with
