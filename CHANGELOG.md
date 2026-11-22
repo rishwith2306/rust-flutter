@@ -3,8 +3,9 @@
 ## Unreleased — 0.1.0 development
 
 - Add an initial Material theme foundation with core semantic `ColorScheme`
-  roles, inherited `ThemeData`, and an egui global-style adapter. Dynamic
-  palette generation and the Material component catalog remain open.
+  roles, inherited `ThemeData`, an egui global-style adapter, and retained
+  filled/outlined/text buttons. Dynamic palette generation and most of the
+  Material component catalog remain open.
 
 - Add `FocusScopeNode` / `FocusScope` to group retained text/button targets,
   queue initial requests, explicitly traverse mounted targets, and cycle with

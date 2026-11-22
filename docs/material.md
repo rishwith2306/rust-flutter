@@ -20,6 +20,18 @@ For inherited lookup inside a retained component, call `ThemeData::of(ctx)`;
 for a subtree, use `theme.provide(child)`. A custom brand palette can be made
 with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
+The first retained controls are `FilledButton`, `OutlinedButton`, and
+`TextButton`. They use the nearest scheme and the framework gesture binding:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::{FilledButton, ThemeData}};
+
+let binding = GestureBinding::new();
+let save = FilledButton::new(&binding, "Save", || {}).into_widget();
+let themed_save = ThemeData::default().provide(save);
+# let _ = themed_save;
+```
+
 This is an initial theme layer, not Material 3 parity. The palette is static,
 does not derive tonal roles from a seed, and does not yet include every Flutter
 `ColorScheme` role, `TextTheme`, component themes, `MaterialApp`, `Scaffold`, or

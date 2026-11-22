@@ -19,6 +19,7 @@ pub struct GestureButton {
     label: egui::WidgetText,
     size: Vec2,
     fill: Option<Color32>,
+    stroke: Option<egui::Stroke>,
     enabled: bool,
     activate: Rc<dyn Fn()>,
 }
@@ -33,6 +34,7 @@ impl GestureButton {
             label: label.into(),
             size: egui::vec2(80.0, 24.0),
             fill: None,
+            stroke: None,
             enabled: true,
             activate: Rc::new(activate),
         }
@@ -43,6 +45,10 @@ impl GestureButton {
     }
     pub fn fill(mut self, fill: Color32) -> Self {
         self.fill = Some(fill);
+        self
+    }
+    pub fn stroke(mut self, stroke: egui::Stroke) -> Self {
+        self.stroke = Some(stroke);
         self
     }
     pub fn enabled(mut self, enabled: bool) -> Self {
@@ -251,6 +257,9 @@ impl RenderBox for GestureButtonRenderBox {
             } else {
                 fill
             });
+        }
+        if let Some(stroke) = self.config.stroke {
+            button = button.stroke(stroke);
         }
         let mut scope =
             egui::UiBuilder::new().id(("rust-flutter-gesture-button", ctx.element_id()));

@@ -7,6 +7,9 @@ use crate::{
     element::{BuildContext, DependencyError, Widget},
 };
 
+mod button;
+pub use button::{FilledButton, OutlinedButton, TextButton};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brightness {
     Light,
@@ -226,5 +229,27 @@ mod tests {
         }
         assert_eq!(ColorScheme::default().brightness, Brightness::Light);
         assert_eq!(ColorScheme::dark().brightness, Brightness::Dark);
+    }
+
+    #[test]
+    fn material_buttons_build_from_the_inherited_scheme() {
+        let binding = crate::gestures::GestureBinding::new();
+        let widgets = vec![
+            crate::material::FilledButton::new(&binding, "Save", || {}).into_widget(),
+            crate::material::OutlinedButton::new(&binding, "Cancel", || {}).into_widget(),
+            crate::material::TextButton::new(&binding, "More", || {}).into_widget(),
+        ];
+        let child = Widget::flex(
+            FlexStyle::new(crate::layout::Axis::Vertical),
+            widgets.into_iter().map(FlexItem::fixed).collect(),
+        );
+        let context = egui::Context::default();
+        let mut tree = ElementTree::new(&context, ThemeData::default().provide(child)).unwrap();
+        let _ = context.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                tree.show(ui, BoxConstraints::tight(egui::vec2(240.0, 150.0)).unwrap())
+                    .unwrap();
+            });
+        });
     }
 }
