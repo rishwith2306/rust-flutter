@@ -178,6 +178,22 @@ let sheet = CupertinoActionSheet::new()
 # let _: Widget = sheet;
 ```
 
+String route tables are available through `CupertinoApp::with_named_routes` and
+`CupertinoNamedRoute`, with checked empty, duplicate, and missing initial-route
+errors. `with_named_routes_and_fallback` accepts a custom unknown-route builder.
+
+```rust
+use rust_flutter::cupertino::{CupertinoApp, CupertinoNamedRoute};
+use rust_flutter::navigation::NavigatorController;
+use rust_flutter::text::Text;
+
+let navigator = NavigatorController::new("home".to_owned());
+let app = CupertinoApp::with_named_routes(&navigator, [
+    CupertinoNamedRoute::new("home", |_| Text::new("Home").into_widget()),
+    CupertinoNamedRoute::new("settings", |_| Text::new("Settings").into_widget()),
+])?;
+```
+
 The default theme uses the familiar blue accent for light and dark palettes.
 Applications can provide custom primary, text, disabled, and background colors
 through `CupertinoThemeData`. The page scaffold expands its body below an

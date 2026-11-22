@@ -27,6 +27,8 @@ use std::{
     rc::Rc,
 };
 
+type UnknownCupertinoRouteBuilder = dyn Fn(&BuildContext, &str) -> Widget;
+
 mod sliding_segmented;
 pub use sliding_segmented::{CupertinoSlidingSegment, CupertinoSlidingSegmentedControl};
 mod action_sheet;
@@ -95,6 +97,46 @@ impl Default for CupertinoThemeData {
     }
 }
 
+/// A named route builder for [`CupertinoApp`].
+pub struct CupertinoNamedRoute {
+    name: String,
+    builder: Rc<dyn Fn(&BuildContext) -> Widget>,
+}
+
+impl CupertinoNamedRoute {
+    pub fn new(
+        name: impl Into<String>,
+        builder: impl Fn(&BuildContext) -> Widget + 'static,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            builder: Rc::new(builder),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CupertinoRouteConfigurationError {
+    EmptyName,
+    DuplicateName(String),
+    InitialRouteMissing(String),
+}
+
+impl std::fmt::Display for CupertinoRouteConfigurationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyName => write!(formatter, "Cupertino route name must not be empty"),
+            Self::DuplicateName(name) => write!(formatter, "duplicate Cupertino route '{name}'"),
+            Self::InitialRouteMissing(name) => write!(
+                formatter,
+                "initial Cupertino route '{name}' is not registered"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for CupertinoRouteConfigurationError {}
+
 /// Root widget that makes Cupertino theme data available to its home subtree.
 pub struct CupertinoApp {
     home: Widget,
@@ -115,6 +157,51 @@ impl CupertinoApp {
         builder: impl Fn(&BuildContext, &R) -> Widget + 'static,
     ) -> Self {
         Self::new(navigator.retained_view(builder))
+    }
+
+    /// Create an app backed by a string route table and an existing route controller.
+    pub fn with_named_routes(
+        navigator: &NavigatorController<String>,
+        routes: impl IntoIterator<Item = CupertinoNamedRoute>,
+    ) -> Result<Self, CupertinoRouteConfigurationError> {
+        Self::with_named_routes_and_fallback(navigator, routes, |_, name| {
+            Text::new(format!(
+                "No Cupertino page is registered for route '{name}'"
+            ))
+            .into_widget()
+        })
+    }
+
+    /// Create an app with a named route table and a custom unknown-route page.
+    pub fn with_named_routes_and_fallback(
+        navigator: &NavigatorController<String>,
+        routes: impl IntoIterator<Item = CupertinoNamedRoute>,
+        unknown_route: impl Fn(&BuildContext, &str) -> Widget + 'static,
+    ) -> Result<Self, CupertinoRouteConfigurationError> {
+        let mut table = std::collections::HashMap::new();
+        for route in routes {
+            if route.name.trim().is_empty() {
+                return Err(CupertinoRouteConfigurationError::EmptyName);
+            }
+            if table.insert(route.name.clone(), route.builder).is_some() {
+                return Err(CupertinoRouteConfigurationError::DuplicateName(route.name));
+            }
+        }
+        let initial = navigator
+            .current()
+            .ok_or_else(|| CupertinoRouteConfigurationError::InitialRouteMissing(String::new()))?;
+        if !table.contains_key(&initial) {
+            return Err(CupertinoRouteConfigurationError::InitialRouteMissing(
+                initial,
+            ));
+        }
+        let unknown_route: Rc<UnknownCupertinoRouteBuilder> = Rc::new(unknown_route);
+        let home = navigator.retained_view(move |context, name| {
+            table
+                .get(name)
+                .map_or_else(|| unknown_route(context, name), |builder| builder(context))
+        });
+        Ok(Self::new(home))
     }
 
     pub fn theme(mut self, theme: CupertinoThemeData) -> Self {
