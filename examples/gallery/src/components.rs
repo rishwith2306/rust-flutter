@@ -593,7 +593,9 @@ impl State<CurvedMarker> for CurvedMarkerState {
                 })
             },
         );
-        use rust_flutter::animation::{AnimationDrive, SizeTransition, ValueTween};
+        use rust_flutter::animation::{
+            AnimationDrive, SizeTransition, SlideTransition, ValueTween,
+        };
         let factor = self
             .curve
             .as_ref()
@@ -638,10 +640,29 @@ impl State<CurvedMarker> for CurvedMarkerState {
                     .into_widget(ratio_child),
             ),
         ));
+        let slide = self
+            .curve
+            .as_ref()
+            .unwrap()
+            .clone()
+            .drive(ValueTween::new(egui::vec2(-1.0, 0.0), egui::Vec2::ZERO).unwrap())
+            .unwrap();
+        let sliding =
+            SlideTransition::new(slide).into_widget(Widget::leaf(egui::vec2(24.0, 12.0), |ui| {
+                ui.painter()
+                    .rect_filled(ui.max_rect(), 0.0, egui::Color32::from_rgb(87, 153, 204));
+            }));
         let mut row = FlexStyle::new(Axis::Horizontal);
         row.main_size = rust_flutter::layout::MainAxisSize::Min;
         row.spacing = 8.0;
-        Widget::flex(row, vec![FlexItem::fixed(typed), FlexItem::fixed(clipped)])
+        Widget::flex(
+            row,
+            vec![
+                FlexItem::fixed(typed),
+                FlexItem::fixed(clipped),
+                FlexItem::fixed(sliding),
+            ],
+        )
     }
     fn dispose(&mut self) {
         if let Some(size) = self.size.take() {
