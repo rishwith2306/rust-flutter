@@ -7,7 +7,7 @@ use rust_flutter::{
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
         ActionChip, AlertDialog, AppBar, Brightness, Card, CardVariant, ChoiceChip, ColorScheme,
-        Divider, Drawer, FilterChip, FloatingActionButton, ListTile, MaterialApp,
+        Divider, Drawer, FilterChip, FloatingActionButton, InputChip, ListTile, MaterialApp,
         MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
         ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold,
         ScaffoldMessengerController, ScaffoldMessengerHost, SnackBar, SnackBarAction, TextButton,
@@ -260,6 +260,8 @@ struct DrawerExampleState {
     snack_bar_visible: bool,
     vegetarian: bool,
     density_choice: usize,
+    member_selected: bool,
+    member_present: bool,
 }
 
 impl StatefulWidget for DrawerExample {
@@ -272,6 +274,8 @@ impl StatefulWidget for DrawerExample {
             snack_bar_visible: false,
             vegetarian: false,
             density_choice: 0,
+            member_selected: false,
+            member_present: true,
         }
     }
 }
@@ -344,6 +348,24 @@ impl State<DrawerExample> for DrawerExampleState {
             },
         )
         .into_widget();
+        let member_chip = if self.member_present {
+            let select_member = handle.clone();
+            let delete_member = handle.clone();
+            InputChip::new(&widget.binding, "Ada", self.member_selected)
+                .on_selected(move |selected| {
+                    let _ = select_member.update(move |state| state.member_selected = selected);
+                })
+                .on_deleted(move || {
+                    let _ = delete_member.update(|state| state.member_present = false);
+                })
+                .into_widget()
+        } else {
+            let add_member = handle.clone();
+            ActionChip::new(&widget.binding, "Add Ada", move || {
+                let _ = add_member.update(|state| state.member_present = true);
+            })
+            .into_widget()
+        };
         let mut body_style = FlexStyle::new(Axis::Vertical);
         body_style.spacing = 12.0;
         let mut chip_row_style = FlexStyle::new(Axis::Horizontal);
@@ -370,6 +392,11 @@ impl State<DrawerExample> for DrawerExampleState {
                         FlexItem::fixed(compact_chip),
                         FlexItem::fixed(comfortable_chip),
                     ],
+                )),
+                FlexItem::fixed(Text::new("Participants").into_widget()),
+                FlexItem::fixed(Widget::flex(
+                    chip_row_style,
+                    vec![FlexItem::fixed(member_chip)],
                 )),
                 FlexItem::fixed(
                     ActionChip::new(&widget.binding, "Open options", move || {

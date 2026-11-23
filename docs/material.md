@@ -422,6 +422,28 @@ let compact = ChoiceChip::new(&binding, "Compact", true, || {
 # let _ = compact;
 ```
 
+`InputChip` supports independently optional selection and deletion callbacks.
+The delete target is exposed as a separate button with an accessible name, so
+activating it does not also toggle selection:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::InputChip};
+
+let binding = GestureBinding::new();
+let member = InputChip::new(&binding, "Ada", false)
+    .on_selected(|selected| {
+        let _ = selected; // Update the owning state.
+    })
+    .on_deleted(|| {
+        // Remove the item from the owning collection.
+    })
+    .into_widget();
+# let _ = member;
+```
+
+This initial API omits Flutter's independent `onPressed`, avatar/delete icon
+widgets, and its full chip theme and animation surface ([InputChip API](https://api.flutter.dev/flutter/material/InputChip-class.html)).
+
 `NavigationDrawer` provides a controlled selected destination, optional header
 and footer, selected icon glyph, disabled items, and Material 3 selected
 colors. Destination icons are text glyphs, and the destination list does not
