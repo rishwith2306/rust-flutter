@@ -113,6 +113,10 @@ impl Paragraph {
         let mut job = LayoutJob::default();
         let mut spacing_after_whitespace = None;
         for span in &self.spans {
+            if span.word_spacing == 0.0 {
+                job.append(&span.text, 0.0, span.format.clone());
+                continue;
+            }
             if span.text.is_empty() {
                 job.append("", 0.0, span.format.clone());
                 continue;
@@ -338,6 +342,19 @@ impl RenderBox for ParagraphRender {
         Ok(geometry)
     }
     fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
+        if crate::layout::ui_is_offstage(ui) {
+            return;
+        }
+        let text = self
+            .paragraph
+            .spans
+            .iter()
+            .map(|span| span.text.as_str())
+            .collect::<String>();
+        let response = ui.interact(ui.max_rect(), ui.unique_id(), egui::Sense::hover());
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text.clone())
+        });
         if let Some(galley) = &self.painted {
             let origin = ui.max_rect().min
                 + egui::vec2(
