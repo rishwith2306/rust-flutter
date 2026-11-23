@@ -13,6 +13,7 @@ use rust_flutter::{
 use serde::{Deserialize, Serialize};
 mod components;
 mod forms;
+mod grids;
 mod lazy_lists;
 
 // Use the same explicit pixel profile on desktop and Android. Dithering is
@@ -45,6 +46,7 @@ enum Route {
     Layout,
     Components,
     LazyList,
+    LazyGrid,
     Form,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +75,7 @@ pub struct Gallery {
     component_demo: Option<components::ComponentDemo>,
     form_demo: Option<forms::FormDemo>,
     lazy_list_demo: Option<lazy_lists::LazyListDemo>,
+    lazy_grid_demo: Option<grids::LazyGridDemo>,
 }
 impl Default for Gallery {
     fn default() -> Self {
@@ -97,6 +100,7 @@ impl Default for Gallery {
             component_demo: None,
             form_demo: None,
             lazy_list_demo: None,
+            lazy_grid_demo: None,
         }
     }
 }
@@ -224,6 +228,11 @@ impl Application for Gallery {
         {
             demo.cancel_input();
         }
+        if *self.navigator.current() != Route::LazyGrid
+            && let Some(demo) = &self.lazy_grid_demo
+        {
+            demo.cancel_input();
+        }
         match *self.navigator.current() {
             Route::Home => {
                 scroll(ui, "home", |ui| {
@@ -268,6 +277,15 @@ impl Application for Gallery {
                             .clicked()
                         {
                             self.navigator.push(Route::LazyList);
+                        }
+                        if ui
+                            .add(
+                                egui::Button::new(self.tr("lazy-grid"))
+                                    .fill(egui::Color32::from_rgb(74, 116, 94)),
+                            )
+                            .clicked()
+                        {
+                            self.navigator.push(Route::LazyGrid);
                         }
                         if ui
                             .add(
@@ -360,6 +378,15 @@ impl Application for Gallery {
                 heading(ui, self.tr("lazy-list"));
                 self.lazy_list_demo
                     .get_or_insert_with(|| lazy_lists::LazyListDemo::new(ui.ctx()))
+                    .show(ui);
+                if button(ui, self.tr("back")).clicked() {
+                    self.navigator.pop();
+                }
+            }
+            Route::LazyGrid => {
+                heading(ui, self.tr("lazy-grid"));
+                self.lazy_grid_demo
+                    .get_or_insert_with(|| grids::LazyGridDemo::new(ui.ctx()))
                     .show(ui);
                 if button(ui, self.tr("back")).clicked() {
                     self.navigator.pop();

@@ -125,4 +125,6 @@ defaults to 4096 and bounds the total cells in the realized and cached groups;
 if the viewport/cache would exceed the budget, layout returns an error. Variable
 cell extents, masonry layouts, slivers, grid-specific keep-alive and complete
 Flutter `GridView` member compatibility remain unfinished. The caller owns the
-position and gesture binding exactly as for `ListView`.
+position and gesture binding exactly as for `ListView`. The native gallery's
+**Lazy grid** route displays 4,000 cells, switches between both axes, and reports
+how many cells each frame builds.

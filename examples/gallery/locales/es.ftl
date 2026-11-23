@@ -32,4 +32,6 @@ components = Componentes con estado
 
 lazy-list = Lista diferida
 
+lazy-grid = Cuadrícula diferida
+
 forms = Formularios

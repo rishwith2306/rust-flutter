@@ -32,4 +32,6 @@ components = Stateful components
 
 lazy-list = Lazy list
 
+lazy-grid = Lazy grid
+
 forms = Forms
