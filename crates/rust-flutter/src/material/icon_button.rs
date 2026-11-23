@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke, Vec2},
-    element::{Semantics, Widget},
+    element::{Semantics, Tooltip, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{Alignment, BoxConstraints, HitTestBehavior},
     text::{DefaultTextStyle, TextStyle},
@@ -27,6 +27,7 @@ pub struct IconButton {
     enabled: bool,
     selected: bool,
     semantics_label: Option<String>,
+    tooltip: Option<String>,
     size: Vec2,
     variant: IconButtonVariant,
     theme: ThemeData,
@@ -44,6 +45,7 @@ impl IconButton {
             enabled: true,
             selected: false,
             semantics_label: None,
+            tooltip: None,
             size: egui::vec2(48.0, 48.0),
             variant: IconButtonVariant::Standard,
             theme: ThemeData::default(),
@@ -71,6 +73,10 @@ impl IconButton {
     /// Sets the screen reader name for an icon-only action.
     pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
         self.semantics_label = Some(label.into());
+        self
+    }
+    pub fn tooltip(mut self, message: impl Into<String>) -> Self {
+        self.tooltip = Some(message.into());
         self
     }
     pub fn size(mut self, size: Vec2) -> Self {
@@ -203,6 +209,10 @@ impl IconButton {
         if self.enabled {
             semantics = semantics.on_click(move || callback());
         }
-        Ok(semantics.into_widget(visual))
+        let widget = semantics.into_widget(visual);
+        Ok(match self.tooltip {
+            Some(message) => Tooltip::new(widget, message).into_widget(),
+            None => widget,
+        })
     }
 }

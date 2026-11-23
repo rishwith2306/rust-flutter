@@ -359,16 +359,17 @@ let binding = GestureBinding::new();
 let favorite = IconButton::new(&binding, Text::new("♡").into_widget(), || {})
     .selected_icon(Text::new("♥").into_widget())
     .selected(true)
+    .tooltip("Favorite")
     .variant(IconButtonVariant::FilledTonal)
     .theme(ThemeData::default())
     .into_widget()?;
 # let _ = favorite;
 ```
 
-The widget does not yet expose its own Material tooltip, ink splash, or focus
-feedback. Wrap it with the generic [`Tooltip`](tooltip.md) for pointer-hover
-help. Material Icons are not bundled; applications supply an icon widget or
-asset. Flutter's [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
+`tooltip` uses the generic pointer-hover [`Tooltip`](tooltip.md) wrapper. The
+widget does not yet implement ink splash or focus feedback. Material Icons are
+not bundled; applications supply an icon widget or asset. Flutter's
+[IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
 also offers these accessibility and interaction features.
 
 `NavigationDrawer` provides a controlled selected destination, optional header
