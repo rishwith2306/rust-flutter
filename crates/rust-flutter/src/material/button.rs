@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     egui::{self, Color32, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
 };
 use std::rc::Rc;
 
@@ -60,6 +60,8 @@ impl StatelessWidget for ButtonWidget {
         )
         .size(self.size)
         .enabled(self.enabled)
+        .accessibility_role(GestureSemanticRole::Button)
+        .accessibility_label(self.label.clone())
         .stroke(stroke)
         .corner_radius(egui::CornerRadius::same(20));
         let button = if matches!(self.variant, Variant::Text) {

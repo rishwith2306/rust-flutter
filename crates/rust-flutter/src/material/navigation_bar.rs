@@ -3,7 +3,7 @@ use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, CornerRadius},
     element::{BuildContext, FlexItem, FlexStyle, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
     layout::{Axis, BoxConstraints, CrossAxisAlignment},
 };
 use std::rc::Rc;
@@ -89,6 +89,9 @@ impl StatelessWidget for NavigationBar {
                 move || activate(index),
             )
             .size(egui::vec2(96.0, 64.0))
+            .accessibility_role(GestureSemanticRole::Tab)
+            .accessibility_label(destination.label.clone())
+            .accessibility_selected(selected)
             .fill(fill)
             .stroke(egui::Stroke::NONE)
             .corner_radius(CornerRadius::same(16));

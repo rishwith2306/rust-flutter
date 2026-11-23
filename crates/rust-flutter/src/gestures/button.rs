@@ -15,6 +15,7 @@ type ButtonPaint = Rc<dyn Fn(&egui::Painter, egui::Rect)>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GestureSemanticRole {
     Button,
+    Tab,
     Switch,
     CheckBox,
     RadioButton,
@@ -398,6 +399,7 @@ impl RenderBox for GestureButtonRenderBox {
                 if let Some(role) = self.config.accessibility_role {
                     node.set_role(match role {
                         GestureSemanticRole::Button => egui::accesskit::Role::Button,
+                        GestureSemanticRole::Tab => egui::accesskit::Role::Tab,
                         GestureSemanticRole::Switch => egui::accesskit::Role::Switch,
                         GestureSemanticRole::CheckBox => egui::accesskit::Role::CheckBox,
                         GestureSemanticRole::RadioButton => egui::accesskit::Role::RadioButton,
