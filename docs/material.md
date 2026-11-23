@@ -392,6 +392,21 @@ The widget resolves its colors from the inherited `ThemeData`; place it under
 also supports avatars, custom label widgets, animation, and additional layout
 and interaction options that are not implemented here.
 
+`ChoiceChip` has the same controlled layout, but reports radio selection
+semantics. Its callback runs when the chip is activated; update the selected
+value in the owning state and rebuild the chip group:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::ChoiceChip};
+
+let binding = GestureBinding::new();
+let compact = ChoiceChip::new(&binding, "Compact", true, || {
+    // Update the owning state to select this option.
+})
+.into_widget();
+# let _ = compact;
+```
+
 `NavigationDrawer` provides a controlled selected destination, optional header
 and footer, selected icon glyph, disabled items, and Material 3 selected
 colors. Destination icons are text glyphs, and the destination list does not
