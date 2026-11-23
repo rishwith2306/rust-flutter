@@ -367,9 +367,10 @@ let page = Scaffold::new(body)
 ```
 
 This is an initial implementation: it has no elevation/shadow, tooltip,
-hero transition, disabled state, focus/hover/pressed feedback, or semantic
-button role. Flutter's API includes those options and separate small, regular,
-large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).
+hero transition, disabled state, or focus/hover/pressed feedback. It exposes a
+button role and click action; use `.semantics_label("Create new item")` for an
+icon-only child. Flutter's API includes those options and separate small,
+regular, large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).
 
 `Card` groups related content in an elevated, filled, or outlined rounded
 surface. The card adds its default four-point outside margin and can be made a

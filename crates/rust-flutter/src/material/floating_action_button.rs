@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32},
-    element::Widget,
+    element::{Semantics, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{BoxConstraints, HitTestBehavior},
     text::{DefaultTextStyle, TextStyle},
@@ -21,6 +21,7 @@ pub struct FloatingActionButton {
     mini: bool,
     large: bool,
     extended: bool,
+    semantics_label: Option<String>,
 }
 
 impl FloatingActionButton {
@@ -35,6 +36,7 @@ impl FloatingActionButton {
             mini: false,
             large: false,
             extended: false,
+            semantics_label: None,
         }
     }
 
@@ -51,6 +53,12 @@ impl FloatingActionButton {
     /// Use the extended, label-bearing pill shape and intrinsic child width.
     pub fn extended(mut self) -> Self {
         self.extended = true;
+        self
+    }
+
+    /// Sets an accessible name, especially useful for icon-only actions.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -116,7 +124,8 @@ impl FloatingActionButton {
             Widget::align(crate::layout::Alignment::CENTER, content),
         ));
         let callback = self.on_pressed;
-        GestureDetector::new(
+        let semantics_callback = callback.clone();
+        let visual = GestureDetector::new(
             &self.binding,
             GestureTargetConfig {
                 tap: Some((
@@ -131,6 +140,12 @@ impl FloatingActionButton {
         )
         .expect("floating action button gesture binding must remain available")
         .behavior(HitTestBehavior::Opaque)
-        .into_widget(surface)
+        .into_widget(surface);
+        let mut semantics =
+            Semantics::new(egui::accesskit::Role::Button).on_click(move || semantics_callback());
+        if let Some(label) = self.semantics_label {
+            semantics = semantics.label(label);
+        }
+        semantics.into_widget(visual)
     }
 }
