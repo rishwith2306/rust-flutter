@@ -6,6 +6,7 @@ use crate::{
     animation::AnimationController,
     egui::{self, Color32},
     element::{BuildContext, DependencyError, Widget},
+    localization::Localizations,
     navigation::NavigatorController,
     notifier::Listenable,
     text::Text,
@@ -317,6 +318,7 @@ pub enum StrokeCap {
 pub struct MaterialApp {
     home: Widget,
     theme: ThemeData,
+    localizations: Option<Localizations>,
 }
 
 type UnknownRouteBuilder = dyn Fn(&BuildContext, &str) -> Widget;
@@ -370,6 +372,7 @@ impl MaterialApp {
         Self {
             home,
             theme: ThemeData::default(),
+            localizations: None,
         }
     }
 
@@ -428,8 +431,19 @@ impl MaterialApp {
         self
     }
 
+    /// Provide a Fluent catalog to descendants through `Localizations::of`.
+    /// Locale selection and platform locale discovery remain application-owned.
+    pub fn localizations(mut self, localizations: Localizations) -> Self {
+        self.localizations = Some(localizations);
+        self
+    }
+
     pub fn into_widget(self) -> Widget {
-        self.theme.provide(self.home)
+        let child = match self.localizations {
+            Some(catalog) => catalog.provide(self.home),
+            None => self.home,
+        };
+        self.theme.provide(child)
     }
 }
 

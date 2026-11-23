@@ -2,9 +2,11 @@
 //!
 //! Formatting preserves Fluent's Unicode isolation marks around interpolated text.
 //! This module does not supply fonts, text shaping, OS locale discovery or RTL layout.
+use crate::element::{BuildContext, DependencyError, Widget};
 pub use fluent_bundle::{FluentArgs, FluentValue};
 use fluent_bundle::{FluentBundle, FluentResource};
 use fluent_langneg::{NegotiationStrategy, negotiate_languages};
+use std::rc::Rc;
 use std::{error::Error, fmt};
 pub use unic_langid::LanguageIdentifier;
 
@@ -43,6 +45,16 @@ impl Localizations {
             chain: vec![0],
             requested: Vec::new(),
         })
+    }
+    /// Makes this catalog available to descendant widgets through inherited
+    /// lookup. Replacing the catalog in a rebuilt app root notifies dependents.
+    pub fn provide(self, child: Widget) -> Widget {
+        Widget::inherited_with(self, |_, _| true, child)
+    }
+
+    /// Reads the nearest catalog and subscribes the current build to changes.
+    pub fn of(context: &BuildContext) -> Result<Option<Rc<Self>>, DependencyError> {
+        context.depend_on::<Self>()
     }
     /// Add one complete FTL resource for a locale. Invalid additions leave the catalog unchanged.
     pub fn add_locale(
