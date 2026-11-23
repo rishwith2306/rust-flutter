@@ -64,6 +64,54 @@ fn expose_progress_semantics(
 ) {
 }
 
+fn cubic_bezier_progress(value: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+    let (mut low, mut high) = (0.0, 1.0);
+    for _ in 0..16 {
+        let t = (low + high) * 0.5;
+        let inverse = 1.0 - t;
+        let x = 3.0 * inverse * inverse * t * x1 + 3.0 * inverse * t * t * x2 + t * t * t;
+        if x < value {
+            low = t;
+        } else {
+            high = t;
+        }
+    }
+    let t = (low + high) * 0.5;
+    let inverse = 1.0 - t;
+    3.0 * inverse * inverse * t * y1 + 3.0 * inverse * t * t * y2 + t * t * t
+}
+
+fn interval_curve(value: f32, start: f32, end: f32, curve: [f32; 4]) -> f32 {
+    if value <= start {
+        0.0
+    } else if value >= end {
+        1.0
+    } else {
+        cubic_bezier_progress(
+            (value - start) / (end - start),
+            curve[0],
+            curve[1],
+            curve[2],
+            curve[3],
+        )
+    }
+}
+
+// Motion intervals and cubic curves follow Flutter's Material implementation:
+// https://github.com/flutter/flutter/blob/master/packages/flutter/lib/src/material/progress_indicator.dart
+fn indeterminate_linear_segments(phase: f32) -> [(f32, f32); 2] {
+    let head1 = interval_curve(phase, 0.0, 750.0 / 1800.0, [0.2, 0.0, 0.8, 1.0]);
+    let tail1 = interval_curve(phase, 333.0 / 1800.0, 1083.0 / 1800.0, [0.4, 0.0, 1.0, 1.0]);
+    let head2 = interval_curve(
+        phase,
+        1000.0 / 1800.0,
+        1567.0 / 1800.0,
+        [0.0, 0.0, 0.65, 1.0],
+    );
+    let tail2 = interval_curve(phase, 1267.0 / 1800.0, 1.0, [0.1, 0.0, 0.45, 1.0]);
+    [(tail1, head1), (tail2, head2)]
+}
+
 /// Themed Material circular progress indicator with determinate or indeterminate progress.
 pub struct CircularProgressIndicator {
     value: Option<f32>,
@@ -422,19 +470,66 @@ impl StatelessWidget for LinearProgressView {
                         .clamp(0.0, 255.0) as u8,
                 );
                 let Some(value) = value else {
-                    ui.painter().rect_filled(rect, radius, background);
                     let duration = 1.8_f64;
                     let phase = ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
-                    let segment_width = rect.width() * 0.3;
-                    let left =
-                        rect.left() + (rect.width() + segment_width) * phase as f32 - segment_width;
-                    let segment = egui::Rect::from_min_size(
-                        egui::pos2(left, rect.top()),
-                        Vec2::new(segment_width, rect.height()),
-                    );
-                    ui.painter()
-                        .with_clip_rect(rect)
-                        .rect_filled(segment, radius, color);
+                    let phase = phase as f32;
+                    let segments = indeterminate_linear_segments(phase);
+                    let gap_fraction = if rect.width() > 0.0 {
+                        (track_gap / rect.width()).min(1.0)
+                    } else {
+                        0.0
+                    };
+                    let effective_gap =
+                        |fraction: f32| gap_fraction * fraction.clamp(0.0, 0.01) / 0.01;
+                    let draw = |start: f32, end: f32, fill: Color32| {
+                        let start = start.clamp(0.0, 1.0);
+                        let end = end.clamp(0.0, 1.0);
+                        if end <= start {
+                            return;
+                        }
+                        let segment = egui::Rect::from_min_max(
+                            egui::pos2(rect.left() + rect.width() * start, rect.top()),
+                            egui::pos2(rect.left() + rect.width() * end, rect.bottom()),
+                        );
+                        ui.painter().rect_filled(segment, radius, fill);
+                    };
+                    let (tail1, head1) = segments[0];
+                    let (tail2, head2) = segments[1];
+                    if head1 < 1.0 - gap_fraction {
+                        let start = if head1 > 0.0 {
+                            head1 + effective_gap(head1)
+                        } else {
+                            0.0
+                        };
+                        draw(start, 1.0, background);
+                    }
+                    if tail1 < head1 {
+                        draw(tail1, head1, color);
+                    }
+                    if tail1 > gap_fraction {
+                        let start = if head2 > 0.0 {
+                            head2 + effective_gap(head2)
+                        } else {
+                            0.0
+                        };
+                        let end = if tail1 < 1.0 {
+                            tail1 - effective_gap(1.0 - tail1)
+                        } else {
+                            1.0
+                        };
+                        draw(start, end, background);
+                    }
+                    if tail2 < head2 {
+                        draw(tail2, head2, color);
+                    }
+                    if tail2 > gap_fraction {
+                        let end = if tail2 < 1.0 {
+                            tail2 - effective_gap(1.0 - tail2)
+                        } else {
+                            1.0
+                        };
+                        draw(0.0, end, background);
+                    }
                     ui.ctx().request_repaint_after(Duration::from_millis(16));
                     return;
                 };

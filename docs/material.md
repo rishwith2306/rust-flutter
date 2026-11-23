@@ -403,7 +403,7 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 ```
 
 The linear indicator supports configurable corner radius, track gap, and an
-optional completion marker. Its indeterminate mode still sweeps one segment
+optional completion marker. Its indeterminate mode animates two eased segments
 across the track. Flutter's [LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
 also includes animation controllers, coordinated Material progress
 indicator themes and versioned appearances; those options remain unfinished.
