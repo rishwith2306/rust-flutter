@@ -76,10 +76,10 @@ let host = ScaffoldMessengerHost::new(move |messenger, current| {
 .into_widget();
 ```
 
-Calling `show_snack_bar` replaces the current message and starts its duration;
-the action callback can hide the current message through the controller. Message
-queueing, transition animation, FAB avoidance, and full `ScaffoldMessenger`
-member compatibility remain unfinished.
+Calling `show_snack_bar` appends a message after the visible and queued messages.
+Each message uses the host duration; timeout or `hide_current_snack_bar` advances
+the queue. Transition animation, FAB avoidance, per-message duration, and full
+`ScaffoldMessenger` member compatibility remain unfinished.
 
 The shared theme currently supports indicator and track colors, linear height,
 circular stroke width, stroke alignment and cap, corner radius, track gap,
