@@ -15,6 +15,13 @@ background = Background work
 run-task = Run task
 worker-result = Worker completed without blocking the UI
 worker-panic = Worker panicked
+run-stream = Run stream
+cancel-stream = Cancel stream
+stream-progress = Stream value
+stream-pending = Stream starting
+stream-done = Stream completed
+stream-panic = Stream producer panicked
+stream-cancelled = Stream cancelled
 language = Language
 
 assets = Bundled assets

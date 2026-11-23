@@ -15,6 +15,13 @@ background = Trabajo en segundo plano
 run-task = Ejecutar tarea
 worker-result = Tarea completada sin bloquear la interfaz
 worker-panic = La tarea falló
+run-stream = Iniciar flujo
+cancel-stream = Cancelar flujo
+stream-progress = Valor del flujo
+stream-pending = Iniciando flujo
+stream-done = Flujo completado
+stream-panic = Error en el productor del flujo
+stream-cancelled = Flujo cancelado
 language = Idioma
 
 assets = Recursos incluidos

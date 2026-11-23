@@ -45,3 +45,6 @@ stream scheduling. There is not yet a retained `StreamBuilder` adapter: a
 background signal requests an egui frame, but it does not by itself mark a
 retained component dirty. Immediate-mode app frames can read the snapshot on
 each repaint; retained apps need an explicit UI-thread notifier bridge.
+
+The gallery's **Background work** card demonstrates both a one-shot task and a
+stream with progress and cancellation.

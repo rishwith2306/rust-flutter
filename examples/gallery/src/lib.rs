@@ -6,7 +6,7 @@ use rust_flutter::{
     },
     localization::{FluentArgs, Localizations},
     prelude::*,
-    state::{TaskState, spawn_task},
+    state::{StreamStatus, TaskState, TaskStream, spawn_stream, spawn_task},
     storage::JsonStore,
     widgets::Theme,
 };
@@ -64,6 +64,7 @@ pub struct Gallery {
     l10n: Localizations,
     navigator: Navigator<Route>,
     task: Option<Signal<TaskState<String, String>>>,
+    stream: Option<TaskStream<u32, String>>,
     store: Option<JsonStore>,
     saved: Option<Snapshot>,
     storage_error: Option<String>,
@@ -87,6 +88,7 @@ impl Default for Gallery {
             l10n,
             navigator: Navigator::new(Route::Home),
             task: None,
+            stream: None,
             store: None,
             saved: None,
             storage_error: None,
@@ -299,6 +301,46 @@ impl Application for Gallery {
                                 }
                                 TaskState::Cancelled => {
                                     text(ui, "Cancelled");
+                                }
+                            }
+                        }
+                        if button(ui, self.tr("run-stream")).clicked() {
+                            self.stream = Some(spawn_stream(ui.ctx(), |sink| {
+                                for value in 1..=10 {
+                                    if sink.is_cancelled() {
+                                        return Ok(());
+                                    }
+                                    sink.emit(value);
+                                    std::thread::sleep(std::time::Duration::from_millis(80));
+                                }
+                                Ok(())
+                            }));
+                        }
+                        if let Some(stream) = &self.stream {
+                            let snapshot = stream.state().get();
+                            if let Some(value) = snapshot.data {
+                                text(ui, format!("{}: {value}/10", self.tr("stream-progress")));
+                            }
+                            if let Some(error) = snapshot.error {
+                                text(ui, error.as_str());
+                            }
+                            match snapshot.status {
+                                StreamStatus::Pending => {
+                                    text(ui, self.tr("stream-pending"));
+                                }
+                                StreamStatus::Active => {
+                                    if button(ui, self.tr("cancel-stream")).clicked() {
+                                        stream.cancel();
+                                    }
+                                }
+                                StreamStatus::Done => {
+                                    text(ui, self.tr("stream-done"));
+                                }
+                                StreamStatus::Panicked => {
+                                    text(ui, self.tr("stream-panic"));
+                                }
+                                StreamStatus::Cancelled => {
+                                    text(ui, self.tr("stream-cancelled"));
                                 }
                             }
                         }
