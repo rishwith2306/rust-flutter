@@ -38,7 +38,9 @@ pub use icon_button::{IconButton, IconButtonVariant};
 pub use list_tile::ListTile;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
-pub use progress_indicator::{CircularProgressIndicator, LinearProgressIndicator};
+pub use progress_indicator::{
+    CircularProgressIndicator, LinearProgressIndicator, ProgressIndicatorTheme,
+};
 pub use radio::Radio;
 pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;
@@ -393,6 +395,27 @@ impl Default for ThemeData {
             color_scheme: ColorScheme::default(),
             use_material3: true,
             progress_indicator_theme: ProgressIndicatorThemeData::default(),
+        }
+    }
+}
+
+impl ProgressIndicatorThemeData {
+    /// Merge subtree values over app-level defaults, preferring `self` when set.
+    pub fn merge(self, defaults: Self) -> Self {
+        Self {
+            color: self.color.or(defaults.color),
+            linear_track_color: self.linear_track_color.or(defaults.linear_track_color),
+            linear_min_height: self.linear_min_height.or(defaults.linear_min_height),
+            circular_track_color: self.circular_track_color.or(defaults.circular_track_color),
+            stroke_width: self.stroke_width.or(defaults.stroke_width),
+            stroke_align: self.stroke_align.or(defaults.stroke_align),
+            stroke_cap: self.stroke_cap.or(defaults.stroke_cap),
+            border_radius: self.border_radius.or(defaults.border_radius),
+            track_gap: self.track_gap.or(defaults.track_gap),
+            stop_indicator_color: self.stop_indicator_color.or(defaults.stop_indicator_color),
+            stop_indicator_radius: self
+                .stop_indicator_radius
+                .or(defaults.stop_indicator_radius),
         }
     }
 }

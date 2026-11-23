@@ -57,8 +57,9 @@ circular stroke width, stroke alignment and cap, corner radius, track gap and
 linear stop marker styling.
 Flutter's [ProgressIndicatorThemeData API](https://api.flutter.dev/flutter/material/ProgressIndicatorThemeData-class.html)
 also provides constraints, circular track padding, refresh colors, animated
-controller synchronization and theme interpolation; those properties remain
-unavailable.
+controller configuration and theme interpolation; those properties remain
+unavailable on root `ThemeData`. Use the `ProgressIndicatorTheme` wrapper for a
+subtree controller:
 
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports
@@ -434,8 +435,9 @@ value for determinate progress through the desktop AccessKit path. Android
 TalkBack integration remains unavailable. Both modes share the checked value
 range and theme colors. Stroke alignment
 supports the range from inside (-1) to outside (1), and caps can be butt, round,
-or square. Controllers can synchronize indicators, but a theme-wide controller,
-track gaps, and versioned Material appearance remain unfinished. See Flutter's
+or square. Controllers can synchronize indicators directly or through the
+subtree `ProgressIndicatorTheme`. A controller inside root `ThemeData`, track
+gaps, and versioned Material appearance remain unfinished. See Flutter's
 [CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
 
 Pass clones of the same `AnimationController` to indeterminate indicators to
@@ -446,7 +448,10 @@ circular rotation:
 use rust_flutter::{
     animation::{AnimationConfig, AnimationController, RepeatOptions},
     egui,
-    material::{CircularProgressIndicator, LinearProgressIndicator},
+    material::{
+        CircularProgressIndicator, LinearProgressIndicator,
+        ProgressIndicatorTheme, ProgressIndicatorThemeData,
+    },
 };
 use std::time::Duration;
 
@@ -456,13 +461,18 @@ let controller = AnimationController::new(&ctx, AnimationConfig {
     ..AnimationConfig::default()
 })?;
 let _run = controller.repeat(RepeatOptions::default())?;
-let linear = LinearProgressIndicator::new(None)
-    .controller(controller.clone())
-    .into_widget()?;
+let linear = LinearProgressIndicator::new(None).into_widget()?;
 let circular = CircularProgressIndicator::new(None)
     .controller(controller.clone())
     .into_widget()?;
-# let _ = (linear, circular);
+let subtree = ProgressIndicatorTheme::new(linear)
+    .data(ProgressIndicatorThemeData {
+        color: Some(egui::Color32::from_rgb(0x22, 0x66, 0xAA)),
+        ..ProgressIndicatorThemeData::default()
+    })
+    .controller(controller.clone())
+    .into_widget();
+# let _ = (subtree, circular);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 

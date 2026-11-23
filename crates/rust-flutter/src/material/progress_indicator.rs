@@ -1,10 +1,49 @@
-use super::{StrokeCap, ThemeData};
+use super::{ProgressIndicatorThemeData, StrokeCap, ThemeData};
 use crate::animation::AnimationController;
 use crate::{
     egui::{self, Color32, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
 };
 use std::time::Duration;
+
+/// Applies progress indicator defaults and an optional shared controller to a subtree.
+pub struct ProgressIndicatorTheme {
+    child: Widget,
+    data: ProgressIndicatorThemeData,
+    controller: Option<AnimationController>,
+}
+
+impl ProgressIndicatorTheme {
+    /// Creates a subtree theme around `child` with no local overrides.
+    pub fn new(child: Widget) -> Self {
+        Self {
+            child,
+            data: ProgressIndicatorThemeData::default(),
+            controller: None,
+        }
+    }
+
+    /// Sets properties that override the nearest app or subtree defaults.
+    pub fn data(mut self, data: ProgressIndicatorThemeData) -> Self {
+        self.data = data;
+        self
+    }
+
+    /// Supplies one animation source to indeterminate indicators in this subtree.
+    pub fn controller(mut self, controller: AnimationController) -> Self {
+        self.controller = Some(controller);
+        self
+    }
+
+    /// Builds the inherited theme and optional controller providers.
+    pub fn into_widget(self) -> Widget {
+        let child = Widget::inherited(self.data, self.child);
+        match self.controller {
+            Some(controller) => Widget::inherited_notifier(Some(controller), child),
+            None => child,
+        }
+    }
+}
 
 #[cfg(not(target_os = "android"))]
 fn expose_progress_semantics(
@@ -126,7 +165,6 @@ pub struct CircularProgressIndicator {
     semantics_label: Option<String>,
     semantics_value: Option<String>,
     controller: Option<AnimationController>,
-    controller_phase: Option<f32>,
 }
 
 impl CircularProgressIndicator {
@@ -142,7 +180,6 @@ impl CircularProgressIndicator {
             semantics_label: None,
             semantics_value: None,
             controller: None,
-            controller_phase: None,
         }
     }
 
@@ -181,7 +218,6 @@ impl CircularProgressIndicator {
     /// Drives this indeterminate indicator from a shared controller.
     pub fn controller(mut self, controller: AnimationController) -> Self {
         self.controller = Some(controller);
-        self.controller_phase = None;
         self
     }
 
@@ -230,26 +266,37 @@ struct CircularProgressView(CircularProgressIndicator);
 
 impl StatelessWidget for CircularProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
-        if self.0.controller_phase.is_none()
-            && let Some(controller) = self.0.controller.clone()
-        {
+        if let Some(controller) = self.0.controller.clone() {
             let indicator = self.0.clone();
-            let phase_controller = controller.clone();
-            return Widget::value_listenable_builder(controller, move |_, _| {
-                let mut indicator = indicator.clone();
-                indicator.controller_phase = Some(phase_controller.normalized_value());
-                Widget::stateless(CircularProgressView(indicator))
-            });
+            let mut indicator = indicator;
+            indicator.controller = None;
+            return Widget::inherited_notifier(
+                Some(controller),
+                Widget::stateless(CircularProgressView(indicator)),
+            );
         }
+        let animation_controller = if self.0.value.is_none() {
+            context
+                .depend_on::<crate::element::InheritedNotifier<AnimationController>>()
+                .expect("progress indicators resolve inherited animation controllers")
+                .and_then(|provider| provider.notifier.clone())
+        } else {
+            None
+        };
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
-        let progress_theme = theme.progress_indicator_theme;
+        let progress_theme = context
+            .depend_on::<ProgressIndicatorThemeData>()
+            .expect("progress indicators resolve inherited theme data")
+            .map_or(theme.progress_indicator_theme, |local| {
+                local.merge(theme.progress_indicator_theme)
+            });
         let indicator = &self.0;
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();
         let semantics_value = indicator.semantics_value.clone();
-        let animation_phase = indicator.controller_phase;
+        let animation_phase = animation_controller.map(|controller| controller.normalized_value());
         let size = indicator.size;
         let stroke_width = indicator
             .stroke_width
@@ -357,7 +404,6 @@ pub struct LinearProgressIndicator {
     semantics_label: Option<String>,
     semantics_value: Option<String>,
     controller: Option<AnimationController>,
-    controller_phase: Option<f32>,
 }
 
 impl LinearProgressIndicator {
@@ -374,7 +420,6 @@ impl LinearProgressIndicator {
             semantics_label: None,
             semantics_value: None,
             controller: None,
-            controller_phase: None,
         }
     }
 
@@ -420,7 +465,6 @@ impl LinearProgressIndicator {
     /// Drives this indeterminate indicator from a shared controller.
     pub fn controller(mut self, controller: AnimationController) -> Self {
         self.controller = Some(controller);
-        self.controller_phase = None;
         self
     }
 
@@ -473,26 +517,37 @@ struct LinearProgressView(LinearProgressIndicator);
 
 impl StatelessWidget for LinearProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
-        if self.0.controller_phase.is_none()
-            && let Some(controller) = self.0.controller.clone()
-        {
+        if let Some(controller) = self.0.controller.clone() {
             let indicator = self.0.clone();
-            let phase_controller = controller.clone();
-            return Widget::value_listenable_builder(controller, move |_, _| {
-                let mut indicator = indicator.clone();
-                indicator.controller_phase = Some(phase_controller.normalized_value());
-                Widget::stateless(LinearProgressView(indicator))
-            });
+            let mut indicator = indicator;
+            indicator.controller = None;
+            return Widget::inherited_notifier(
+                Some(controller),
+                Widget::stateless(LinearProgressView(indicator)),
+            );
         }
+        let animation_controller = if self.0.value.is_none() {
+            context
+                .depend_on::<crate::element::InheritedNotifier<AnimationController>>()
+                .expect("progress indicators resolve inherited animation controllers")
+                .and_then(|provider| provider.notifier.clone())
+        } else {
+            None
+        };
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
-        let progress_theme = theme.progress_indicator_theme;
+        let progress_theme = context
+            .depend_on::<ProgressIndicatorThemeData>()
+            .expect("progress indicators resolve inherited theme data")
+            .map_or(theme.progress_indicator_theme, |local| {
+                local.merge(theme.progress_indicator_theme)
+            });
         let indicator = &self.0;
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();
         let semantics_value = indicator.semantics_value.clone();
-        let animation_phase = indicator.controller_phase;
+        let animation_phase = animation_controller.map(|controller| controller.normalized_value());
         let height = indicator
             .min_height
             .or(progress_theme
