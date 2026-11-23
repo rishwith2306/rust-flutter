@@ -108,15 +108,15 @@ For tristate selection, pass an `Option<bool>` and call `.tristate(true)`; the
 callback receives the next controlled value. This first version uses check and
 dash marks painted by the framework. It does not yet provide the complete
 Material interaction-state surface. Desktop AccessKit nodes expose checkbox
-role and checked/mixed state when `.semantics_label(...)` is supplied; Android
-TalkBack integration remains unavailable.
+role and checked/mixed state when `.semantics_label(...)` is supplied. The Android
+AccessKit bridge is implemented; TalkBack device validation remains pending.
 
 `Switch` is also controlled: supply its value and update that value in the
 owner after the callback. The framework animates the thumb to the new value
 over 200 ms when the owner rebuilds, while the track and thumb colors update
 immediately. On desktop the control exposes the AccessKit switch role, an
-optional accessible name, and its toggled state; Android TalkBack semantics are
-not integrated yet. Flutter's controlled `Switch` also waits for the owner to rebuild
+optional accessible name, and its toggled state. The Android AccessKit bridge
+is implemented; TalkBack device validation remains pending. Flutter's controlled `Switch` also waits for the owner to rebuild
 with its new value after invoking `onChanged` ([Flutter Switch API](https://api.flutter.dev/flutter/material/Switch-class.html)):
 
 ```rust
@@ -133,7 +133,8 @@ let notifications = Switch::new(&binding, true, |next| {
 `Radio<T>` draws one option from an owner-managed selection group. Give every
 option the same current `group_value` and handle callbacks in the owning state.
 On desktop it exposes the radio role and selection state, with an optional
-accessible label; Android TalkBack integration remains unavailable:
+accessible label. The Android AccessKit bridge is implemented; TalkBack device
+validation remains pending:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::Radio};
@@ -458,9 +459,9 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 ```
 
 Both modes expose a progress-bar role, optional label/value, and a percentage
-value for determinate progress through the desktop AccessKit path. Android
-TalkBack integration remains unavailable. Both modes share the checked value
-range and theme colors. Stroke alignment
+value for determinate progress through the desktop host and Android AccessKit
+bridge. TalkBack device validation remains pending. Both modes share the checked
+value range and theme colors. Stroke alignment
 supports the range from inside (-1) to outside (1), and caps can be butt, round,
 or square. The track gap can be set per indicator or in the shared theme.
 Controllers can synchronize indicators directly, through root `ThemeData`, or

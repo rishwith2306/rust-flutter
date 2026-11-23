@@ -23,8 +23,9 @@ let accessible_play = Semantics::new(egui::accesskit::Role::Button)
 
 The wrapper can also set a value, enabled state, selected state, and toggle state.
 Material and Cupertino buttons expose their button role and names; navigation
-tabs expose selected state. Material `IconButton` accepts an optional
-`semantics_label` because its icon may not contain readable text.
+tabs expose selected state. Tappable Material cards and list tiles expose action
+roles and states. Material `IconButton` accepts an optional `semantics_label`
+because its icon may not contain readable text.
 
 ```rust,ignore
 let save = IconButton::new(&binding, save_icon, save_document)
