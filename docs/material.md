@@ -372,6 +372,26 @@ not bundled; applications supply an icon widget or asset. Flutter's
 [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
 also offers these accessibility and interaction features.
 
+`FilterChip` is a controlled choice chip. Pass its selected value and update
+that value in the owner when `on_selected` runs. It exposes checkbox role,
+label, and toggled state to accessibility services:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::FilterChip};
+
+let binding = GestureBinding::new();
+let vegetarian = FilterChip::new(&binding, "Vegetarian", false, |selected| {
+    let _ = selected; // Update the owning state and rebuild with the new value.
+})
+.into_widget();
+# let _ = vegetarian;
+```
+
+The widget resolves its colors from the inherited `ThemeData`; place it under
+`MaterialApp` or a theme provider. Flutter's [FilterChip API](https://api.flutter.dev/flutter/material/FilterChip-class.html)
+also supports avatars, custom label widgets, animation, and additional layout
+and interaction options that are not implemented here.
+
 `NavigationDrawer` provides a controlled selected destination, optional header
 and footer, selected icon glyph, disabled items, and Material 3 selected
 colors. Destination icons are text glyphs, and the destination list does not
