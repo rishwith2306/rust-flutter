@@ -149,8 +149,10 @@ keyboard shortcuts and advanced layout. Functions in `widgets` return responses
 so applications can handle clicks, focus, hover and validation directly.
 Give repeated text fields and scroll areas unique, stable IDs. Keep file/network
 I/O outside `build`; `state::spawn_task` runs work on a background thread and
-requests a frame when results are available. `Signal` read/update closures must
-not recursively access the same signal. Tasks are not automatically cancelled.
+requests a frame when results are available. `spawn_cancellable_task` passes a
+`CancellationToken` to cooperative work and exposes `TaskState::Cancelled` when
+cancellation is requested. `Signal` read/update closures must not recursively
+access the same signal. Ordinary tasks are not automatically cancelled.
 
 ## Android
 

@@ -297,6 +297,9 @@ impl Application for Gallery {
                                 TaskState::Panicked => {
                                     text(ui, self.tr("worker-panic"));
                                 }
+                                TaskState::Cancelled => {
+                                    text(ui, "Cancelled");
+                                }
                             }
                         }
                     });
