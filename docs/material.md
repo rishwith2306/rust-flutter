@@ -501,12 +501,13 @@ let page = Scaffold::new(body)
         &binding,
         Text::new("+").into_widget(),
         || {},
-    ));
+    ).tooltip("Create new item"));
 # let _ = page;
 ```
 
-This is an initial implementation: it has no elevation/shadow, tooltip,
-hero transition, disabled state, or focus/hover/pressed feedback. It exposes a
+This is an initial implementation: it has no elevation/shadow, hero transition,
+disabled state, or focus/pressed feedback. The pointer-hover tooltip is generic
+and does not yet support long press or keyboard focus. It exposes a
 button role and click action; use `.semantics_label("Create new item")` for an
 icon-only child. Flutter's API includes those options and separate small,
 regular, large, and extended forms ([FloatingActionButton API](https://api.flutter.dev/flutter/material/FloatingActionButton-class.html)).

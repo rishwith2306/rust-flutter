@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32},
-    element::{Semantics, Widget},
+    element::{Semantics, Tooltip, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{BoxConstraints, HitTestBehavior},
     text::{DefaultTextStyle, TextStyle},
@@ -22,6 +22,7 @@ pub struct FloatingActionButton {
     large: bool,
     extended: bool,
     semantics_label: Option<String>,
+    tooltip: Option<String>,
 }
 
 impl FloatingActionButton {
@@ -37,6 +38,7 @@ impl FloatingActionButton {
             large: false,
             extended: false,
             semantics_label: None,
+            tooltip: None,
         }
     }
 
@@ -59,6 +61,13 @@ impl FloatingActionButton {
     /// Sets an accessible name, especially useful for icon-only actions.
     pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
         self.semantics_label = Some(label.into());
+        self
+    }
+
+    /// Adds pointer-hover help. For touch/keyboard tooltip behavior, wrap the
+    /// button in an application-owned presentation.
+    pub fn tooltip(mut self, message: impl Into<String>) -> Self {
+        self.tooltip = Some(message.into());
         self
     }
 
@@ -146,6 +155,10 @@ impl FloatingActionButton {
         if let Some(label) = self.semantics_label {
             semantics = semantics.label(label);
         }
-        semantics.into_widget(visual)
+        let widget = semantics.into_widget(visual);
+        match self.tooltip {
+            Some(message) => Tooltip::new(widget, message).into_widget(),
+            None => widget,
+        }
     }
 }
