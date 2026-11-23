@@ -532,7 +532,7 @@ mod tests {
                     .unwrap();
             });
         });
-        assert_eq!(*observed.borrow(), Some(theme));
+        assert_eq!(*observed.borrow(), Some(theme.clone()));
 
         theme.apply(&context);
         let visuals = context.style().visuals.clone();
@@ -597,7 +597,7 @@ mod tests {
             }))
             .app_bar(
                 crate::material::AppBar::new("Home")
-                    .theme(theme)
+                    .theme(theme.clone())
                     .into_widget(),
             )
             .bottom_navigation_bar(Widget::leaf(egui::vec2(300.0, 60.0), move |_| {
