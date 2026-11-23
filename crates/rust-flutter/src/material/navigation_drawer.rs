@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     egui::{self, Color32, Vec2},
     element::{FlexItem, FlexStyle, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
     layout::{Axis, Insets},
 };
 use std::rc::Rc;
@@ -134,6 +134,9 @@ impl NavigationDrawer {
             let button = GestureButton::new(&self.binding, label, move || callback(index))
                 .size(Vec2::new(self.width - 24.0, 56.0))
                 .enabled(destination.enabled)
+                .accessibility_role(GestureSemanticRole::Button)
+                .accessibility_label(destination.label.clone())
+                .accessibility_selected(selected)
                 .fill(if selected {
                     colors.secondary_container
                 } else {
