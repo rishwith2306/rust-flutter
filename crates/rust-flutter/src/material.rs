@@ -12,6 +12,18 @@ use crate::{
     notifier::Listenable,
     text::Text,
 };
+use material_color_utils::{
+    dynamic::{
+        color_spec::SpecVersion, dynamic_scheme::DynamicScheme,
+        material_dynamic_colors::MaterialDynamicColors,
+    },
+    hct::hct_color::Hct,
+    scheme::{
+        SchemeContent, SchemeExpressive, SchemeFidelity, SchemeFruitSalad, SchemeMonochrome,
+        SchemeNeutral, SchemeRainbow, SchemeTonalSpot, SchemeVibrant,
+    },
+    utils::color_utils::Argb,
+};
 use std::{collections::HashMap, rc::Rc};
 
 mod bottom_sheet;
@@ -60,6 +72,21 @@ pub use text_field::TextField;
 pub enum Brightness {
     Light,
     Dark,
+}
+
+/// Palette strategy used by [`ColorScheme::from_seed_with_options`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DynamicSchemeVariant {
+    Monochrome,
+    Neutral,
+    #[default]
+    TonalSpot,
+    Vibrant,
+    Expressive,
+    Fidelity,
+    Content,
+    Rainbow,
+    FruitSalad,
 }
 
 /// Material semantic color roles used by controls, surfaces and app themes.
@@ -121,8 +148,144 @@ pub struct ColorScheme {
 }
 
 impl ColorScheme {
-    /// A static purple-seeded starting palette. Supply a custom scheme for
-    /// brand colors; dynamic Material color generation is not implemented.
+    /// Generate a Material 3 light or dark palette from a seed color.
+    ///
+    /// Uses the `tonalSpot` variant, zero contrast adjustment, and the Material
+    /// Color Utilities 2026 specification.
+    pub fn from_seed(seed_color: Color32, brightness: Brightness) -> Self {
+        Self::from_seed_with_options(seed_color, brightness, DynamicSchemeVariant::TonalSpot, 0.0)
+    }
+
+    /// Generate a Material 3 palette with an explicit variant and contrast level.
+    /// Contrast levels follow Material Color Utilities and are clamped to `-1..=1`.
+    pub fn from_seed_with_options(
+        seed_color: Color32,
+        brightness: Brightness,
+        variant: DynamicSchemeVariant,
+        contrast_level: f64,
+    ) -> Self {
+        let seed = Hct::from_argb(Argb::from_rgb(
+            seed_color.r(),
+            seed_color.g(),
+            seed_color.b(),
+        ));
+        let contrast_level = if contrast_level.is_finite() {
+            contrast_level.clamp(-1.0, 1.0)
+        } else {
+            0.0
+        };
+        let scheme = make_dynamic_scheme(
+            seed,
+            brightness == Brightness::Dark,
+            variant,
+            contrast_level,
+        );
+        let roles = MaterialDynamicColors::new_with_spec(SpecVersion::Spec2026);
+        let color = |role| dynamic_role(&scheme, role);
+
+        let primary = color(roles.primary());
+        let on_primary = color(roles.on_primary());
+        let primary_container = color(roles.primary_container());
+        let on_primary_container = color(roles.on_primary_container());
+        let primary_fixed = color(roles.primary_fixed());
+        let primary_fixed_dim = color(roles.primary_fixed_dim());
+        let on_primary_fixed = color(roles.on_primary_fixed());
+        let on_primary_fixed_variant = color(roles.on_primary_fixed_variant());
+        let secondary = color(roles.secondary());
+        let on_secondary = color(roles.on_secondary());
+        let secondary_container = color(roles.secondary_container());
+        let on_secondary_container = color(roles.on_secondary_container());
+        let secondary_fixed = color(roles.secondary_fixed());
+        let secondary_fixed_dim = color(roles.secondary_fixed_dim());
+        let on_secondary_fixed = color(roles.on_secondary_fixed());
+        let on_secondary_fixed_variant = color(roles.on_secondary_fixed_variant());
+        let tertiary = color(roles.tertiary());
+        let on_tertiary = color(roles.on_tertiary());
+        let tertiary_container = color(roles.tertiary_container());
+        let on_tertiary_container = color(roles.on_tertiary_container());
+        let tertiary_fixed = color(roles.tertiary_fixed());
+        let tertiary_fixed_dim = color(roles.tertiary_fixed_dim());
+        let on_tertiary_fixed = color(roles.on_tertiary_fixed());
+        let on_tertiary_fixed_variant = color(roles.on_tertiary_fixed_variant());
+        let error = color(roles.error());
+        let on_error = color(roles.on_error());
+        let error_container = color(roles.error_container());
+        let on_error_container = color(roles.on_error_container());
+        let surface = color(roles.surface());
+        let on_surface = color(roles.on_surface());
+        let surface_dim = color(roles.surface_dim());
+        let surface_bright = color(roles.surface_bright());
+        let surface_container_lowest = color(roles.surface_container_lowest());
+        let surface_container_low = color(roles.surface_container_low());
+        let surface_container = color(roles.surface_container());
+        let surface_container_high = color(roles.surface_container_high());
+        let surface_container_highest = color(roles.surface_container_highest());
+        let on_surface_variant = color(roles.on_surface_variant());
+        let outline = color(roles.outline());
+        let outline_variant = color(roles.outline_variant());
+        let inverse_surface = color(roles.inverse_surface());
+        let on_inverse_surface = color(roles.inverse_on_surface());
+        let inverse_primary = color(roles.inverse_primary());
+        let surface_tint = color(roles.surface_tint());
+        let shadow = color(roles.shadow());
+        let scrim = color(roles.scrim());
+
+        Self {
+            brightness,
+            primary,
+            on_primary,
+            primary_container,
+            on_primary_container,
+            primary_fixed,
+            primary_fixed_dim,
+            on_primary_fixed,
+            on_primary_fixed_variant,
+            secondary,
+            on_secondary,
+            secondary_container,
+            on_secondary_container,
+            secondary_fixed,
+            secondary_fixed_dim,
+            on_secondary_fixed,
+            on_secondary_fixed_variant,
+            tertiary,
+            on_tertiary,
+            tertiary_container,
+            on_tertiary_container,
+            tertiary_fixed,
+            tertiary_fixed_dim,
+            on_tertiary_fixed,
+            on_tertiary_fixed_variant,
+            error,
+            on_error,
+            error_container,
+            on_error_container,
+            surface,
+            on_surface,
+            surface_dim,
+            surface_bright,
+            surface_container_lowest,
+            surface_container_low,
+            surface_container,
+            surface_container_high,
+            surface_container_highest,
+            on_surface_variant,
+            outline,
+            outline_variant,
+            inverse_surface,
+            on_inverse_surface,
+            inverse_primary,
+            surface_tint,
+            shadow,
+            scrim,
+            background: surface,
+            on_background: on_surface,
+            surface_variant: surface_container_highest,
+        }
+    }
+
+    /// A static purple-seeded starting palette. Use [`Self::from_seed`] to
+    /// derive a scheme from an application brand color.
     pub fn light() -> Self {
         Self {
             brightness: Brightness::Light,
@@ -240,6 +403,45 @@ impl Default for ColorScheme {
     fn default() -> Self {
         Self::light()
     }
+}
+
+fn make_dynamic_scheme(
+    seed: Hct,
+    is_dark: bool,
+    variant: DynamicSchemeVariant,
+    contrast_level: f64,
+) -> DynamicScheme {
+    macro_rules! generate {
+        ($scheme:ty) => {
+            <$scheme>::builder(seed.to_argb(), is_dark, contrast_level)
+                .spec_version(SpecVersion::Spec2026)
+                .build()
+        };
+    }
+    match variant {
+        DynamicSchemeVariant::Monochrome => generate!(SchemeMonochrome),
+        DynamicSchemeVariant::Neutral => generate!(SchemeNeutral),
+        DynamicSchemeVariant::TonalSpot => generate!(SchemeTonalSpot),
+        DynamicSchemeVariant::Vibrant => generate!(SchemeVibrant),
+        DynamicSchemeVariant::Expressive => generate!(SchemeExpressive),
+        DynamicSchemeVariant::Fidelity => generate!(SchemeFidelity),
+        DynamicSchemeVariant::Content => generate!(SchemeContent),
+        DynamicSchemeVariant::Rainbow => generate!(SchemeRainbow),
+        DynamicSchemeVariant::FruitSalad => generate!(SchemeFruitSalad),
+    }
+}
+
+fn dynamic_role(
+    scheme: &DynamicScheme,
+    role: std::sync::Arc<material_color_utils::dynamic::dynamic_color::DynamicColor>,
+) -> Color32 {
+    let argb = scheme.get_argb(&role).0;
+    Color32::from_rgba_unmultiplied(
+        ((argb >> 16) & 0xff) as u8,
+        ((argb >> 8) & 0xff) as u8,
+        (argb & 0xff) as u8,
+        (argb >> 24) as u8,
+    )
 }
 
 /// Inherited Material theme data and an optional egui global-style adapter.
