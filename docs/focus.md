@@ -51,7 +51,9 @@ ordinary egui controls do not yet attach to framework focus scopes.
 `element::Shortcuts` wraps a retained subtree and consumes configured egui
 `KeyboardShortcut`s. A nested scope gets first chance to handle a shortcut; an
 unmatched shortcut bubbles to the outer scope. Bind callbacks directly, or bind
-a typed intent through a shared `element::Actions` registry:
+a typed intent through a shared `element::Actions` registry. Use
+`.focus_scope(node)` to handle shortcuts only while that `FocusScopeNode` owns
+focus. Without this gate, a mounted scope is active regardless of focus:
 
 ```rust
 use std::{cell::Cell, rc::Rc};
@@ -86,9 +88,10 @@ let page = Shortcuts::new(Widget::empty())
 ```
 
 This subtree scope is active while mounted and does not yet check which child
-owns focus. `Actions` matches intents by concrete Rust type and invokes the
-registered handler synchronously. Focus-based action lookup, inherited action
-scopes, and platform-specific shortcut policy remain future work.
+owns focus unless a focus-scope gate is supplied. `Actions` matches intents by
+concrete Rust type and invokes the registered handler synchronously.
+Focus-ancestor lookup, inherited action scopes, and platform-specific shortcut
+policy remain future work.
 
 The API shape was checked against the official [Flutter Focus](https://api.flutter.dev/flutter/widgets/Focus-class.html)
 and [FocusNode](https://api.flutter.dev/flutter/widgets/FocusNode-class.html)
