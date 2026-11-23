@@ -97,6 +97,21 @@ Letter spacing, decoration widths and background expansion remain in logical
 points. A Text can override the inherited scale. Overflow after scaling is
 rejected by the paragraph's geometry validation.
 
+For a custom curve, pass authored/rendered sizes in logical points:
+
+```rust
+let scale = TextScale::nonlinear([
+    (12.0, 12.0),
+    (20.0, 20.0),
+    (32.0, 30.0),
+    (48.0, 40.0),
+])?;
+let defaults = DefaultTextStyle {
+    scale,
+    ..DefaultTextStyle::default()
+};
+```
+
 The Android host obtains the user's actual nonlinear SP conversion from
 `TypedValue.applyDimension` and supplies a sampled curve to the retained text
 tree. The macOS host does not yet read system accessibility settings. System

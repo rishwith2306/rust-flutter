@@ -284,6 +284,7 @@ pub mod prelude {
         },
         navigation::{BackDispatcher, BackSubscription, Navigator, NavigatorController},
         state::Signal,
+        text::{DefaultTextStyle, InlineSpan, PlatformTextScale, Text, TextScale, TextStyle},
         widgets::*,
     };
     pub use egui::{self, Ui};
