@@ -5,6 +5,7 @@
 //! their viewport/cache range. Lazy slivers and platform
 //! scroll physics remain unfinished.
 mod controller;
+mod grid;
 mod keep_alive;
 mod keyboard;
 mod list;
@@ -14,6 +15,7 @@ mod scrollbar;
 mod viewport;
 use crate::animation::AnimationError;
 pub use controller::{ScrollAttachment, ScrollController, WeakScrollController};
+pub use grid::GridView;
 pub use list::ListView;
 pub use position::{
     ScrollActivity, ScrollDimensions, ScrollMetrics, ScrollPosition, WeakScrollPosition,
@@ -31,6 +33,7 @@ pub enum ScrollError {
     InvalidDragCoefficient,
     InvalidScrollbarStyle,
     InvalidItemExtent,
+    InvalidGridConfiguration,
     InvalidCacheExtent,
     InvalidRealizedItemLimit,
     ContentExtentOverflow,

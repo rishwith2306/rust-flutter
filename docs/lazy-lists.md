@@ -85,8 +85,34 @@ Android emulator artifacts pass these gates at revision `85c7a6e`; see the
 Physical devices and macOS runtime remain unverified.
 
 This implements finite fixed-extent lazy lists. Variable/prototype extents,
-shrink wrapping, padding/separators, infinite delegates, slivers/grids, full
+shrink wrapping, padding/separators, infinite delegates, slivers, full
 keep-alive APIs/repaint boundaries, semantics indexes, restoration and complete
 ListView member compatibility remain unfinished. Reviewed the official
 [ListView builder](https://api.flutter.dev/flutter/widgets/ListView/ListView.builder.html);
 this Rust API is not a reproduction of its full constructor or cache-policy API.
+
+## Fixed-extent lazy grids
+
+`scrolling::GridView::builder` builds a finite vertical grid by delegating its
+rows to the same lazy list viewport. Each row has a fixed cell height and a
+fixed number of equal-width columns:
+
+```rust
+use rust_flutter::scrolling::GridView;
+
+let grid = GridView::builder(&position, &binding, 10_000, 3, 96.0,
+    |_, index| make_card(index))?
+    .main_axis_spacing(12.0)?
+    .cross_axis_spacing(8.0)?
+    .cache_extent(192.0)?
+    .into_widget()?;
+```
+
+The builder receives the original item index, and only rows in the viewport
+and cache range are built. `main_axis_spacing` adds space below each row,
+including the final row; `cross_axis_spacing` separates columns. The final row
+is padded with empty cells. `.reverse(true)` reverses vertical row order. This
+is currently a vertical, fixed-height grid; horizontal grids, variable cell
+extents, masonry layouts, slivers, grid-specific keep-alive and complete
+Flutter `GridView` member compatibility remain unfinished. The caller owns the
+position and gesture binding exactly as for `ListView`.
