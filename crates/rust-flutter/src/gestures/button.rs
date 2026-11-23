@@ -24,6 +24,8 @@ pub struct GestureButton {
     corner_radius: Option<egui::CornerRadius>,
     paint_content: Option<ButtonPaint>,
     enabled: bool,
+    accessibility_role: Option<egui::accesskit::Role>,
+    accessibility_toggled: Option<bool>,
     activate: Rc<dyn Fn()>,
 }
 impl GestureButton {
@@ -41,6 +43,8 @@ impl GestureButton {
             corner_radius: None,
             paint_content: None,
             enabled: true,
+            accessibility_role: None,
+            accessibility_toggled: None,
             activate: Rc::new(activate),
         }
     }
@@ -68,6 +72,16 @@ impl GestureButton {
     }
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+    /// Overrides the AccessKit role for controls painted inside this button.
+    pub fn accessibility_role(mut self, role: egui::accesskit::Role) -> Self {
+        self.accessibility_role = Some(role);
+        self
+    }
+    /// Sets the AccessKit toggled state for switch-like controls.
+    pub fn accessibility_toggled(mut self, toggled: bool) -> Self {
+        self.accessibility_toggled = Some(toggled);
         self
     }
     pub fn into_widget(self) -> Widget {
@@ -340,9 +354,17 @@ impl RenderBox for GestureButtonRenderBox {
         }
         let frame = ui.ctx().cumulative_frame_nr();
         #[cfg(not(target_os = "android"))]
-        if response.enabled() && !crate::layout::ui_is_offstage(ui) {
+        if !crate::layout::ui_is_offstage(ui) {
             ui.ctx().accesskit_node_builder(response.id, |node| {
-                node.add_action(egui::accesskit::Action::Click)
+                if let Some(role) = self.config.accessibility_role {
+                    node.set_role(role);
+                }
+                if let Some(toggled) = self.config.accessibility_toggled {
+                    node.set_toggled(toggled.into());
+                }
+                if response.enabled() {
+                    node.add_action(egui::accesskit::Action::Click);
+                }
             });
         }
         if response.enabled() && self.state.non_pointer_frame.get() != Some(frame) {

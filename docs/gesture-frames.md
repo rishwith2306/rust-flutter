@@ -80,7 +80,8 @@ sense, so egui does not independently trigger the pointer action. A child button
 competes with a parent detector's tap/pan, instead of invoking both pointer
 callbacks. This is an opt-in bridge; ordinary egui controls are unchanged.
 
-The builder supports `.size`, `.fill` and `.enabled`. Default preferred size is
+The builder supports `.size`, `.fill`, `.enabled`, and optional AccessKit
+accessibility role/toggled-state overrides for semantic controls. Default preferred size is
 80×24 logical points; constraints can override it. Nonfinite/negative preferred
 sizes fail layout. Dry/intrinsic queries are pure and baselines are currently
 unknown. This is backend-style button rendering, not Material or Cupertino.
@@ -95,7 +96,8 @@ StateHandle updates, as elsewhere in the retained tree.
 The backend widget ID is tied to the retained element, so focus and desktop
 accessibility actions survive moving the same tree between parent Ui scopes.
 On desktop, the button exposes and consumes the egui/AccessKit Click action once
-per frame. A headless action-request test verifies that bridge; actual macOS
+per frame and can override the node role and toggled value for controls such as
+Material Switch. A headless action-request test verifies that bridge; actual macOS
 VoiceOver interaction and the complete semantics pipeline remain unverified.
 The Android host still lacks TalkBack/semantics integration. This button does
 not make other backend controls or backend window dragging join its arena.

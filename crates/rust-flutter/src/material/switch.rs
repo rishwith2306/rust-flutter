@@ -98,6 +98,8 @@ impl StatelessWidget for SwitchView {
                     .fill(Color32::TRANSPARENT)
                     .stroke(Stroke::NONE)
                     .corner_radius(egui::CornerRadius::ZERO)
+                    .accessibility_role(egui::accesskit::Role::Switch)
+                    .accessibility_toggled(value)
                     .paint_content(paint)
                     .into_widget()
             },
