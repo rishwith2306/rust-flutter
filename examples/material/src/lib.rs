@@ -333,8 +333,9 @@ impl State<DrawerExample> for DrawerExampleState {
             &widget.binding,
             "Compact",
             self.density_choice == 0,
-            move || {
-                let _ = compact_handle.update(|state| state.density_choice = 0);
+            move |selected| {
+                let _ = compact_handle
+                    .update(move |state| state.density_choice = if selected { 0 } else { 2 });
             },
         )
         .into_widget();
@@ -343,8 +344,9 @@ impl State<DrawerExample> for DrawerExampleState {
             &widget.binding,
             "Comfortable",
             self.density_choice == 1,
-            move || {
-                let _ = comfortable_handle.update(|state| state.density_choice = 1);
+            move |selected| {
+                let _ = comfortable_handle
+                    .update(move |state| state.density_choice = if selected { 1 } else { 2 });
             },
         )
         .into_widget();

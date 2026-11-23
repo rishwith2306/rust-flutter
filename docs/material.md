@@ -443,15 +443,15 @@ also supports avatars, custom label widgets, animation, and additional layout
 and interaction options that are not implemented here.
 
 `ChoiceChip` has the same controlled layout, but reports radio selection
-semantics. Its callback runs when the chip is activated; update the selected
-value in the owning state and rebuild the chip group:
+semantics. Its callback receives the proposed selected value; update the owning
+state and rebuild the chip group:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::ChoiceChip};
 
 let binding = GestureBinding::new();
-let compact = ChoiceChip::new(&binding, "Compact", true, || {
-    // Update the owning state to select this option.
+let compact = ChoiceChip::new(&binding, "Compact", true, |selected| {
+    let _ = selected; // Update the owning state.
 })
 .into_widget();
 # let _ = compact;

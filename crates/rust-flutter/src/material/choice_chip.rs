@@ -12,7 +12,7 @@ pub struct ChoiceChip {
     label: String,
     selected: bool,
     enabled: bool,
-    on_selected: Rc<dyn Fn()>,
+    on_selected: Rc<dyn Fn(bool)>,
 }
 
 impl ChoiceChip {
@@ -20,7 +20,7 @@ impl ChoiceChip {
         binding: &GestureBinding,
         label: impl Into<String>,
         selected: bool,
-        on_selected: impl Fn() + 'static,
+        on_selected: impl Fn(bool) + 'static,
     ) -> Self {
         Self {
             binding: binding.clone(),
@@ -69,10 +69,11 @@ impl StatelessWidget for ChoiceChip {
                 .x
         });
         let callback = self.on_selected.clone();
+        let selected = self.selected;
         GestureButton::new(
             &self.binding,
             egui::RichText::new(label).font(font).color(foreground),
-            move || callback(),
+            move || callback(!selected),
         )
         .size(egui::vec2((width + 24.0).max(64.0), 32.0))
         .fill(fill)
