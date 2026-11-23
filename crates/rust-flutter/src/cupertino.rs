@@ -1001,6 +1001,12 @@ impl CupertinoSlider {
         self
     }
 
+    /// Sets the screen reader name for the numeric slider.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.slider = self.slider.semantics_label(label);
+        self
+    }
+
     pub fn on_change_start(mut self, callback: impl Fn(f32) + 'static) -> Self {
         self.slider = self.slider.on_change_start(callback);
         self

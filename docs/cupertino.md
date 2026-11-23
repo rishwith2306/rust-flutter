@@ -220,8 +220,9 @@ state. The slider supports continuous or discrete ranges, drag callbacks, and
 theme-based Cupertino track colors while reusing the shared gesture engine.
 The activity indicator draws a rotating radial tick pattern and supports a
 static partially revealed progress value. `CupertinoSwitch` exposes its switch
-role, optional label, disabled state, and on/off state. Switch thumb animation,
-slider value indicators and semantics, persistent tile activation while
+role, optional label, disabled state, and on/off state. `CupertinoSlider` shares
+the numeric slider semantics and accepts an optional accessible label. Switch thumb animation,
+slider value indicators, persistent tile activation while
 asynchronous tap work runs, semantics for remaining controls, and the broader
 Cupertino component catalog remain to be implemented. `CupertinoListTile` exposes
 list-item/button roles, enabled state and an optional name. Sliding segmented

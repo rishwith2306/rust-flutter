@@ -37,6 +37,7 @@ pub struct Slider {
     on_changed: Rc<dyn Fn(f32)>,
     on_change_start: Option<Rc<dyn Fn(f32)>>,
     on_change_end: Option<Rc<dyn Fn(f32)>>,
+    semantics_label: Option<String>,
     colors: Option<SliderColors>,
 }
 
@@ -53,6 +54,7 @@ impl Slider {
             on_changed: Rc::new(on_changed),
             on_change_start: None,
             on_change_end: None,
+            semantics_label: None,
             colors: None,
         }
     }
@@ -86,6 +88,12 @@ impl Slider {
 
     pub fn on_change_end(mut self, callback: impl Fn(f32) + 'static) -> Self {
         self.on_change_end = Some(Rc::new(callback));
+        self
+    }
+
+    /// Sets the screen reader name for the numeric slider.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -220,6 +228,9 @@ impl StatelessWidget for SliderView {
             thumb: colors.thumb,
             outline: colors.outline,
             position,
+            divisions: slider.divisions,
+            semantics_label: slider.semantics_label.clone(),
+            on_changed: slider.on_changed.clone(),
         };
         GestureDetector::new(&slider.binding, config)
             .expect("validated Material slider gesture configuration")
@@ -239,11 +250,15 @@ struct SliderTrack {
     thumb: Color32,
     outline: Color32,
     position: Rc<Cell<Rect>>,
+    divisions: Option<u32>,
+    semantics_label: Option<String>,
+    on_changed: Rc<dyn Fn(f32)>,
 }
 
 struct SliderTrackRender {
     config: SliderTrack,
     handle: crate::element::RenderHandle,
+    id: egui::Id,
 }
 
 impl RenderObjectWidget for SliderTrack {
@@ -262,8 +277,12 @@ impl RenderObjectWidget for SliderTrack {
                 thumb: self.thumb,
                 outline: self.outline,
                 position: self.position.clone(),
+                divisions: self.divisions,
+                semantics_label: self.semantics_label.clone(),
+                on_changed: self.on_changed.clone(),
             },
             handle: context.handle(),
+            id: egui::Id::new(("rust_flutter_slider", context.element_id().value())),
         }
     }
 
@@ -278,6 +297,9 @@ impl RenderObjectWidget for SliderTrack {
         object.config.thumb = self.thumb;
         object.config.outline = self.outline;
         object.config.position = self.position.clone();
+        object.config.divisions = self.divisions;
+        object.config.semantics_label = self.semantics_label.clone();
+        object.config.on_changed = self.on_changed.clone();
         object.handle = context.handle();
         let _ = object.handle.mark_needs_paint();
     }
@@ -330,6 +352,66 @@ impl RenderBox for SliderTrackRender {
     fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
         let bounds = ui.max_rect();
         self.config.position.set(bounds);
+        let response = ui.interact(bounds, self.id, egui::Sense::hover());
+        let range = self.config.max - self.config.min;
+        let step = self
+            .config
+            .divisions
+            .map_or(range / 100.0, |divisions| range / divisions as f32);
+        ui.ctx().accesskit_node_builder(response.id, |node| {
+            node.set_role(egui::accesskit::Role::Slider);
+            if let Some(label) = &self.config.semantics_label {
+                node.set_label(label.clone());
+            }
+            node.set_numeric_value(self.config.value as f64);
+            node.set_min_numeric_value(self.config.min as f64);
+            node.set_max_numeric_value(self.config.max as f64);
+            node.set_numeric_value_step(step as f64);
+            if self.config.enabled {
+                node.add_action(egui::accesskit::Action::Increment);
+                node.add_action(egui::accesskit::Action::Decrement);
+                node.add_action(egui::accesskit::Action::SetValue);
+            } else {
+                node.set_disabled();
+            }
+        });
+        let mut requested_value = None;
+        if self.config.enabled {
+            ui.input_mut(|input| {
+                input.consume_accesskit_action_requests(response.id, |request| {
+                    let current = requested_value.unwrap_or(self.config.value);
+                    let value = match request.action {
+                        egui::accesskit::Action::Increment => Some(current + step),
+                        egui::accesskit::Action::Decrement => Some(current - step),
+                        egui::accesskit::Action::SetValue => match request.data.as_ref() {
+                            Some(egui::accesskit::ActionData::NumericValue(value)) => {
+                                Some(*value as f32)
+                            }
+                            Some(egui::accesskit::ActionData::Value(value)) => {
+                                value.parse::<f32>().ok()
+                            }
+                            _ => None,
+                        },
+                        _ => None,
+                    };
+                    if let Some(value) = value.filter(|value| value.is_finite()) {
+                        requested_value = Some(value);
+                        true
+                    } else {
+                        false
+                    }
+                });
+            });
+        }
+        if let Some(mut value) = requested_value {
+            value = value.clamp(self.config.min, self.config.max);
+            if self.config.divisions.is_some() {
+                value = self.config.min + ((value - self.config.min) / step).round() * step;
+            }
+            if value != self.config.value {
+                (self.config.on_changed)(value);
+            }
+        }
         let start = Pos2::new(bounds.left() + 12.0, bounds.center().y);
         let end = Pos2::new(bounds.right() - 12.0, bounds.center().y);
         let t = ((self.config.value - self.config.min) / (self.config.max - self.config.min))
