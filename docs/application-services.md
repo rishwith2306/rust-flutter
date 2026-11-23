@@ -62,6 +62,35 @@ Do not silently overwrite unreadable state with defaults. The gallery preserves
 such a file and displays the failure. It stores preferences immediately after
 changes and verifies restoration through a fresh process in the desktop smoke test.
 
+## Platform services
+
+`services::Services` is an immutable, typed registry available from
+`AppContext.services` during initialization, restoration and saved-state hooks.
+Register a target-specific implementation before launching, then clone an
+`Arc` handle during `initialize` if the app needs it in later callbacks:
+
+```rust,ignore
+let mut services = rust_flutter::services::Services::default();
+services.insert::<rust_flutter::services::ClipboardService>(
+    std::sync::Arc::new(MyClipboard::new_for_this_platform()),
+);
+rust_flutter::run_with_services("Notes", app, services)?;
+
+impl Application for NotesApp {
+    fn initialize(&mut self, context: &AppContext) {
+        self.clipboard = context
+            .services
+            .get::<rust_flutter::services::ClipboardService>()
+            .cloned();
+    }
+}
+```
+
+`run_with_options_and_services` and the retained-tree launchers accept the same
+registry. Implementations are app-owned and can call JNI, Objective-C or another
+platform library. The framework does not yet bundle a native plugin catalog or
+provide a cross-platform method-channel transport.
+
 ## Fluent translations
 
 `localization::Localizations` loads Fluent FTL resources. The first locale is the

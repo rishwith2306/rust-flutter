@@ -90,16 +90,36 @@ pub fn run<A: Application>(title: &str, app: A) -> Result<(), Error> {
     run_with_options(title, NativeOptions::default(), app)
 }
 
+/// Run with app-defined per-platform services and default window options.
+#[cfg(not(target_os = "android"))]
+pub fn run_with_services<A: Application>(
+    title: &str,
+    app: A,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_with_options_and_services(title, NativeOptions::default(), app, services)
+}
+
 /// Run with custom window, rendering and platform options.
 pub fn run_with_options<A: Application>(
     title: &str,
     options: NativeOptions,
     app: A,
 ) -> Result<(), Error> {
+    run_with_options_and_services(title, options, app, services::Services::default())
+}
+
+/// Run with app-defined per-platform service implementations registered before startup.
+pub fn run_with_options_and_services<A: Application>(
+    title: &str,
+    options: NativeOptions,
+    app: A,
+    services: services::Services,
+) -> Result<(), Error> {
     #[cfg(target_os = "android")]
     {
         let _ = title;
-        android_host::run(options, app)
+        android_host::run(options, app, services)
     }
     #[cfg(not(target_os = "android"))]
     {
@@ -108,7 +128,7 @@ pub fn run_with_options<A: Application>(
             title,
             options,
             Box::new(move |_| {
-                let runtime = Runtime::new(app, data_dir);
+                let runtime = Runtime::with_services(app, data_dir, services);
                 Ok(Box::new(runtime))
             }),
         )
@@ -124,7 +144,17 @@ pub fn run_widget_with_options(
     options: NativeOptions,
     root: element::Widget,
 ) -> Result<(), Error> {
-    run_with_options(title, options, WidgetApplication::new(root, None))
+    run_widget_with_options_and_services(title, options, root, services::Services::default())
+}
+
+/// Run a retained tree with app-defined per-platform service implementations.
+pub fn run_widget_with_options_and_services(
+    title: &str,
+    options: NativeOptions,
+    root: element::Widget,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_with_options_and_services(title, options, WidgetApplication::new(root, None), services)
 }
 
 /// Run a retained tree and let the application decide whether native back
@@ -135,10 +165,28 @@ pub fn run_widget_with_options_and_back(
     root: element::Widget,
     on_back: impl Fn() -> bool + 'static,
 ) -> Result<(), Error> {
-    run_with_options(
+    run_widget_with_options_and_back_and_services(
+        title,
+        options,
+        root,
+        on_back,
+        services::Services::default(),
+    )
+}
+
+/// Run a retained widget tree with both native back handling and platform services.
+pub fn run_widget_with_options_and_back_and_services(
+    title: &str,
+    options: NativeOptions,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_with_options_and_services(
         title,
         options,
         WidgetApplication::new(root, Some(std::rc::Rc::new(on_back))),
+        services,
     )
 }
 
@@ -146,6 +194,16 @@ pub fn run_widget_with_options_and_back(
 #[cfg(not(target_os = "android"))]
 pub fn run_widget(title: &str, root: element::Widget) -> Result<(), Error> {
     run_widget_with_options(title, NativeOptions::default(), root)
+}
+
+/// Run a retained desktop tree with app-defined platform services.
+#[cfg(not(target_os = "android"))]
+pub fn run_widget_with_services(
+    title: &str,
+    root: element::Widget,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_widget_with_options_and_services(title, NativeOptions::default(), root, services)
 }
 
 /// Run a retained widget tree with a native back-request handler.
@@ -158,19 +216,48 @@ pub fn run_widget_with_back_handler(
     run_widget_with_options_and_back(title, NativeOptions::default(), root, on_back)
 }
 
+/// Run a retained desktop tree with back handling and platform services.
+#[cfg(not(target_os = "android"))]
+pub fn run_widget_with_back_handler_and_services(
+    title: &str,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_widget_with_options_and_back_and_services(
+        title,
+        NativeOptions::default(),
+        root,
+        on_back,
+        services,
+    )
+}
+
 #[cfg(target_os = "android")]
 pub use android_activity::AndroidApp;
 
 /// Attach to the NativeActivity supplied to `android_main`.
 #[cfg(target_os = "android")]
 pub fn run_android<A: Application>(activity: AndroidApp, title: &str, app: A) -> Result<(), Error> {
-    run_with_options(
+    run_android_with_services(activity, title, app, services::Services::default())
+}
+
+/// Attach an app with platform services to the Android NativeActivity.
+#[cfg(target_os = "android")]
+pub fn run_android_with_services<A: Application>(
+    activity: AndroidApp,
+    title: &str,
+    app: A,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_with_options_and_services(
         title,
         NativeOptions {
             android_app: Some(activity),
             ..native_options(GraphicsBackend::Gles)
         },
         app,
+        services,
     )
 }
 
@@ -181,7 +268,23 @@ pub fn run_widget_android(
     title: &str,
     root: element::Widget,
 ) -> Result<(), Error> {
-    run_android(activity, title, WidgetApplication::new(root, None))
+    run_widget_android_with_services(activity, title, root, services::Services::default())
+}
+
+/// Run a retained Android tree with app-defined platform implementations.
+#[cfg(target_os = "android")]
+pub fn run_widget_android_with_services(
+    activity: AndroidApp,
+    title: &str,
+    root: element::Widget,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_android_with_services(
+        activity,
+        title,
+        WidgetApplication::new(root, None),
+        services,
+    )
 }
 
 /// Run a retained Android widget tree with a back-request handler.
@@ -192,10 +295,29 @@ pub fn run_widget_android_with_back_handler(
     root: element::Widget,
     on_back: impl Fn() -> bool + 'static,
 ) -> Result<(), Error> {
-    run_android(
+    run_widget_android_with_back_handler_and_services(
+        activity,
+        title,
+        root,
+        on_back,
+        services::Services::default(),
+    )
+}
+
+/// Run an Android tree with both back handling and platform services.
+#[cfg(target_os = "android")]
+pub fn run_widget_android_with_back_handler_and_services(
+    activity: AndroidApp,
+    title: &str,
+    root: element::Widget,
+    on_back: impl Fn() -> bool + 'static,
+    services: services::Services,
+) -> Result<(), Error> {
+    run_android_with_services(
         activity,
         title,
         WidgetApplication::new(root, Some(std::rc::Rc::new(on_back))),
+        services,
     )
 }
 

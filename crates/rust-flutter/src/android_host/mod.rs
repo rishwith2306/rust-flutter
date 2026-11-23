@@ -25,7 +25,11 @@ use std::{
 
 static HOST_SERIAL: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn run<A: Application>(mut options: NativeOptions, app: A) -> Result<(), Error> {
+pub(super) fn run<A: Application>(
+    mut options: NativeOptions,
+    app: A,
+    services: crate::services::Services,
+) -> Result<(), Error> {
     if options.event_loop_builder.is_some() || options.window_builder.is_some() {
         return Err(failure(
             "winit builder hooks are desktop-only; Android owns a NativeActivity event loop",
@@ -51,7 +55,7 @@ pub(super) fn run<A: Application>(mut options: NativeOptions, app: A) -> Result<
         }
     });
     let accessibility = AndroidAccessibility::new(&activity, wake).map_err(failure)?;
-    let runtime = Runtime::new(app, activity.internal_data_path());
+    let runtime = Runtime::with_services(app, activity.internal_data_path(), services);
     let serial = HOST_SERIAL.fetch_add(1, Ordering::Relaxed) + 1;
     let mut host = Host {
         runtime,

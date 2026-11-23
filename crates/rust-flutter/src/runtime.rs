@@ -1,6 +1,7 @@
 //! Application hooks shared by native runners and headless UI tests.
 use crate::Application;
-use std::path::PathBuf;
+use crate::services::Services;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
 pub struct AppContext {
@@ -8,6 +9,8 @@ pub struct AppContext {
     /// Platform-private app storage, when available. Do not assume a desktop home
     /// directory exists on Android; the runner uses the activity's internal data path.
     pub data_dir: Option<PathBuf>,
+    /// Immutable platform implementations installed before the app starts.
+    pub services: Arc<Services>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEvent {
@@ -43,15 +46,22 @@ pub enum EventResponse {
 pub struct Runtime<A: Application> {
     app: A,
     data_dir: Option<PathBuf>,
+    services: Arc<Services>,
     initialized: bool,
     stopped: bool,
     focused: Option<bool>,
 }
 impl<A: Application> Runtime<A> {
     pub fn new(app: A, data_dir: Option<PathBuf>) -> Self {
+        Self::with_services(app, data_dir, Services::default())
+    }
+
+    /// Create a runtime with per-platform implementations registered before startup.
+    pub fn with_services(app: A, data_dir: Option<PathBuf>, services: Services) -> Self {
         Self {
             app,
             data_dir,
+            services: Arc::new(services),
             initialized: false,
             stopped: false,
             focused: None,
@@ -81,6 +91,7 @@ impl<A: Application> Runtime<A> {
             self.app.initialize(&AppContext {
                 egui: ctx.clone(),
                 data_dir: self.data_dir.clone(),
+                services: self.services.clone(),
             });
             self.initialized = true;
         }
@@ -101,6 +112,7 @@ impl<A: Application> Runtime<A> {
             &AppContext {
                 egui: ctx.clone(),
                 data_dir: self.data_dir.clone(),
+                services: self.services.clone(),
             },
             state,
         );
@@ -115,6 +127,7 @@ impl<A: Application> Runtime<A> {
         self.app.save_state(&AppContext {
             egui: ctx.clone(),
             data_dir: self.data_dir.clone(),
+            services: self.services.clone(),
         })
     }
     /// Run inside `egui::Context::run`. Once shut down, no further frames are built.
