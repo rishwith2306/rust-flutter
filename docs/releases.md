@@ -32,5 +32,10 @@ must exist before distributing such a binary.
 
 Publishing crates.io packages is a separate future release task: confirm package
 ownership and names, include source licenses, add versioned internal dependencies,
-and verify package archives before publishing. A GitHub push does not publish
+and verify package archives before publishing. `rust-flutter` depends on
+`rust-flutter-assets`; publish the matching asset crate version before the main
+framework crate. The framework manifest now records that versioned dependency,
+but Cargo cannot package the main crate for registry publication until that
+dependency exists on crates.io. Git-pinned installation through the CLI remains
+the supported public distribution path meanwhile. A GitHub push does not publish
 registry packages.
