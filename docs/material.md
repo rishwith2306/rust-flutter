@@ -57,6 +57,19 @@ let theme = ThemeData {
 # let _ = theme;
 ```
 
+`SnackBar` builds a themed feedback surface and `Scaffold::snack_bar` places it
+over the bottom of the body:
+
+```rust,ignore
+let page = Scaffold::new(body)
+    .snack_bar(SnackBar::new("Changes saved").theme(theme.clone()))
+    .into_widget();
+```
+
+The application controls when the snackbar is included or removed. Automatic
+timeouts, queued messages, action callbacks, FAB avoidance, and the full
+`ScaffoldMessenger` API are not implemented yet.
+
 The shared theme currently supports indicator and track colors, linear height,
 circular stroke width, stroke alignment and cap, corner radius, track gap,
 linear stop marker styling, and a shared animation controller. The controller

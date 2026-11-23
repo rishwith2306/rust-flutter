@@ -54,7 +54,7 @@ It uses the same retained widget tree for the desktop host and Android
 `cargo apk build -p rust-flutter-cupertino-example --lib --target aarch64-linux-android`.
 
 The Material showcase demonstrates retained Material cards and dividers,
-Scaffold drawer navigation, a floating action button, and a modal alert dialog:
+Scaffold drawer navigation, a floating action button, a modal alert dialog, and an actionable snackbar:
 
 ```sh
 cargo run -p rust-flutter-material-example

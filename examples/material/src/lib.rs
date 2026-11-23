@@ -5,8 +5,8 @@ use rust_flutter::{
     material::{
         AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
         MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
-        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold, TextButton,
-        ThemeData,
+        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold, SnackBar,
+        TextButton, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -124,6 +124,7 @@ struct DrawerExample {
 struct DrawerExampleState {
     selected: usize,
     drawer_open: bool,
+    snack_bar_visible: bool,
 }
 
 impl StatefulWidget for DrawerExample {
@@ -133,6 +134,7 @@ impl StatefulWidget for DrawerExample {
         DrawerExampleState {
             selected: 0,
             drawer_open: false,
+            snack_bar_visible: false,
         }
     }
 }
@@ -174,6 +176,7 @@ impl State<DrawerExample> for DrawerExampleState {
         }
         .provide(card_content);
         let open_sheet = widget.sheet_controller.clone();
+        let show_snack_bar = handle.clone();
         let mut body_style = FlexStyle::new(Axis::Vertical);
         body_style.spacing = 12.0;
         let card = Card::new(Widget::padding(Insets::all(20.0), card_content))
@@ -188,6 +191,12 @@ impl State<DrawerExample> for DrawerExampleState {
                 FlexItem::fixed(
                     TextButton::new(&widget.binding, "Open bottom sheet", move || {
                         let _ = open_sheet.present();
+                    })
+                    .into_widget(),
+                ),
+                FlexItem::fixed(
+                    TextButton::new(&widget.binding, "Show snackbar", move || {
+                        let _ = show_snack_bar.update(|state| state.snack_bar_visible = true);
                     })
                     .into_widget(),
                 ),
@@ -234,7 +243,7 @@ impl State<DrawerExample> for DrawerExampleState {
             .expect("valid example drawer");
 
         let show_dialog = widget.dialog_controller.clone();
-        Scaffold::new(Widget::padding(Insets::all(24.0), body))
+        let mut scaffold = Scaffold::new(Widget::padding(Insets::all(24.0), body))
             .app_bar_config(AppBar::new(title).theme(widget.theme.clone()))
             .floating_action_button(
                 FloatingActionButton::new(
@@ -245,7 +254,22 @@ impl State<DrawerExample> for DrawerExampleState {
                     },
                 )
                 .theme(widget.theme.clone()),
-            )
+            );
+        if self.snack_bar_visible {
+            let dismiss_snack_bar = handle.clone();
+            scaffold = scaffold.snack_bar(
+                SnackBar::new("Saved successfully")
+                    .action(
+                        TextButton::new(&widget.binding, "Dismiss", move || {
+                            let _ =
+                                dismiss_snack_bar.update(|state| state.snack_bar_visible = false);
+                        })
+                        .into_widget(),
+                    )
+                    .theme(widget.theme.clone()),
+            );
+        }
+        scaffold
             .drawer(
                 &widget.binding,
                 drawer,

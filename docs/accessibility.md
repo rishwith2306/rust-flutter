@@ -34,7 +34,8 @@ current value, increment/decrement, and set-value actions. `CupertinoSwitch` exp
 on/off state, disabled state, and optional accessible name.
 Material linear/circular and Cupertino activity progress indicators expose the
 progress role; determinate values are numeric percentages, and the Cupertino
-indicator accepts an optional accessible name.
+indicator accepts an optional accessible name. Material `SnackBar` exposes its
+message as a labeled alert.
 
 ```rust,ignore
 let save = IconButton::new(&binding, save_icon, save_document)

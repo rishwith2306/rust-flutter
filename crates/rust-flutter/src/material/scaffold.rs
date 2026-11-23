@@ -1,4 +1,4 @@
-use super::{FloatingActionButton, IconButton, ThemeData};
+use super::{FloatingActionButton, IconButton, SnackBar, ThemeData};
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke},
@@ -166,6 +166,7 @@ pub struct Scaffold {
     app_bar_config: Option<AppBar>,
     bottom_sheet: Option<Widget>,
     bottom_navigation_bar: Option<Widget>,
+    snack_bar: Option<Widget>,
     drawer: Option<DrawerSlot>,
     background_color: Color32,
     scrim_color: Color32,
@@ -180,6 +181,7 @@ impl Scaffold {
             app_bar_config: None,
             bottom_sheet: None,
             bottom_navigation_bar: None,
+            snack_bar: None,
             drawer: None,
             background_color: ThemeData::default().color_scheme.surface,
             scrim_color: Color32::from_black_alpha(96),
@@ -202,6 +204,13 @@ impl Scaffold {
 
     pub fn bottom_navigation_bar(mut self, bar: Widget) -> Self {
         self.bottom_navigation_bar = Some(bar);
+        self
+    }
+
+    /// Place a feedback surface over the bottom of the body. The application
+    /// controls when it is shown and removed.
+    pub fn snack_bar(mut self, snack_bar: SnackBar) -> Self {
+        self.snack_bar = Some(snack_bar.into_widget());
         self
     }
 
@@ -269,6 +278,27 @@ impl Scaffold {
         });
         let app_bar = app_bar.or(self.app_bar);
         let mut body = self.body;
+        if let Some(snack_bar) = self.snack_bar {
+            body = Widget::stack(
+                StackStyle {
+                    alignment: Alignment::TOP_LEFT,
+                    fit: StackFit::Expand,
+                    clip: Clip::HardEdge,
+                },
+                vec![
+                    StackItem::new(body),
+                    StackItem::positioned(
+                        snack_bar,
+                        Positioned {
+                            left: Some(0.0),
+                            right: Some(0.0),
+                            bottom: Some(0.0),
+                            ..Default::default()
+                        },
+                    ),
+                ],
+            );
+        }
         if let Some(button) = self.floating_action_button {
             body = Widget::stack(
                 StackStyle {

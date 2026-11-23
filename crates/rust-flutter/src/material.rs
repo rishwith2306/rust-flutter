@@ -29,6 +29,7 @@ mod progress_indicator;
 mod radio;
 mod scaffold;
 mod slider;
+mod snack_bar;
 mod switch;
 mod text_field;
 pub use bottom_sheet::{ModalBottomSheetController, ModalBottomSheetHost, ModalBottomSheetState};
@@ -49,6 +50,7 @@ pub use radio::Radio;
 pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;
 pub(crate) use slider::SliderColors;
+pub use snack_bar::SnackBar;
 pub use switch::Switch;
 pub use text_field::TextField;
 
