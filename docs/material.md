@@ -5,6 +5,9 @@ error, fixed-tone, surface-container, outline, inverse, shadow and scrim roles,
 plus the deprecated `background`, `on_background` and `surface_variant` aliases.
 `ThemeData` carries that scheme and can provide it to a retained widget subtree
 or apply its surface, text, selection and hyperlink colors to egui defaults.
+Its `TextTheme` provides Material's 15 display, headline, title, body and label
+roles; `body_medium` becomes the default style and `on_surface` color for
+descendant `Text` widgets. Nested `DefaultTextStyle` providers can override it.
 
 ```rust
 use rust_flutter::{egui, material::{ColorScheme, ThemeData}};
@@ -74,9 +77,10 @@ let card_gap = theme.extension::<BrandMetrics>().unwrap().card_gap;
 ```
 
 `ThemeData::lerp_extension` interpolates an extension present in both themes.
-`ThemeData::lerp(&a, &b, t)` interpolates the scheme, progress-indicator theme,
-and shared extensions; discrete settings switch at the midpoint. Its scope is
-limited to properties currently represented by this `ThemeData`.
+`ThemeData::lerp(&a, &b, t)` interpolates the scheme, text theme,
+progress-indicator theme, and shared extensions; discrete settings switch at
+the midpoint. Its scope is limited to properties currently represented by
+this `ThemeData`.
 
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`. `MaterialApp::with_navigator`

@@ -369,7 +369,16 @@ impl Text {
 }
 impl StatelessWidget for Text {
     fn build(&self, ctx: &BuildContext) -> Widget {
-        let defaults = DefaultTextStyle::of(ctx).expect("Text resolves defaults during build");
+        let mut defaults = DefaultTextStyle::of(ctx).expect("Text resolves defaults during build");
+        if let Some(theme) = crate::material::ThemeData::maybe_of(ctx)
+            .expect("Text resolves an optional Material theme during build")
+        {
+            let mut material_style = theme.text_theme.body_medium;
+            material_style
+                .color
+                .get_or_insert(theme.color_scheme.on_surface);
+            defaults.style = material_style.merge(&defaults.style);
+        }
         let mut paragraph = self.resolve(&defaults);
         let platform_scale =
             PlatformTextScale::of(ctx).expect("Text resolves platform text scale during build");

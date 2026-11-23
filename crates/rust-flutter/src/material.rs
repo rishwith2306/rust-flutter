@@ -10,7 +10,7 @@ use crate::{
     localization::Localizations,
     navigation::NavigatorController,
     notifier::Listenable,
-    text::Text,
+    text::{LineHeight, Text, TextStyle},
 };
 use material_color_utils::{
     dynamic::{
@@ -516,6 +516,7 @@ fn dynamic_role(
 /// Inherited Material theme data and an optional egui global-style adapter.
 pub struct ThemeData {
     pub color_scheme: ColorScheme,
+    pub text_theme: TextTheme,
     /// Optional complete theme selected when dark mode is active.
     pub dark_theme: Option<Box<ThemeData>>,
     pub theme_mode: ThemeMode,
@@ -627,6 +628,7 @@ impl Clone for ThemeData {
     fn clone(&self) -> Self {
         Self {
             color_scheme: self.color_scheme,
+            text_theme: self.text_theme.clone(),
             dark_theme: self.dark_theme.clone(),
             theme_mode: self.theme_mode,
             use_material3: self.use_material3,
@@ -641,6 +643,7 @@ impl fmt::Debug for ThemeData {
         formatter
             .debug_struct("ThemeData")
             .field("color_scheme", &self.color_scheme)
+            .field("text_theme", &self.text_theme)
             .field("dark_theme", &self.dark_theme)
             .field("theme_mode", &self.theme_mode)
             .field("use_material3", &self.use_material3)
@@ -653,6 +656,7 @@ impl fmt::Debug for ThemeData {
 impl PartialEq for ThemeData {
     fn eq(&self, other: &Self) -> bool {
         self.color_scheme == other.color_scheme
+            && self.text_theme == other.text_theme
             && self.dark_theme == other.dark_theme
             && self.theme_mode == other.theme_mode
             && self.use_material3 == other.use_material3
@@ -668,6 +672,135 @@ pub enum ThemeMode {
     System,
     Light,
     Dark,
+}
+
+/// Material's 15 named typography roles. A `ThemeData` provides `body_medium`
+/// as the default style for descendant `Text` widgets.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextTheme {
+    pub display_large: TextStyle,
+    pub display_medium: TextStyle,
+    pub display_small: TextStyle,
+    pub headline_large: TextStyle,
+    pub headline_medium: TextStyle,
+    pub headline_small: TextStyle,
+    pub title_large: TextStyle,
+    pub title_medium: TextStyle,
+    pub title_small: TextStyle,
+    pub body_large: TextStyle,
+    pub body_medium: TextStyle,
+    pub body_small: TextStyle,
+    pub label_large: TextStyle,
+    pub label_medium: TextStyle,
+    pub label_small: TextStyle,
+}
+
+impl TextTheme {
+    fn sized(size: f32) -> TextStyle {
+        TextStyle {
+            font_size: Some(size),
+            ..TextStyle::default()
+        }
+    }
+
+    /// Interpolate all Material typography roles. Discrete formatting choices
+    /// switch at the midpoint while numeric sizes, colors and line heights lerp.
+    pub fn lerp(a: &Self, b: &Self, t: f32) -> Self {
+        macro_rules! styles {
+            ($($field:ident),+ $(,)?) => {
+                Self { $( $field: lerp_text_style(&a.$field, &b.$field, t), )+ }
+            };
+        }
+        styles!(
+            display_large,
+            display_medium,
+            display_small,
+            headline_large,
+            headline_medium,
+            headline_small,
+            title_large,
+            title_medium,
+            title_small,
+            body_large,
+            body_medium,
+            body_small,
+            label_large,
+            label_medium,
+            label_small,
+        )
+    }
+}
+
+impl Default for TextTheme {
+    fn default() -> Self {
+        Self {
+            display_large: Self::sized(57.0),
+            display_medium: Self::sized(45.0),
+            display_small: Self::sized(36.0),
+            headline_large: Self::sized(32.0),
+            headline_medium: Self::sized(28.0),
+            headline_small: Self::sized(24.0),
+            title_large: Self::sized(22.0),
+            title_medium: Self::sized(16.0),
+            title_small: Self::sized(14.0),
+            body_large: Self::sized(16.0),
+            body_medium: Self::sized(14.0),
+            body_small: Self::sized(12.0),
+            label_large: Self::sized(14.0),
+            label_medium: Self::sized(12.0),
+            label_small: Self::sized(11.0),
+        }
+    }
+}
+
+fn lerp_text_style(a: &TextStyle, b: &TextStyle, t: f32) -> TextStyle {
+    fn number(a: Option<f32>, b: Option<f32>, t: f32) -> Option<f32> {
+        match (a, b) {
+            (Some(a), Some(b)) => Some(a + (b - a) * t),
+            (a, _) if t < 0.5 => a,
+            (_, b) => b,
+        }
+    }
+    fn color(a: Option<Color32>, b: Option<Color32>, t: f32) -> Option<Color32> {
+        match (a, b) {
+            (Some(a), Some(b)) => Some(a.lerp_to_gamma(b, t)),
+            (Some(a), None) => Some(a.lerp_to_gamma(Color32::TRANSPARENT, t)),
+            (None, Some(b)) => Some(Color32::TRANSPARENT.lerp_to_gamma(b, t)),
+            (None, None) => None,
+        }
+    }
+    TextStyle {
+        inherit: if t < 0.5 { a.inherit } else { b.inherit },
+        font_size: number(a.font_size, b.font_size, t),
+        font_family: if t < 0.5 {
+            a.font_family.clone()
+        } else {
+            b.font_family.clone()
+        },
+        color: color(a.color, b.color, t),
+        background: color(a.background, b.background, t),
+        letter_spacing: number(a.letter_spacing, b.letter_spacing, t),
+        line_height: match (a.line_height, b.line_height) {
+            (Some(LineHeight::Points(a)), Some(LineHeight::Points(b))) => {
+                Some(LineHeight::Points(a + (b - a) * t))
+            }
+            (a, _) if t < 0.5 => a,
+            (_, b) => b,
+        },
+        italics: if t < 0.5 { a.italics } else { b.italics },
+        underline: if t < 0.5 { a.underline } else { b.underline },
+        strikethrough: if t < 0.5 {
+            a.strikethrough
+        } else {
+            b.strikethrough
+        },
+        vertical_align: if t < 0.5 {
+            a.vertical_align
+        } else {
+            b.vertical_align
+        },
+        background_expansion: number(a.background_expansion, b.background_expansion, t),
+    }
 }
 
 /// Shared visual defaults for descendant Material progress indicators.
@@ -905,6 +1038,7 @@ impl Default for ThemeData {
     fn default() -> Self {
         Self {
             color_scheme: ColorScheme::default(),
+            text_theme: TextTheme::default(),
             dark_theme: None,
             theme_mode: ThemeMode::System,
             use_material3: true,
@@ -1001,6 +1135,7 @@ impl ThemeData {
         };
         Self {
             color_scheme: a.color_scheme.lerp(&b.color_scheme, t),
+            text_theme: TextTheme::lerp(&a.text_theme, &b.text_theme, t),
             dark_theme,
             theme_mode: if t < 0.5 { a.theme_mode } else { b.theme_mode },
             use_material3: if t < 0.5 {
@@ -1046,11 +1181,14 @@ impl ThemeData {
             .map(|extension| extension.0.clone())
     }
 
-    pub fn of(context: &BuildContext) -> Result<Self, DependencyError> {
-        let mut theme = context
+    /// Read and resolve the nearest theme, returning `None` outside Material.
+    pub fn maybe_of(context: &BuildContext) -> Result<Option<Self>, DependencyError> {
+        let Some(mut theme) = context
             .depend_on::<Self>()?
             .map(|theme| theme.as_ref().clone())
-            .unwrap_or_default();
+        else {
+            return Ok(None);
+        };
         let dark = match theme.theme_mode {
             ThemeMode::Dark => true,
             ThemeMode::Light => false,
@@ -1062,7 +1200,11 @@ impl ThemeData {
         if dark && let Some(dark_theme) = theme.dark_theme.take() {
             theme = *dark_theme;
         }
-        Ok(theme)
+        Ok(Some(theme))
+    }
+
+    pub fn of(context: &BuildContext) -> Result<Self, DependencyError> {
+        Ok(Self::maybe_of(context)?.unwrap_or_default())
     }
 
     pub fn provide(&self, child: Widget) -> Widget {
