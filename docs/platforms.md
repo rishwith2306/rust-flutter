@@ -57,9 +57,9 @@ cargo check --workspace --target aarch64-linux-android
 A successful `check` does not link an APK or verify touch, keyboard, rotation,
 background/resume, permissions or TalkBack. Those remain explicit device gates.
 
-NativeActivity currently builds without eframe's AccessKit integration: that
-feature requires GameActivity in this backend version. TalkBack support needs a
-GameActivity host and packaging, or a separately implemented semantics bridge.
+NativeActivity uses a direct AccessKit Android `InjectingAdapter` bridge. The
+host forwards egui's accessibility tree to Android and routes accessibility
+actions back into egui. TalkBack traversal and actions still need device testing.
 
 ## Release gates
 
@@ -111,8 +111,9 @@ its versioned `JsonStore` file for durable state.
 Android `OutputCommand::CopyText` writes text to the system clipboard through the
 Java UI thread, and `OutputCommand::OpenUrl` launches an Android `ACTION_VIEW`
 intent on that thread. Image clipboard output and the typed clipboard service
-remain unimplemented. Mobile IME composition, native child viewports and
-accessibility semantics are not implemented by this host yet. Winit-specific
+remain unimplemented. Mobile IME composition and native child viewports remain
+unimplemented. Accessibility semantics are bridged through AccessKit, pending
+TalkBack device validation. Winit-specific
 window/event-loop hooks and unsupported depth/stencil/multisampling options return
 an explicit error. These limits remain part of the feature backlog.
 

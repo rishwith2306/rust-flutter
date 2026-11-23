@@ -1,9 +1,11 @@
 //! NativeActivity host. Each android_main invocation owns its context, GPU and
 //! event loop, so a destroyed Activity can be recreated in the same JVM process.
+mod accessibility;
 mod input;
 mod renderer;
 use crate::frame_schedule::FrameSchedule;
 use crate::{AppEvent, Application, Error, LifecycleEvent, NativeOptions, Runtime};
+use accessibility::AndroidAccessibility;
 use android_activity::{AndroidApp, MainEvent, PollEvent};
 use egui::ViewportId;
 use input::Input;
@@ -41,12 +43,14 @@ pub(super) fn run<A: Application>(mut options: NativeOptions, app: A) -> Result<
     let ctx = egui::Context::default();
     let schedule = Arc::new(Mutex::new(FrameSchedule::default()));
     let wake = activity.create_waker();
+    let repaint_wake = wake.clone();
     let requests = schedule.clone();
     ctx.set_request_repaint_callback(move |info| {
         if requests.lock().unwrap().request(Instant::now(), info.delay) {
-            wake.wake();
+            repaint_wake.wake();
         }
     });
+    let accessibility = AndroidAccessibility::new(&activity, wake).map_err(failure)?;
     let runtime = Runtime::new(app, activity.internal_data_path());
     let serial = HOST_SERIAL.fetch_add(1, Ordering::Relaxed) + 1;
     let mut host = Host {
@@ -57,6 +61,7 @@ pub(super) fn run<A: Application>(mut options: NativeOptions, app: A) -> Result<
         options,
         gpu: None,
         input: Input::default(),
+        accessibility,
         dirty: true,
         schedule,
         resumed: false,
@@ -133,6 +138,7 @@ struct Host<A: Application> {
     options: NativeOptions,
     gpu: Option<Renderer>,
     input: Input,
+    accessibility: AndroidAccessibility,
     dirty: bool,
     schedule: Arc<Mutex<FrameSchedule>>,
     resumed: bool,
@@ -305,6 +311,7 @@ impl<A: Application> Host<A> {
             .entry(ViewportId::ROOT)
             .or_default()
             .native_pixels_per_point = Some(density);
+        raw.events.extend(self.accessibility.take_events());
         self.dirty = false;
         self.schedule.lock().unwrap().clear();
         // Clear the request consumed by this frame before platform hooks request
@@ -318,7 +325,7 @@ impl<A: Application> Host<A> {
             raw.safe_area_insets.unwrap_or_default().0.top * scale,
             self.focused
         );
-        let output = self.ctx.run(raw, |ctx| {
+        let mut output = self.ctx.run(raw, |ctx| {
             self.runtime.frame(ctx);
             #[cfg(debug_assertions)]
             {
@@ -334,6 +341,10 @@ impl<A: Application> Host<A> {
                 ));
             }
         });
+
+        if let Some(update) = output.platform_output.accesskit_update.take() {
+            self.accessibility.update(update);
+        }
 
         for command in &output.platform_output.commands {
             match command {

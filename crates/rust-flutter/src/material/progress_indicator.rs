@@ -46,7 +46,6 @@ impl ProgressIndicatorTheme {
     }
 }
 
-#[cfg(not(target_os = "android"))]
 fn expose_progress_semantics(
     ui: &egui::Ui,
     rect: egui::Rect,
@@ -93,16 +92,6 @@ fn expose_progress_semantics(
             }
         }
     });
-}
-
-#[cfg(target_os = "android")]
-fn expose_progress_semantics(
-    _ui: &egui::Ui,
-    _rect: egui::Rect,
-    _value: Option<f32>,
-    _label: &Option<String>,
-    _semantic_value: &Option<String>,
-) {
 }
 
 fn cubic_bezier_progress(value: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {

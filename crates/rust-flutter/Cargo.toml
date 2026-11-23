@@ -26,6 +26,8 @@ image = { version = "=0.25.10", default-features = false, features = ["png", "jp
 
 [target.'cfg(target_os = "android")'.dependencies]
 android-activity = { version = "=0.6.1", features = ["native-activity"] }
+accesskit_android = { version = "=0.4.2", features = ["embedded-dex"] }
+egui-winit = { version = "=0.33.3", default-features = false, features = ["accesskit"] }
 jni = "0.22.4"
 pollster = "0.4"
 raw-window-handle = "0.6"

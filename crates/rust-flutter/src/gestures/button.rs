@@ -393,7 +393,6 @@ impl RenderBox for GestureButtonRenderBox {
             self.scope_target = None;
         }
         let frame = ui.ctx().cumulative_frame_nr();
-        #[cfg(not(target_os = "android"))]
         if !crate::layout::ui_is_offstage(ui) {
             ui.ctx().accesskit_node_builder(response.id, |node| {
                 if let Some(role) = self.config.accessibility_role {
@@ -429,7 +428,6 @@ impl RenderBox for GestureButtonRenderBox {
         }
         if response.enabled() && self.state.non_pointer_frame.get() != Some(frame) {
             let mut activate = false;
-            #[cfg(not(target_os = "android"))]
             if !crate::layout::ui_is_offstage(ui) {
                 ui.input_mut(|i| {
                     i.consume_accesskit_action_requests(response.id, |request| {

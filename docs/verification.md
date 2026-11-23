@@ -570,7 +570,7 @@ Android and macOS checks for this revision are recorded separately by CI.
 This is one viewport's scene plus an opt-in egui-painted button bridge. Other
 backend controls/window dragging remain independent; global multi-viewport input,
 raw multitouch/signals, full gesture/widget catalogs, Material/Cupertino,
-semantics/TalkBack and native VoiceOver validation remain unfinished. See
+TalkBack and native VoiceOver device validation remain unfinished. See
 [frame and button scope](gesture-frames.md).
 
 ### Android resume readiness follow-up
