@@ -113,6 +113,16 @@ impl Gallery {
             route: *self.navigator.current(),
         }
     }
+    fn restore_snapshot(&mut self, snapshot: Snapshot) {
+        self.count = snapshot.count;
+        self.name = snapshot.name.clone();
+        self.dark = snapshot.dark;
+        self.language = snapshot.language.clone();
+        self.navigator.reset(snapshot.route);
+        let _ = self.l10n.select(&[&self.language]);
+        self.saved = Some(snapshot);
+        self.storage_error = None;
+    }
     fn persist(&mut self) {
         let snapshot = self.snapshot();
         if self.saved.as_ref() == Some(&snapshot) {
@@ -138,15 +148,7 @@ impl Application for Gallery {
         match store.load::<Snapshot>() {
             Ok(value) => {
                 if let Some(snapshot) = value {
-                    self.count = snapshot.count;
-                    self.name = snapshot.name;
-                    self.dark = snapshot.dark;
-                    self.language = snapshot.language;
-                    if snapshot.route != Route::Home {
-                        self.navigator.push(snapshot.route);
-                    }
-                    let _ = self.l10n.select(&[&self.language]);
-                    self.saved = Some(self.snapshot());
+                    self.restore_snapshot(snapshot);
                 }
                 self.store = Some(store);
             }
@@ -157,6 +159,17 @@ impl Application for Gallery {
                 ))
             }
         }
+    }
+    fn restore_state(&mut self, _: &AppContext, state: &[u8]) {
+        match serde_json::from_slice::<Snapshot>(state) {
+            Ok(snapshot) => self.restore_snapshot(snapshot),
+            Err(error) => {
+                self.storage_error = Some(format!("Activity state restore failed: {error}"));
+            }
+        }
+    }
+    fn save_state(&mut self, _: &AppContext) -> Option<Vec<u8>> {
+        serde_json::to_vec(&self.snapshot()).ok()
     }
     fn on_event(&mut self, _: &egui::Context, event: AppEvent) -> EventResponse {
         match event {

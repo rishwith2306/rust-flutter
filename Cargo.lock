@@ -2505,6 +2505,7 @@ dependencies = [
  "rust-flutter",
  "rust-flutter-assets",
  "serde",
+ "serde_json",
  "tempfile",
 ]
 

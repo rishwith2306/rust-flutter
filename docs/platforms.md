@@ -106,6 +106,8 @@ configuration and save-state notifications. `Application::save_state` can return
 a compact byte snapshot during Android's save-state callback; the matching
 `restore_state` hook receives it on activity resume. Android controls when these
 callbacks occur, so this is best-effort instance restoration, not durable storage.
+The gallery implements these hooks for its small view-model snapshot and keeps
+its versioned `JsonStore` file for durable state.
 Android `OutputCommand::CopyText` writes text to the system clipboard through the
 Java UI thread, and `OutputCommand::OpenUrl` launches an Android `ACTION_VIEW`
 intent on that thread. Image clipboard output and the typed clipboard service
