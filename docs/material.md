@@ -170,10 +170,11 @@ Optional `.on_change_start` and `.on_change_end` callbacks report the value at
 the beginning and end of a drag. Discrete sliders take the number of intervals
 with `.divisions(Some(count))`.
 
-This first version does not provide value indicators, secondary tracks, or
-keyboard adjustments. Sliders expose an AccessKit slider role, numeric value and
-range, increment/decrement and set-value actions. Use `.semantics_label(...)`
-when the surrounding content does not name the slider.
+This first version does not provide value indicators or secondary tracks. Sliders
+can take keyboard focus and respond to arrow, Page Up/Down, Home and End keys. They
+expose an AccessKit slider role, numeric value and range, increment/decrement, and
+set-value actions. Use `.semantics_label(...)` when surrounding content does not
+name the slider.
 
 `Scaffold` provides a vertical page shell with an expanding body, optional
 `AppBar`, persistent `bottom_sheet`, bottom-navigation slots, and a controlled

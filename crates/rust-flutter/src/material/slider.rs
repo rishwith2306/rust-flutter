@@ -352,7 +352,7 @@ impl RenderBox for SliderTrackRender {
     fn paint(&mut self, ui: &mut egui::Ui, _: &RenderContext) {
         let bounds = ui.max_rect();
         self.config.position.set(bounds);
-        let response = ui.interact(bounds, self.id, egui::Sense::hover());
+        let response = ui.interact(bounds, self.id, egui::Sense::focusable_noninteractive());
         let range = self.config.max - self.config.min;
         let step = self
             .config
@@ -402,6 +402,33 @@ impl RenderBox for SliderTrackRender {
                     }
                 });
             });
+            if response.has_focus() {
+                let keyboard_value = ui.input_mut(|input| {
+                    let mut value = None;
+                    for (key, delta) in [
+                        (egui::Key::ArrowRight, step),
+                        (egui::Key::ArrowUp, step),
+                        (egui::Key::ArrowLeft, -step),
+                        (egui::Key::ArrowDown, -step),
+                        (egui::Key::PageUp, step * 10.0),
+                        (egui::Key::PageDown, -step * 10.0),
+                    ] {
+                        if input.consume_key(egui::Modifiers::NONE, key) {
+                            value = Some(value.unwrap_or(self.config.value) + delta);
+                        }
+                    }
+                    if input.consume_key(egui::Modifiers::NONE, egui::Key::Home) {
+                        value = Some(self.config.min);
+                    }
+                    if input.consume_key(egui::Modifiers::NONE, egui::Key::End) {
+                        value = Some(self.config.max);
+                    }
+                    value
+                });
+                if keyboard_value.is_some() {
+                    requested_value = keyboard_value;
+                }
+            }
         }
         if let Some(mut value) = requested_value {
             value = value.clamp(self.config.min, self.config.max);
