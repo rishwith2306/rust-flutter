@@ -406,7 +406,8 @@ The linear indicator supports configurable corner radius, track gap, and an
 optional completion marker. Its indeterminate mode animates two eased segments
 across the track. Flutter's [LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
 also includes animation controllers, coordinated Material progress
-indicator themes and versioned appearances; those options remain unfinished.
+indicator themes and versioned appearances. A controller can be supplied per
+indicator; see the synchronization example below.
 
 `CircularProgressIndicator` provides the matching circular form with a
 determinate arc or rotating indeterminate arc. Set `size` and `stroke_width` to
@@ -433,9 +434,37 @@ value for determinate progress through the desktop AccessKit path. Android
 TalkBack integration remains unavailable. Both modes share the checked value
 range and theme colors. Stroke alignment
 supports the range from inside (-1) to outside (1), and caps can be butt, round,
-or square. Versioned Material appearance and a controller for synchronizing
-multiple indicators remain unfinished. See Flutter's
+or square. Controllers can synchronize indicators, but a theme-wide controller,
+track gaps, and versioned Material appearance remain unfinished. See Flutter's
 [CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
+
+Pass clones of the same `AnimationController` to indeterminate indicators to
+keep them in sync. Its normalized value drives both the linear sweep and the
+circular rotation:
+
+```rust
+use rust_flutter::{
+    animation::{AnimationConfig, AnimationController, RepeatOptions},
+    egui,
+    material::{CircularProgressIndicator, LinearProgressIndicator},
+};
+use std::time::Duration;
+
+let ctx = egui::Context::default();
+let controller = AnimationController::new(&ctx, AnimationConfig {
+    duration: Duration::from_secs(2),
+    ..AnimationConfig::default()
+})?;
+let _run = controller.repeat(RepeatOptions::default())?;
+let linear = LinearProgressIndicator::new(None)
+    .controller(controller.clone())
+    .into_widget()?;
+let circular = CircularProgressIndicator::new(None)
+    .controller(controller.clone())
+    .into_widget()?;
+# let _ = (linear, circular);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
 
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
 shows a selected dialog above it, and dismisses that dialog when the user taps

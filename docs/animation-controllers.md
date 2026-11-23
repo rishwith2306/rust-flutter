@@ -47,6 +47,8 @@ Bounds default to 0…1 and must be finite with lower < upper. Initial values,
 are rejected. Interpolation uses a wider intermediate so finite extreme bounds
 do not overflow through subtraction. Configuration is currently fixed at
 construction. Duration zero is allowed for instantaneous point-to-point runs.
+`normalized_value()` maps the current value from the configured bounds to 0…1,
+which is useful when a consumer needs a phase independent of those bounds.
 
 `forward()` moves toward the upper bound and `reverse()` toward the lower bound.
 Their default duration is proportional to the remaining fraction of the full

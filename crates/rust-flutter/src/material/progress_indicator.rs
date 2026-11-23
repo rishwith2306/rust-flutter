@@ -1,4 +1,5 @@
 use super::{StrokeCap, ThemeData};
+use crate::animation::AnimationController;
 use crate::{
     egui::{self, Color32, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
@@ -113,6 +114,7 @@ fn indeterminate_linear_segments(phase: f32) -> [(f32, f32); 2] {
 }
 
 /// Themed Material circular progress indicator with determinate or indeterminate progress.
+#[derive(Clone)]
 pub struct CircularProgressIndicator {
     value: Option<f32>,
     color: Option<Color32>,
@@ -123,6 +125,8 @@ pub struct CircularProgressIndicator {
     size: f32,
     semantics_label: Option<String>,
     semantics_value: Option<String>,
+    controller: Option<AnimationController>,
+    controller_phase: Option<f32>,
 }
 
 impl CircularProgressIndicator {
@@ -137,6 +141,8 @@ impl CircularProgressIndicator {
             size: 40.0,
             semantics_label: None,
             semantics_value: None,
+            controller: None,
+            controller_phase: None,
         }
     }
 
@@ -172,6 +178,13 @@ impl CircularProgressIndicator {
         self
     }
 
+    /// Drives this indeterminate indicator from a shared controller.
+    pub fn controller(mut self, controller: AnimationController) -> Self {
+        self.controller = Some(controller);
+        self.controller_phase = None;
+        self
+    }
+
     /// Sets the screen reader label where the host exposes AccessKit semantics.
     pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
         self.semantics_label = Some(label.into());
@@ -185,6 +198,16 @@ impl CircularProgressIndicator {
     }
 
     pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if self.value.is_some() && self.controller.is_some() {
+            return Err("progress indicator cannot set both a value and a controller");
+        }
+        if self
+            .controller
+            .as_ref()
+            .is_some_and(AnimationController::is_disposed)
+        {
+            return Err("progress indicator controller has been disposed");
+        }
         if self
             .stroke_width
             .is_some_and(|width| !width.is_finite() || width <= 0.0 || width > self.size)
@@ -207,6 +230,17 @@ struct CircularProgressView(CircularProgressIndicator);
 
 impl StatelessWidget for CircularProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
+        if self.0.controller_phase.is_none()
+            && let Some(controller) = self.0.controller.clone()
+        {
+            let indicator = self.0.clone();
+            let phase_controller = controller.clone();
+            return Widget::value_listenable_builder(controller, move |_, _| {
+                let mut indicator = indicator.clone();
+                indicator.controller_phase = Some(phase_controller.normalized_value());
+                Widget::stateless(CircularProgressView(indicator))
+            });
+        }
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
@@ -215,6 +249,7 @@ impl StatelessWidget for CircularProgressView {
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();
         let semantics_value = indicator.semantics_value.clone();
+        let animation_phase = indicator.controller_phase;
         let size = indicator.size;
         let stroke_width = indicator
             .stroke_width
@@ -260,11 +295,15 @@ impl StatelessWidget for CircularProgressView {
                 let (start, sweep) = if let Some(value) = value {
                     (-std::f32::consts::FRAC_PI_2, std::f32::consts::TAU * value)
                 } else {
-                    let duration = 1.25_f64;
-                    let phase = ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
-                    ui.ctx().request_repaint_after(Duration::from_millis(16));
+                    let phase = animation_phase.unwrap_or_else(|| {
+                        let duration = 1.25_f64;
+                        let phase =
+                            ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
+                        ui.ctx().request_repaint_after(Duration::from_millis(16));
+                        phase as f32
+                    });
                     (
-                        -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * phase as f32,
+                        -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * phase,
                         std::f32::consts::TAU * 0.28,
                     )
                 };
@@ -305,6 +344,7 @@ impl StatelessWidget for CircularProgressView {
 }
 
 /// Themed Material linear progress indicator with determinate or indeterminate progress.
+#[derive(Clone)]
 pub struct LinearProgressIndicator {
     value: Option<f32>,
     color: Option<Color32>,
@@ -316,6 +356,8 @@ pub struct LinearProgressIndicator {
     stop_indicator_color: Option<Color32>,
     semantics_label: Option<String>,
     semantics_value: Option<String>,
+    controller: Option<AnimationController>,
+    controller_phase: Option<f32>,
 }
 
 impl LinearProgressIndicator {
@@ -331,6 +373,8 @@ impl LinearProgressIndicator {
             stop_indicator_color: None,
             semantics_label: None,
             semantics_value: None,
+            controller: None,
+            controller_phase: None,
         }
     }
 
@@ -373,6 +417,13 @@ impl LinearProgressIndicator {
         self
     }
 
+    /// Drives this indeterminate indicator from a shared controller.
+    pub fn controller(mut self, controller: AnimationController) -> Self {
+        self.controller = Some(controller);
+        self.controller_phase = None;
+        self
+    }
+
     /// Sets the screen reader label where the host exposes AccessKit semantics.
     pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
         self.semantics_label = Some(label.into());
@@ -386,6 +437,16 @@ impl LinearProgressIndicator {
     }
 
     pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if self.value.is_some() && self.controller.is_some() {
+            return Err("progress indicator cannot set both a value and a controller");
+        }
+        if self
+            .controller
+            .as_ref()
+            .is_some_and(AnimationController::is_disposed)
+        {
+            return Err("progress indicator controller has been disposed");
+        }
         if self
             .min_height
             .is_some_and(|height| !height.is_finite() || height <= 0.0)
@@ -412,6 +473,17 @@ struct LinearProgressView(LinearProgressIndicator);
 
 impl StatelessWidget for LinearProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
+        if self.0.controller_phase.is_none()
+            && let Some(controller) = self.0.controller.clone()
+        {
+            let indicator = self.0.clone();
+            let phase_controller = controller.clone();
+            return Widget::value_listenable_builder(controller, move |_, _| {
+                let mut indicator = indicator.clone();
+                indicator.controller_phase = Some(phase_controller.normalized_value());
+                Widget::stateless(LinearProgressView(indicator))
+            });
+        }
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
@@ -420,6 +492,7 @@ impl StatelessWidget for LinearProgressView {
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();
         let semantics_value = indicator.semantics_value.clone();
+        let animation_phase = indicator.controller_phase;
         let height = indicator
             .min_height
             .or(progress_theme
@@ -470,9 +543,13 @@ impl StatelessWidget for LinearProgressView {
                         .clamp(0.0, 255.0) as u8,
                 );
                 let Some(value) = value else {
-                    let duration = 1.8_f64;
-                    let phase = ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
-                    let phase = phase as f32;
+                    let phase = animation_phase.unwrap_or_else(|| {
+                        let duration = 1.8_f64;
+                        let phase =
+                            ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
+                        ui.ctx().request_repaint_after(Duration::from_millis(16));
+                        phase as f32
+                    });
                     let segments = indeterminate_linear_segments(phase);
                     let gap_fraction = if rect.width() > 0.0 {
                         (track_gap / rect.width()).min(1.0)
@@ -530,7 +607,6 @@ impl StatelessWidget for LinearProgressView {
                         };
                         draw(0.0, end, background);
                     }
-                    ui.ctx().request_repaint_after(Duration::from_millis(16));
                     return;
                 };
                 let gap = if value <= 0.0 {

@@ -330,6 +330,13 @@ impl AnimationController {
     pub fn value(&self) -> f32 {
         self.0.state.borrow().value
     }
+    /// Current value mapped from the configured bounds to the inclusive 0..=1 range.
+    pub fn normalized_value(&self) -> f32 {
+        let state = self.0.state.borrow();
+        ((f64::from(state.value) - f64::from(state.config.lower_bound))
+            / (f64::from(state.config.upper_bound) - f64::from(state.config.lower_bound)))
+        .clamp(0.0, 1.0) as f32
+    }
     pub fn status(&self) -> AnimationStatus {
         self.0.state.borrow().status
     }
