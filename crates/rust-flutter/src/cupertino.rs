@@ -1039,6 +1039,7 @@ pub struct CupertinoSwitch {
     value: bool,
     enabled: bool,
     on_changed: Rc<dyn Fn(bool)>,
+    semantics_label: Option<String>,
 }
 
 impl CupertinoSwitch {
@@ -1048,11 +1049,18 @@ impl CupertinoSwitch {
             value,
             enabled: true,
             on_changed: Rc::new(on_changed),
+            semantics_label: None,
         }
     }
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// Sets the screen reader name for this switch.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -1101,11 +1109,15 @@ impl StatelessWidget for CupertinoSwitchView {
         };
         let callback = switch.on_changed.clone();
         let value = switch.value;
+        let semantics_label = switch.semantics_label.clone().unwrap_or_default();
         GestureButton::new(&switch.binding, egui::RichText::new(""), move || {
             callback(!value)
         })
         .size(Vec2::new(60.0, 44.0))
         .enabled(switch.enabled)
+        .accessibility_role(GestureSemanticRole::Switch)
+        .accessibility_label(semantics_label)
+        .accessibility_toggled(value)
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::NONE)
         .corner_radius(egui::CornerRadius::ZERO)
