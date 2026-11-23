@@ -366,6 +366,7 @@ impl State<DrawerExample> for DrawerExampleState {
             ActionChip::new(&widget.binding, "Add Ada", move || {
                 let _ = add_member.update(|state| state.member_present = true);
             })
+            .icon("+")
             .into_widget()
         };
         let synced_chip = Chip::new("Synced")

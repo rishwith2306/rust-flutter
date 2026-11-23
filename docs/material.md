@@ -388,19 +388,25 @@ not bundled; applications supply an icon widget or asset. Flutter's
 [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
 also offers these accessibility and interaction features.
 
-`ActionChip` runs an action and supports a disabled state and optional pointer
-hover tooltip. Its label is plain text in this initial API; Flutter also accepts
-an avatar, arbitrary label widgets, and a wider set of shape and animation
-options ([ActionChip API](https://api.flutter.dev/flutter/material/ActionChip-class.html)).
+`ActionChip` runs an action and supports a disabled state, an optional leading
+glyph, and an optional pointer-hover tooltip. Flutter represents both Assist
+chips (with an icon) and Suggestion chips (without one) through `ActionChip`,
+rather than separate widget classes. This API accepts a text glyph instead of an
+arbitrary icon widget and still lacks Flutter's avatar, custom label, shape, and
+animation options ([ActionChip API](https://api.flutter.dev/flutter/material/ActionChip-class.html)).
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::ActionChip};
 
 let binding = GestureBinding::new();
-let suggestion = ActionChip::new(&binding, "Create report", || {})
+let assist = ActionChip::new(&binding, "Create report", || {})
+    .icon("✦")
+    .tooltip("Create a report")
+    .into_widget();
+let suggestion = ActionChip::new(&binding, "Try a shorter title", || {})
     .tooltip("Create a new report")
     .into_widget();
-# let _ = suggestion;
+# let _ = (assist, suggestion);
 ```
 
 `Chip` is the non-interactive label form. Supply a `GestureBinding` only when

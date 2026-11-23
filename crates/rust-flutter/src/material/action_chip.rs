@@ -10,6 +10,7 @@ use std::rc::Rc;
 pub struct ActionChip {
     binding: GestureBinding,
     label: String,
+    icon: Option<String>,
     enabled: bool,
     tooltip: Option<String>,
     on_pressed: Rc<dyn Fn()>,
@@ -24,6 +25,7 @@ impl ActionChip {
         Self {
             binding: binding.clone(),
             label: label.into(),
+            icon: None,
             enabled: true,
             tooltip: None,
             on_pressed: Rc::new(on_pressed),
@@ -32,6 +34,15 @@ impl ActionChip {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// Adds a leading text glyph, for example an icon-font character, to the
+    /// action. Flutter uses an icon to distinguish an Assist chip from a
+    /// Suggestion chip; the icon is decorative and the accessible name remains
+    /// the label.
+    pub fn icon(mut self, glyph: impl Into<String>) -> Self {
+        self.icon = Some(glyph.into());
         self
     }
 
@@ -55,7 +66,10 @@ impl StatelessWidget for ActionChip {
             .cloned()
             .unwrap_or_default();
         let (fill, foreground, outline) = chip_theme.resolve(scheme, false, self.enabled);
-        let label = self.label.clone();
+        let label = match &self.icon {
+            Some(icon) => format!("{icon}  {}", self.label),
+            None => self.label.clone(),
+        };
         let font = FontId::proportional(14.0);
         let width = context.egui().fonts_mut(|fonts| {
             fonts
