@@ -9,9 +9,12 @@ Its `TextTheme` provides Material's 15 display, headline, title, body and label
 roles; `body_medium` becomes the default style and `on_surface` color for
 descendant `Text` widgets. Nested `DefaultTextStyle` providers can override it.
 The defaults include Material 3 typography sizes, line heights and letter
-spacing. Role-specific font weights are not represented by `TextStyle` yet.
-See Flutter's [TextTheme API](https://api.flutter.dev/flutter/material/TextTheme-class.html)
-for the corresponding role metrics and weight definitions.
+spacing, and 400/500 font weights. `TextStyle.font_weight` selects a named egui
+font family for that weight when one is registered; otherwise layout falls back
+to the base family. Use `FontWeight::family_variant` to obtain the name when
+registering a font face in `egui::FontDefinitions`. Flutter's
+[TextTheme API](https://api.flutter.dev/flutter/material/TextTheme-class.html)
+documents the corresponding role metrics.
 
 ```rust
 use rust_flutter::{egui, material::{ColorScheme, ThemeData}};

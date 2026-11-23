@@ -6,6 +6,60 @@ use crate::{
 };
 use egui::{Align, Color32, FontFamily, FontId, Stroke, text::TextFormat};
 
+const WEIGHT_FAMILY_PREFIX: &str = "rust_flutter::weight::";
+
+/// Numeric font weight in the conventional 100–900 range.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u16)]
+pub enum FontWeight {
+    W100 = 100,
+    W200 = 200,
+    W300 = 300,
+    #[default]
+    W400 = 400,
+    W500 = 500,
+    W600 = 600,
+    W700 = 700,
+    W800 = 800,
+    W900 = 900,
+}
+
+impl FontWeight {
+    /// Return the egui named family used to register this weight variant.
+    /// When it is not registered, paragraph layout falls back to `base`.
+    pub fn family_variant(self, base: &FontFamily) -> FontFamily {
+        FontFamily::Name(format!("{WEIGHT_FAMILY_PREFIX}{}::{base}", self as u16).into())
+    }
+
+    pub(super) fn resolve_family(family: &FontFamily, available: &[FontFamily]) -> FontFamily {
+        let FontFamily::Name(name) = family else {
+            return family.clone();
+        };
+        let Some(weighted) = name.strip_prefix(WEIGHT_FAMILY_PREFIX) else {
+            return family.clone();
+        };
+        let Some((weight, base)) = weighted.split_once("::") else {
+            return family.clone();
+        };
+        if !matches!(
+            weight,
+            "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900"
+        ) {
+            return family.clone();
+        }
+        let base = match base {
+            "Proportional" => FontFamily::Proportional,
+            "Monospace" => FontFamily::Monospace,
+            other => FontFamily::Name(other.into()),
+        };
+        if available.contains(family) {
+            family.clone()
+        } else {
+            base
+        }
+    }
+}
+
 /// A line height override can explicitly restore font metrics in a nested style.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LineHeight {
@@ -19,6 +73,7 @@ pub struct TextStyle {
     pub inherit: bool,
     pub font_size: Option<f32>,
     pub font_family: Option<FontFamily>,
+    pub font_weight: Option<FontWeight>,
     pub color: Option<Color32>,
     pub background: Option<Color32>,
     pub letter_spacing: Option<f32>,
@@ -35,6 +90,7 @@ impl Default for TextStyle {
             inherit: true,
             font_size: None,
             font_family: None,
+            font_weight: None,
             color: None,
             background: None,
             letter_spacing: None,
@@ -60,6 +116,7 @@ impl TextStyle {
                 .font_family
                 .clone()
                 .or_else(|| self.font_family.clone()),
+            font_weight: other.font_weight.or(self.font_weight),
             color: other.color.or(self.color),
             background: other.background.or(self.background),
             letter_spacing: other.letter_spacing.or(self.letter_spacing),
@@ -75,10 +132,11 @@ impl TextStyle {
     /// ordinary backend geometry. Invalid numeric values fail paragraph layout.
     pub fn to_format(&self) -> TextFormat {
         TextFormat {
-            font_id: FontId::new(
-                self.font_size.unwrap_or(14.0),
-                self.font_family.clone().unwrap_or(FontFamily::Proportional),
-            ),
+            font_id: FontId::new(self.font_size.unwrap_or(14.0), {
+                let family = self.font_family.clone().unwrap_or(FontFamily::Proportional);
+                self.font_weight
+                    .map_or(family.clone(), |weight| weight.family_variant(&family))
+            }),
             color: self.color.unwrap_or(Color32::WHITE),
             background: self.background.unwrap_or(Color32::TRANSPARENT),
             extra_letter_spacing: self.letter_spacing.unwrap_or(0.0),

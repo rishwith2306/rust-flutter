@@ -10,7 +10,7 @@ use crate::{
     localization::Localizations,
     navigation::NavigatorController,
     notifier::Listenable,
-    text::{LineHeight, Text, TextStyle},
+    text::{FontWeight, LineHeight, Text, TextStyle},
 };
 use material_color_utils::{
     dynamic::{
@@ -696,11 +696,12 @@ pub struct TextTheme {
 }
 
 impl TextTheme {
-    fn sized(size: f32, line_height: f32, letter_spacing: f32) -> TextStyle {
+    fn sized(size: f32, line_height: f32, letter_spacing: f32, weight: FontWeight) -> TextStyle {
         TextStyle {
             font_size: Some(size),
             line_height: Some(LineHeight::Points(line_height)),
             letter_spacing: Some(letter_spacing),
+            font_weight: Some(weight),
             ..TextStyle::default()
         }
     }
@@ -736,21 +737,21 @@ impl TextTheme {
 impl Default for TextTheme {
     fn default() -> Self {
         Self {
-            display_large: Self::sized(57.0, 64.0, -0.25),
-            display_medium: Self::sized(45.0, 52.0, 0.0),
-            display_small: Self::sized(36.0, 44.0, 0.0),
-            headline_large: Self::sized(32.0, 40.0, 0.0),
-            headline_medium: Self::sized(28.0, 36.0, 0.0),
-            headline_small: Self::sized(24.0, 32.0, 0.0),
-            title_large: Self::sized(22.0, 28.0, 0.0),
-            title_medium: Self::sized(16.0, 24.0, 0.15),
-            title_small: Self::sized(14.0, 20.0, 0.1),
-            body_large: Self::sized(16.0, 24.0, 0.5),
-            body_medium: Self::sized(14.0, 20.0, 0.25),
-            body_small: Self::sized(12.0, 16.0, 0.4),
-            label_large: Self::sized(14.0, 20.0, 0.1),
-            label_medium: Self::sized(12.0, 16.0, 0.5),
-            label_small: Self::sized(11.0, 16.0, 0.5),
+            display_large: Self::sized(57.0, 64.0, -0.25, FontWeight::W400),
+            display_medium: Self::sized(45.0, 52.0, 0.0, FontWeight::W400),
+            display_small: Self::sized(36.0, 44.0, 0.0, FontWeight::W400),
+            headline_large: Self::sized(32.0, 40.0, 0.0, FontWeight::W400),
+            headline_medium: Self::sized(28.0, 36.0, 0.0, FontWeight::W400),
+            headline_small: Self::sized(24.0, 32.0, 0.0, FontWeight::W400),
+            title_large: Self::sized(22.0, 28.0, 0.0, FontWeight::W400),
+            title_medium: Self::sized(16.0, 24.0, 0.15, FontWeight::W500),
+            title_small: Self::sized(14.0, 20.0, 0.1, FontWeight::W500),
+            body_large: Self::sized(16.0, 24.0, 0.5, FontWeight::W400),
+            body_medium: Self::sized(14.0, 20.0, 0.25, FontWeight::W400),
+            body_small: Self::sized(12.0, 16.0, 0.4, FontWeight::W400),
+            label_large: Self::sized(14.0, 20.0, 0.1, FontWeight::W500),
+            label_medium: Self::sized(12.0, 16.0, 0.5, FontWeight::W500),
+            label_small: Self::sized(11.0, 16.0, 0.5, FontWeight::W500),
         }
     }
 }
@@ -778,6 +779,11 @@ fn lerp_text_style(a: &TextStyle, b: &TextStyle, t: f32) -> TextStyle {
             a.font_family.clone()
         } else {
             b.font_family.clone()
+        },
+        font_weight: if t < 0.5 {
+            a.font_weight
+        } else {
+            b.font_weight
         },
         color: color(a.color, b.color, t),
         background: color(a.background, b.background, t),

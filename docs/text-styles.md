@@ -46,12 +46,24 @@ paragraph measurement and preserve mounted elements for recovery.
 
 ## Inheritance rules
 
-`TextStyle` contains optional font size/family, foreground/background color,
-letter spacing, line height, italics, underline, strikethrough, vertical
+`TextStyle` contains optional font size/family/weight, foreground/background
+color, letter spacing, line height, italics, underline, strikethrough, vertical
 alignment and background expansion. `None` leaves a property unspecified.
 `Some(false)`, transparent colors and `Stroke::NONE` can explicitly clear
 inherited effects. `LineHeight::Normal` restores font-derived line height;
 `LineHeight::Points(n)` sets a logical-point line height.
+
+`FontWeight` represents weights 100 through 900 in steps of 100. To render an
+actual weight face, register its font data in egui under the family returned by
+`FontWeight::family_variant(&base_family)`. Paragraph layout selects that family
+when present and falls back to `base_family` otherwise. For example, after
+adding a medium font file as `inter-medium` in `definitions.font_data`:
+
+```rust
+let inter = egui::FontFamily::Name("Inter".into());
+let medium = FontWeight::W500.family_variant(&inter);
+definitions.families.insert(medium, vec!["inter-medium".into()]);
+```
 
 `base.merge(&overlay)` overlays specified properties. If `overlay.inherit` is
 false, it replaces the base entirely. The remaining unspecified fields resolve
@@ -118,11 +130,12 @@ tree. The macOS host does not yet read system accessibility settings. System
 bold/spacing settings are also not applied.
 
 The implementation supplies the subset represented by egui TextFormat and the
-current Paragraph policy. Font weight/variable axes, shaping, bidi, locale-aware
+current Paragraph policy. Font variable axes, shaping, bidi, locale-aware
 fallback, inline widget placeholders, span recognizers, semantics, selection,
 TextWidthBasis, struts, ambient Directionality and animated default styles remain
-unfinished. The types are original Rust APIs; no complete Flutter member-level
-compatibility is claimed.
+unfinished. System bold-text accessibility settings are not applied. The types
+are original Rust APIs; no complete Flutter member-level compatibility is
+claimed.
 
 ## Verification
 

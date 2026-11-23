@@ -17,8 +17,8 @@ pub(crate) use style::platform_text_scale;
 #[cfg(target_os = "android")]
 pub(crate) use style::set_platform_text_scale;
 pub use style::{
-    DefaultTextStyle, InlineSpan, LineHeight, LineLimit, PlatformTextScale, Text, TextScale,
-    TextStyle,
+    DefaultTextStyle, FontWeight, InlineSpan, LineHeight, LineLimit, PlatformTextScale, Text,
+    TextScale, TextStyle,
 };
 
 /// Fully resolved formatting for a contiguous UTF-8 span. No implicit style
@@ -140,8 +140,15 @@ impl RenderObjectWidget for Paragraph {
 impl ParagraphRender {
     fn shape(&self, width: f32, limited: bool) -> Result<Arc<Galley>, LayoutError> {
         self.paragraph.validate()?;
-        let job = self.paragraph.job(width, limited);
-        Ok(self.context.fonts_mut(|fonts| fonts.layout_job(job)))
+        let mut job = self.paragraph.job(width, limited);
+        Ok(self.context.fonts_mut(|fonts| {
+            let available = fonts.families();
+            for section in &mut job.sections {
+                section.format.font_id.family =
+                    FontWeight::resolve_family(&section.format.font_id.family, &available);
+            }
+            fonts.layout_job(job)
+        }))
     }
     fn measure(&self, c: BoxConstraints) -> Result<(Arc<Galley>, Vec2), LayoutError> {
         let width = if self.paragraph.soft_wrap || self.paragraph.overflow == TextOverflow::Ellipsis
@@ -183,12 +190,14 @@ impl ParagraphRender {
                     job.append(&full.text[a..b], 0.0, section.format.clone());
                 }
             }
-            width = width.max(
-                self.context
-                    .fonts_mut(|fonts| fonts.layout_job(job))
-                    .size()
-                    .x,
-            );
+            width = width.max(self.context.fonts_mut(|fonts| {
+                let available = fonts.families();
+                for section in &mut job.sections {
+                    section.format.font_id.family =
+                        FontWeight::resolve_family(&section.format.font_id.family, &available);
+                }
+                fonts.layout_job(job).size().x
+            }));
             start = end;
         }
         Ok(width)
