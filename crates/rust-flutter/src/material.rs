@@ -248,10 +248,21 @@ pub struct ProgressIndicatorThemeData {
     pub linear_min_height: Option<f32>,
     pub circular_track_color: Option<Color32>,
     pub stroke_width: Option<f32>,
+    pub stroke_align: Option<f32>,
+    pub stroke_cap: Option<StrokeCap>,
     pub border_radius: Option<f32>,
     pub track_gap: Option<f32>,
     pub stop_indicator_color: Option<Color32>,
     pub stop_indicator_radius: Option<f32>,
+}
+
+/// End shape used when painting a stroked circular progress arc.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum StrokeCap {
+    #[default]
+    Butt,
+    Round,
+    Square,
 }
 
 /// A Material root widget that provides an inherited theme to its home subtree.

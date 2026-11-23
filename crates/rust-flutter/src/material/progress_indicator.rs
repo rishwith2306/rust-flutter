@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{StrokeCap, ThemeData};
 use crate::{
     egui::{self, Color32, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
@@ -11,6 +11,8 @@ pub struct CircularProgressIndicator {
     color: Option<Color32>,
     background_color: Option<Color32>,
     stroke_width: Option<f32>,
+    stroke_align: Option<f32>,
+    stroke_cap: Option<StrokeCap>,
     size: f32,
 }
 
@@ -21,6 +23,8 @@ impl CircularProgressIndicator {
             color: None,
             background_color: None,
             stroke_width: None,
+            stroke_align: None,
+            stroke_cap: None,
             size: 40.0,
         }
     }
@@ -40,6 +44,18 @@ impl CircularProgressIndicator {
         self
     }
 
+    /// Sets the stroke position from inside (-1) through centered (0) to outside (1).
+    pub fn stroke_align(mut self, alignment: f32) -> Self {
+        self.stroke_align = Some(alignment);
+        self
+    }
+
+    /// Sets the end shape of the circular progress arc.
+    pub fn stroke_cap(mut self, cap: StrokeCap) -> Self {
+        self.stroke_cap = Some(cap);
+        self
+    }
+
     pub fn size(mut self, size: f32) -> Self {
         self.size = size;
         self
@@ -49,6 +65,9 @@ impl CircularProgressIndicator {
         if self
             .stroke_width
             .is_some_and(|width| !width.is_finite() || width <= 0.0 || width > self.size)
+            || self
+                .stroke_align
+                .is_some_and(|align| !align.is_finite() || !(-1.0..=1.0).contains(&align))
             || !self.size.is_finite()
             || self.size <= 0.0
             || self
@@ -79,6 +98,16 @@ impl StatelessWidget for CircularProgressView {
                 .filter(|width| width.is_finite() && *width > 0.0))
             .unwrap_or(4.0)
             .min(size);
+        let stroke_align = indicator
+            .stroke_align
+            .or(progress_theme
+                .stroke_align
+                .filter(|align| align.is_finite() && (-1.0..=1.0).contains(align)))
+            .unwrap_or(-1.0);
+        let stroke_cap = indicator
+            .stroke_cap
+            .or(progress_theme.stroke_cap)
+            .unwrap_or(StrokeCap::Round);
         let color = indicator
             .color
             .or(progress_theme.color)
@@ -92,7 +121,8 @@ impl StatelessWidget for CircularProgressView {
             move |ui| {
                 let rect = ui.max_rect();
                 let center = rect.center();
-                let radius = (rect.width().min(rect.height()) - stroke_width) * 0.5;
+                let radius =
+                    rect.width().min(rect.height()) * 0.5 + stroke_width * stroke_align * 0.5;
                 if radius <= 0.0 {
                     return;
                 }
@@ -118,10 +148,30 @@ impl StatelessWidget for CircularProgressView {
                 let segments = ((sweep * radius / 2.0).ceil() as usize).clamp(2, 96);
                 let point = |angle: f32| center + Vec2::new(angle.cos(), angle.sin()) * radius;
                 let stroke = egui::Stroke::new(stroke_width, color);
+                let tangent = |angle: f32| Vec2::new(-angle.sin(), angle.cos());
+                let start_point = point(start);
+                let end_point = point(start + sweep);
+                if stroke_cap == StrokeCap::Square {
+                    let extension = stroke_width * 0.5;
+                    ui.painter().line_segment(
+                        [start_point - tangent(start) * extension, start_point],
+                        stroke,
+                    );
+                    ui.painter().line_segment(
+                        [end_point, end_point + tangent(start + sweep) * extension],
+                        stroke,
+                    );
+                }
                 for index in 0..segments {
                     let from = start + sweep * index as f32 / segments as f32;
                     let to = start + sweep * (index + 1) as f32 / segments as f32;
                     ui.painter().line_segment([point(from), point(to)], stroke);
+                }
+                if stroke_cap == StrokeCap::Round {
+                    ui.painter()
+                        .circle_filled(start_point, stroke_width * 0.5, color);
+                    ui.painter()
+                        .circle_filled(end_point, stroke_width * 0.5, color);
                 }
             },
         )

@@ -43,6 +43,8 @@ let theme = ThemeData {
         color: Some(Color32::from_rgb(0x22, 0x66, 0xAA)),
         linear_min_height: Some(6.0),
         stroke_width: Some(5.0),
+        stroke_align: Some(-1.0),
+        stroke_cap: Some(rust_flutter::material::StrokeCap::Round),
         ..ProgressIndicatorThemeData::default()
     },
     ..ThemeData::default()
@@ -51,11 +53,12 @@ let theme = ThemeData {
 ```
 
 The shared theme currently supports indicator and track colors, linear height,
-circular stroke width, corner radius, track gap and linear stop marker styling.
+circular stroke width, stroke alignment and cap, corner radius, track gap and
+linear stop marker styling.
 Flutter's [ProgressIndicatorThemeData API](https://api.flutter.dev/flutter/material/ProgressIndicatorThemeData-class.html)
-also provides constraints, circular track padding, stroke alignment and caps,
-refresh colors, animated controller synchronization and theme interpolation;
-those properties remain unavailable.
+also provides constraints, circular track padding, refresh colors, animated
+controller synchronization and theme interpolation; those properties remain
+unavailable.
 
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports
@@ -414,6 +417,8 @@ use rust_flutter::material::{CircularProgressIndicator, MaterialApp, ThemeData};
 let progress = CircularProgressIndicator::new(Some(0.65))
     .size(48.0)
     .stroke_width(5.0)
+    .stroke_align(-1.0)
+    .stroke_cap(rust_flutter::material::StrokeCap::Round)
     .into_widget()?;
 let loading = CircularProgressIndicator::new(None).into_widget()?;
 let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
@@ -421,9 +426,10 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Both modes share the checked value range and theme colors. Stroke cap/alignment,
-semantics labels and values, versioned Material appearance and a controller for
-synchronizing multiple indicators remain unfinished. See Flutter's
+Both modes share the checked value range and theme colors. Stroke alignment
+supports the range from inside (-1) to outside (1), and caps can be butt, round,
+or square. Semantics labels and values, versioned Material appearance and a
+controller for synchronizing multiple indicators remain unfinished. See Flutter's
 [CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
 
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
