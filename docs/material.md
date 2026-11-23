@@ -440,6 +440,7 @@ let progress = CircularProgressIndicator::new(Some(0.65))
     .size(48.0)
     .stroke_width(5.0)
     .stroke_align(-1.0)
+    .track_gap(4.0)
     .stroke_cap(rust_flutter::material::StrokeCap::Round)
     .semantics_label("Loading")
     .into_widget()?;
@@ -454,9 +455,10 @@ value for determinate progress through the desktop AccessKit path. Android
 TalkBack integration remains unavailable. Both modes share the checked value
 range and theme colors. Stroke alignment
 supports the range from inside (-1) to outside (1), and caps can be butt, round,
-or square. Controllers can synchronize indicators directly or through the
-subtree `ProgressIndicatorTheme`. A controller inside root `ThemeData`, track
-gaps, and versioned Material appearance remain unfinished. See Flutter's
+or square. The track gap can be set per indicator or in the shared theme.
+Controllers can synchronize indicators directly, through root `ThemeData`, or
+through the subtree `ProgressIndicatorTheme`. Circular track padding and
+versioned Material appearance remain unfinished. See Flutter's
 [CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
 
 Pass clones of the same `AnimationController` to indeterminate indicators to

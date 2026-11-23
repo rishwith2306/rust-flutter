@@ -162,6 +162,7 @@ pub struct CircularProgressIndicator {
     stroke_width: Option<f32>,
     stroke_align: Option<f32>,
     stroke_cap: Option<StrokeCap>,
+    track_gap: Option<f32>,
     size: f32,
     semantics_label: Option<String>,
     semantics_value: Option<String>,
@@ -177,6 +178,7 @@ impl CircularProgressIndicator {
             stroke_width: None,
             stroke_align: None,
             stroke_cap: None,
+            track_gap: None,
             size: 40.0,
             semantics_label: None,
             semantics_value: None,
@@ -208,6 +210,12 @@ impl CircularProgressIndicator {
     /// Sets the end shape of the circular progress arc.
     pub fn stroke_cap(mut self, cap: StrokeCap) -> Self {
         self.stroke_cap = Some(cap);
+        self
+    }
+
+    /// Sets the gap between the active arc and the remaining circular track.
+    pub fn track_gap(mut self, gap: f32) -> Self {
+        self.track_gap = Some(gap);
         self
     }
 
@@ -251,6 +259,9 @@ impl CircularProgressIndicator {
             || self
                 .stroke_align
                 .is_some_and(|align| !align.is_finite() || !(-1.0..=1.0).contains(&align))
+            || self
+                .track_gap
+                .is_some_and(|gap| !gap.is_finite() || gap < 0.0)
             || !self.size.is_finite()
             || self.size <= 0.0
             || self
@@ -318,6 +329,11 @@ impl StatelessWidget for CircularProgressView {
             .stroke_cap
             .or(progress_theme.stroke_cap)
             .unwrap_or(StrokeCap::Round);
+        let track_gap = indicator
+            .track_gap
+            .or(progress_theme.track_gap)
+            .filter(|gap| gap.is_finite() && *gap >= 0.0)
+            .unwrap_or(0.0);
         let color = indicator
             .color
             .or(progress_theme.color)
@@ -337,11 +353,6 @@ impl StatelessWidget for CircularProgressView {
                 if radius <= 0.0 {
                     return;
                 }
-                ui.painter().circle_stroke(
-                    center,
-                    radius,
-                    egui::Stroke::new(stroke_width, background),
-                );
                 let (start, sweep) = if let Some(value) = value {
                     (-std::f32::consts::FRAC_PI_2, std::f32::consts::TAU * value)
                 } else {
@@ -357,6 +368,32 @@ impl StatelessWidget for CircularProgressView {
                         std::f32::consts::TAU * 0.28,
                     )
                 };
+                let track_stroke = egui::Stroke::new(stroke_width, background);
+                if track_gap > 0.0 && value.is_some_and(|value| value > 0.0) {
+                    // Match Flutter's Material gap sizing: separate the active
+                    // arc from the complementary track by the stroke radius
+                    // plus the requested logical-pixel gap.
+                    let start_gap = (stroke_width + track_gap) / radius;
+                    let end_gap = start_gap * 2.0;
+                    let track_start = start + sweep + start_gap;
+                    let track_sweep = (std::f32::consts::TAU - sweep - end_gap).max(0.0);
+                    if track_sweep > 0.0 {
+                        let track_segments =
+                            ((track_sweep * radius / 2.0).ceil() as usize).clamp(2, 192);
+                        for index in 0..track_segments {
+                            let from =
+                                track_start + track_sweep * index as f32 / track_segments as f32;
+                            let to = track_start
+                                + track_sweep * (index + 1) as f32 / track_segments as f32;
+                            let point =
+                                |angle: f32| center + Vec2::new(angle.cos(), angle.sin()) * radius;
+                            ui.painter()
+                                .line_segment([point(from), point(to)], track_stroke);
+                        }
+                    }
+                } else {
+                    ui.painter().circle_stroke(center, radius, track_stroke);
+                }
                 if sweep <= 0.0 {
                     return;
                 }
