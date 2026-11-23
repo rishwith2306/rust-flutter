@@ -336,8 +336,14 @@ impl<A: Application> Host<A> {
         });
 
         for command in &output.platform_output.commands {
-            if let egui::OutputCommand::CopyText(text) = command {
-                copy_text_to_clipboard(self.activity.clone(), text.clone());
+            match command {
+                egui::OutputCommand::CopyText(text) => {
+                    copy_text_to_clipboard(self.activity.clone(), text.clone());
+                }
+                egui::OutputCommand::OpenUrl(url) => {
+                    open_url(self.activity.clone(), url.url.clone());
+                }
+                egui::OutputCommand::CopyImage(_) => {}
             }
         }
 
@@ -422,6 +428,56 @@ fn copy_text_to_clipboard(activity: AndroidApp, text: String) {
         });
         if let Err(error) = result {
             eprintln!("rust-flutter Android clipboard write failed: {error}");
+            let _ = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
+                env.exception_clear();
+                Ok(())
+            });
+        }
+    }));
+}
+
+fn open_url(activity: AndroidApp, url: String) {
+    let callback_activity = activity.clone();
+    activity.run_on_java_main_thread(Box::new(move || {
+        // SAFETY: AndroidApp owns a live JVM handle through this queued callback.
+        let vm = unsafe { jni::JavaVM::from_raw(callback_activity.vm_as_ptr().cast()) };
+        let result = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
+            let raw_activity = callback_activity.activity_as_ptr() as jni::sys::jobject;
+            // SAFETY: Borrow the global reference owned by AndroidApp; do not delete it.
+            let activity = unsafe { env.as_cast_raw::<Global<JObject>>(&raw_activity)? };
+            let action = env.new_string("android.intent.action.VIEW")?;
+            let intent_class = env.find_class(jni_str!("android/content/Intent"))?;
+            let intent = env.new_object(
+                &intent_class,
+                jni_sig!("(Ljava/lang/String;)V"),
+                &[JValue::Object(&action)],
+            )?;
+            let address = env.new_string(url)?;
+            let uri_class = env.find_class(jni_str!("android/net/Uri"))?;
+            let uri = env
+                .call_static_method(
+                    &uri_class,
+                    jni_str!("parse"),
+                    jni_sig!("(Ljava/lang/String;)Landroid/net/Uri;"),
+                    &[JValue::Object(&address)],
+                )?
+                .l()?;
+            env.call_method(
+                &intent,
+                jni_str!("setData"),
+                jni_sig!("(Landroid/net/Uri;)Landroid/content/Intent;"),
+                &[JValue::Object(&uri)],
+            )?;
+            env.call_method(
+                &activity,
+                jni_str!("startActivity"),
+                jni_sig!("(Landroid/content/Intent;)V"),
+                &[JValue::Object(&intent)],
+            )?;
+            Ok(())
+        });
+        if let Err(error) = result {
+            eprintln!("rust-flutter Android URL open failed: {error}");
             let _ = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
                 env.exception_clear();
                 Ok(())

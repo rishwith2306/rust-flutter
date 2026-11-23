@@ -38,7 +38,7 @@ remains. Verification is recorded separately in `verification.md`.
 | Localization | Fluent FTL, CLDR locale negotiation, plurals/selects, message/attribute fallback; English/Spanish gallery | Partial; device locale discovery, framework translations, RTL layout/shaping, date/currency tooling |
 | Asynchronous work | Background task signals with result/panic states; UI-local ChangeNotifier/ValueNotifier and merged Listenable sources | Partial; streams, cancellation, executor integration |
 | Platform plugins | Typed service registry | Partial; no working native plugin catalog or JNI/Swift bridge |
-| OS services | Startup/shutdown, Android lifecycle and surface events, best-effort NativeActivity saved-instance byte hooks, Android text-copy clipboard output, focus/back/close hooks, private app data path | Partial; permissions, clipboard image output and typed clipboard service remain; durable state requires application-managed storage |
+| OS services | Startup/shutdown, Android lifecycle and surface events, best-effort NativeActivity saved-instance byte hooks, Android text-copy clipboard output and OpenUrl intents, focus/back/close hooks, private app data path | Partial; permissions, clipboard image output and typed clipboard service remain; durable state requires application-managed storage |
 | Camera, location, sensors, notifications | No implementation | Missing platform plugins and permission flows |
 | Storage, networking, serialization | Versioned atomic JSON snapshots, schema/size validation, gallery restoration | Partial; network client, database and secure-storage plugins |
 | Webviews, native views, add-to-app | No implementation | Missing platform embedding/compositing |

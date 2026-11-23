@@ -107,9 +107,10 @@ a compact byte snapshot during Android's save-state callback; the matching
 `restore_state` hook receives it on activity resume. Android controls when these
 callbacks occur, so this is best-effort instance restoration, not durable storage.
 Android `OutputCommand::CopyText` writes text to the system clipboard through the
-Java UI thread. Image clipboard output and the typed clipboard service remain
-unimplemented. Mobile IME composition, URL output commands, native child
-viewports and accessibility semantics are not implemented by this host yet. Winit-specific
+Java UI thread, and `OutputCommand::OpenUrl` launches an Android `ACTION_VIEW`
+intent on that thread. Image clipboard output and the typed clipboard service
+remain unimplemented. Mobile IME composition, native child viewports and
+accessibility semantics are not implemented by this host yet. Winit-specific
 window/event-loop hooks and unsupported depth/stencil/multisampling options return
 an explicit error. These limits remain part of the feature backlog.
 
