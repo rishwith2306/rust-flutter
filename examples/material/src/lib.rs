@@ -6,9 +6,9 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
-        ActionChip, AlertDialog, AppBar, Brightness, Card, CardVariant, ChoiceChip, ColorScheme,
-        Divider, Drawer, FilterChip, FloatingActionButton, InputChip, ListTile, MaterialApp,
-        MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
+        ActionChip, AlertDialog, AppBar, Brightness, Card, CardVariant, Chip, ChoiceChip,
+        ColorScheme, Divider, Drawer, FilterChip, FloatingActionButton, InputChip, ListTile,
+        MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
         ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold,
         ScaffoldMessengerController, ScaffoldMessengerHost, SnackBar, SnackBarAction, TextButton,
         ThemeData, ThemeMode,
@@ -366,6 +366,9 @@ impl State<DrawerExample> for DrawerExampleState {
             })
             .into_widget()
         };
+        let synced_chip = Chip::new("Synced")
+            .tooltip("All changes are saved")
+            .into_widget();
         let mut body_style = FlexStyle::new(Axis::Vertical);
         body_style.spacing = 12.0;
         let mut chip_row_style = FlexStyle::new(Axis::Horizontal);
@@ -398,6 +401,8 @@ impl State<DrawerExample> for DrawerExampleState {
                     chip_row_style,
                     vec![FlexItem::fixed(member_chip)],
                 )),
+                FlexItem::fixed(Text::new("Status").into_widget()),
+                FlexItem::fixed(synced_chip),
                 FlexItem::fixed(
                     ActionChip::new(&widget.binding, "Open options", move || {
                         let _ = open_sheet.present();

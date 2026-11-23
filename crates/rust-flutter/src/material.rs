@@ -36,6 +36,7 @@ mod bottom_sheet;
 mod button;
 mod card;
 mod checkbox;
+mod chip;
 mod choice_chip;
 mod dialog;
 mod divider;
@@ -60,6 +61,7 @@ pub use bottom_sheet::{ModalBottomSheetController, ModalBottomSheetHost, ModalBo
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use card::{Card, CardVariant};
 pub use checkbox::Checkbox;
+pub use chip::Chip;
 pub use choice_chip::ChoiceChip;
 pub use dialog::{AlertDialog, MaterialDialogController, MaterialDialogHost, MaterialDialogState};
 pub use divider::{Divider, VerticalDivider};

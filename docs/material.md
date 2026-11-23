@@ -387,6 +387,25 @@ let suggestion = ActionChip::new(&binding, "Create report", || {})
 # let _ = suggestion;
 ```
 
+`Chip` is the non-interactive label form. Supply a `GestureBinding` only when
+you add its optional delete action; deletion is a separate accessible button:
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::Chip};
+
+let chip = Chip::new("Synced")
+    .tooltip("All changes are saved")
+    .into_widget();
+let removable = Chip::new("Draft")
+    .on_deleted(&GestureBinding::new(), || {})
+    .delete_tooltip("Remove draft")
+    .into_widget();
+# let _ = (chip, removable);
+```
+
+The current API uses text labels and omits Flutter's avatar widgets, custom
+delete icon, and complete theme and animation options ([Chip API](https://api.flutter.dev/flutter/material/Chip-class.html)).
+
 `FilterChip` is a controlled choice chip. Pass its selected value and update
 that value in the owner when `on_selected` runs. It exposes checkbox role,
 label, and toggled state to accessibility services:
