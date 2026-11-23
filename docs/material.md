@@ -365,9 +365,10 @@ let favorite = IconButton::new(&binding, Text::new("♡").into_widget(), || {})
 # let _ = favorite;
 ```
 
-The widget currently has no tooltip, ink splash, focus/hover feedback, or
-semantic button role. Material Icons are not bundled; applications supply an
-icon widget or asset. Flutter's [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
+The widget does not yet expose its own Material tooltip, ink splash, or focus
+feedback. Wrap it with the generic [`Tooltip`](tooltip.md) for pointer-hover
+help. Material Icons are not bundled; applications supply an icon widget or
+asset. Flutter's [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
 also offers these accessibility and interaction features.
 
 `NavigationDrawer` provides a controlled selected destination, optional header

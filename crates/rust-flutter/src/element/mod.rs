@@ -15,6 +15,8 @@ mod offstage;
 mod retained_child;
 mod shortcuts;
 pub use shortcuts::Shortcuts;
+mod tooltip;
+pub use tooltip::Tooltip;
 mod actions;
 pub use actions::Actions;
 mod signal_builder;
