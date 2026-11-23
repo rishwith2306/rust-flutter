@@ -344,6 +344,7 @@ impl State<ControlsPage> for ControlsState {
         )
         .into_widget();
         let loading = CupertinoActivityIndicator::new()
+            .semantics_label("Loading")
             .into_widget()
             .expect("valid activity indicator");
 

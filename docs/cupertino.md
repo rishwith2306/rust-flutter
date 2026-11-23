@@ -219,7 +219,9 @@ or keyboard accessory APIs. The switch is controlled and uses the iOS green on
 state. The slider supports continuous or discrete ranges, drag callbacks, and
 theme-based Cupertino track colors while reusing the shared gesture engine.
 The activity indicator draws a rotating radial tick pattern and supports a
-static partially revealed progress value. `CupertinoSwitch` exposes its switch
+static partially revealed progress value; it exposes a progress role, numeric
+percentage when determinate, and an optional `semantics_label`.
+`CupertinoSwitch` exposes its switch
 role, optional label, disabled state, and on/off state. `CupertinoSlider` shares
 the numeric slider semantics and accepts an optional accessible label. Switch thumb animation,
 slider value indicators, persistent tile activation while

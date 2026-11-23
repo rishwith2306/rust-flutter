@@ -1179,6 +1179,7 @@ pub struct CupertinoActivityIndicator {
     radius: f32,
     color: Option<Color32>,
     progress: Option<f32>,
+    semantics_label: Option<String>,
 }
 
 impl CupertinoActivityIndicator {
@@ -1188,6 +1189,7 @@ impl CupertinoActivityIndicator {
             radius: 10.0,
             color: None,
             progress: None,
+            semantics_label: None,
         }
     }
 
@@ -1197,6 +1199,7 @@ impl CupertinoActivityIndicator {
             radius: 10.0,
             color: None,
             progress: Some(progress),
+            semantics_label: None,
         }
     }
 
@@ -1212,6 +1215,12 @@ impl CupertinoActivityIndicator {
 
     pub fn color(mut self, color: Color32) -> Self {
         self.color = Some(color);
+        self
+    }
+
+    /// Optional screen-reader name for the progress indicator.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -1247,8 +1256,36 @@ impl StatelessWidget for CupertinoActivityIndicatorView {
         let radius = indicator.radius;
         let animating = indicator.animating;
         let progress = indicator.progress;
+        let semantics_label = indicator.semantics_label.clone();
         Widget::leaf(Vec2::splat(radius * 2.0), move |ui| {
             let bounds = ui.max_rect();
+            if !crate::layout::ui_is_offstage(ui) {
+                ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+                    node.set_role(egui::accesskit::Role::ProgressIndicator);
+                    node.set_bounds(egui::accesskit::Rect {
+                        x0: f64::from(bounds.left()),
+                        y0: f64::from(bounds.top()),
+                        x1: f64::from(bounds.right()),
+                        y1: f64::from(bounds.bottom()),
+                    });
+                    if let Some(label) = &semantics_label {
+                        node.set_label(label.clone());
+                    } else {
+                        node.clear_label();
+                    }
+                    if let Some(progress) = progress {
+                        node.set_value(format!("{:.0}%", progress * 100.0));
+                        node.set_numeric_value(f64::from(progress * 100.0));
+                        node.set_min_numeric_value(0.0);
+                        node.set_max_numeric_value(100.0);
+                    } else {
+                        node.clear_value();
+                        node.clear_numeric_value();
+                        node.clear_min_numeric_value();
+                        node.clear_max_numeric_value();
+                    }
+                });
+            }
             let center = bounds.center();
             let current_tick = if animating {
                 ui.ctx().request_repaint();

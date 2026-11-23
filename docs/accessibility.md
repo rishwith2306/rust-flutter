@@ -32,6 +32,9 @@ with selected and disabled state. `CupertinoListTile` exposes list-item/button
 roles and an optional name. Material and Cupertino sliders expose numeric range,
 current value, increment/decrement, and set-value actions. `CupertinoSwitch` exposes its switch role,
 on/off state, disabled state, and optional accessible name.
+Material linear/circular and Cupertino activity progress indicators expose the
+progress role; determinate values are numeric percentages, and the Cupertino
+indicator accepts an optional accessible name.
 
 ```rust,ignore
 let save = IconButton::new(&binding, save_icon, save_document)
