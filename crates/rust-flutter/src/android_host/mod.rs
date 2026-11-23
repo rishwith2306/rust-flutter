@@ -69,7 +69,8 @@ pub(super) fn run<A: Application>(
         activity.internal_data_path(),
         services,
         preferred_locales,
-    );
+    )
+    .with_android_app(activity.clone());
     let serial = HOST_SERIAL.fetch_add(1, Ordering::Relaxed) + 1;
     let mut host = Host {
         runtime,

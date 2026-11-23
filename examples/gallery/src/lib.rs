@@ -575,6 +575,8 @@ mod tests {
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
             preferred_locales: Vec::new(),
+            #[cfg(target_os = "android")]
+            android_app: None,
         };
         let mut first = Gallery::default();
         first.initialize(&context);
@@ -608,6 +610,8 @@ mod tests {
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
             preferred_locales: Vec::new(),
+            #[cfg(target_os = "android")]
+            android_app: None,
         };
         let mut app = Gallery::default();
         app.initialize(&context);
@@ -631,6 +635,8 @@ mod route_restoration_tests {
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
             preferred_locales: Vec::new(),
+            #[cfg(target_os = "android")]
+            android_app: None,
         };
         let mut first = Gallery::default();
         first.initialize(&context);

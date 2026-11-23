@@ -13,6 +13,9 @@ pub struct AppContext {
     pub services: Arc<Services>,
     /// Host-preferred BCP 47 language tags captured when the runtime is created.
     pub preferred_locales: Vec<String>,
+    /// Native Android activity handle for app-owned JNI integrations.
+    #[cfg(target_os = "android")]
+    pub android_app: Option<android_activity::AndroidApp>,
 }
 impl AppContext {
     /// Return a custom clipboard service or the host clipboard implementation.
@@ -69,6 +72,8 @@ pub struct Runtime<A: Application> {
     data_dir: Option<PathBuf>,
     services: Arc<Services>,
     preferred_locales: Vec<String>,
+    #[cfg(target_os = "android")]
+    android_app: Option<android_activity::AndroidApp>,
     initialized: bool,
     stopped: bool,
     focused: Option<bool>,
@@ -100,10 +105,17 @@ impl<A: Application> Runtime<A> {
             data_dir,
             services: Arc::new(services),
             preferred_locales,
+            #[cfg(target_os = "android")]
+            android_app: None,
             initialized: false,
             stopped: false,
             focused: None,
         }
+    }
+    #[cfg(target_os = "android")]
+    pub(crate) fn with_android_app(mut self, app: android_activity::AndroidApp) -> Self {
+        self.android_app = Some(app);
+        self
     }
     /// Dispatch an OS event even when the rendering surface is absent.
     /// Shutdown prevents subsequent events from reinitializing an application.
@@ -136,6 +148,8 @@ impl<A: Application> Runtime<A> {
             data_dir: self.data_dir.clone(),
             services: self.services.clone(),
             preferred_locales: self.preferred_locales.clone(),
+            #[cfg(target_os = "android")]
+            android_app: self.android_app.clone(),
         }
     }
     pub fn app(&self) -> &A {

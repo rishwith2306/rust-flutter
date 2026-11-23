@@ -91,6 +91,12 @@ registry. Implementations are app-owned and can call JNI, Objective-C or another
 platform library. The framework does not yet bundle a native plugin catalog or
 provide a cross-platform method-channel transport.
 
+On Android, `AppContext::android_app` supplies an optional cloneable
+`AndroidApp` handle during application initialization and state callbacks. Use
+`AndroidApp::run_on_java_main_thread` for Java UI operations and its activity or
+VM handles for app-owned JNI bindings. Keep such code behind Android target
+configuration; the shared application model remains portable.
+
 `AppContext::clipboard()` is a built-in host-backed service. It queues text on
 egui's platform output; Android sends it through the system `ClipboardManager`,
 and desktop eframe delivers it to the native clipboard. The returned `Result`
