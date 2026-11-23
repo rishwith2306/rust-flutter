@@ -118,7 +118,10 @@ impl Gallery {
         self.name = snapshot.name.clone();
         self.dark = snapshot.dark;
         self.language = snapshot.language.clone();
-        self.navigator.reset(snapshot.route);
+        self.navigator.reset(Route::Home);
+        if snapshot.route != Route::Home {
+            self.navigator.push(snapshot.route);
+        }
         let _ = self.l10n.select(&[&self.language]);
         self.saved = Some(snapshot);
         self.storage_error = None;
