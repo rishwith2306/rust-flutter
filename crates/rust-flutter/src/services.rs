@@ -25,3 +25,15 @@ pub trait Clipboard: Send + Sync {
     fn write_text(&self, text: &str) -> Result<(), String>;
 }
 pub type ClipboardService = Arc<dyn Clipboard>;
+
+struct EguiClipboard(egui::Context);
+impl Clipboard for EguiClipboard {
+    fn write_text(&self, text: &str) -> Result<(), String> {
+        self.0.copy_text(text.to_owned());
+        Ok(())
+    }
+}
+
+pub(crate) fn host_clipboard(context: &egui::Context) -> ClipboardService {
+    Arc::new(EguiClipboard(context.clone()))
+}

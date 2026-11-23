@@ -12,6 +12,16 @@ pub struct AppContext {
     /// Immutable platform implementations installed before the app starts.
     pub services: Arc<Services>,
 }
+impl AppContext {
+    /// Return a custom clipboard service or the host clipboard implementation.
+    /// Host writes are queued through egui's platform output.
+    pub fn clipboard(&self) -> crate::services::ClipboardService {
+        self.services
+            .get::<crate::services::ClipboardService>()
+            .cloned()
+            .unwrap_or_else(|| crate::services::host_clipboard(&self.egui))
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEvent {
     FocusChanged(bool),

@@ -91,6 +91,12 @@ registry. Implementations are app-owned and can call JNI, Objective-C or another
 platform library. The framework does not yet bundle a native plugin catalog or
 provide a cross-platform method-channel transport.
 
+`AppContext::clipboard()` is a built-in host-backed service. It queues text on
+egui's platform output; Android sends it through the system `ClipboardManager`,
+and desktop eframe delivers it to the native clipboard. The returned `Result`
+reports whether the request was queued, not a later OS permission or delivery
+failure. Register `ClipboardService` in `Services` to replace the default.
+
 ## Fluent translations
 
 `localization::Localizations` loads Fluent FTL resources. The first locale is the
