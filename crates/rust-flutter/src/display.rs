@@ -44,6 +44,41 @@ pub enum KeyboardVisibility {
     Visible,
 }
 
+/// The host's current light/dark appearance, when the platform reports one.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PlatformTheme {
+    Light,
+    Dark,
+    #[default]
+    Unknown,
+}
+
+impl crate::element::InheritedModel for PlatformTheme {
+    type Aspect = ();
+
+    fn update_should_notify(&self, old: &Self) -> bool {
+        self != old
+    }
+
+    fn update_should_notify_dependent(
+        &self,
+        old: &Self,
+        _aspects: &std::collections::HashSet<Self::Aspect>,
+    ) -> bool {
+        self != old
+    }
+}
+
+/// Read the current platform appearance. To rebuild a retained component when
+/// the host changes appearance, subscribe with `depend_on::<PlatformTheme>()`.
+pub fn platform_theme(context: &egui::Context) -> PlatformTheme {
+    match context.system_theme() {
+        Some(egui::Theme::Light) => PlatformTheme::Light,
+        Some(egui::Theme::Dark) => PlatformTheme::Dark,
+        None => PlatformTheme::Unknown,
+    }
+}
+
 /// Insets in logical points, measured against the full view bounds.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ViewOcclusion {

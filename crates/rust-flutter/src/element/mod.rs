@@ -566,6 +566,7 @@ pub struct ElementTree {
     render: Option<BoxNode>,
     paint: HashMap<egui::Id, PaintEntry>,
     view: AmbientModel<crate::display::ViewMetrics>,
+    platform_theme: AmbientModel<crate::display::PlatformTheme>,
     pipeline: Arc<Pipeline>,
 }
 impl ElementTree {
@@ -581,6 +582,10 @@ impl ElementTree {
                 ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
                 crate::display::view_metrics(ctx),
             ),
+            platform_theme: AmbientModel::new(
+                ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
+                crate::display::platform_theme(ctx),
+            ),
         };
         tree.update(root)?;
         Ok(tree)
@@ -593,13 +598,15 @@ impl ElementTree {
         self.paint.clear();
         self.epoch = self.epoch.wrapping_add(1);
         self.view.refresh(crate::display::view_metrics(&self.ctx));
+        self.platform_theme
+            .refresh(crate::display::platform_theme(&self.ctx));
         self.root = Some(Element::reconcile(
             self.root.take(),
             widget,
             &self.ctx,
             0,
             self.epoch,
-            &self.view.scope(),
+            &self.scope(),
             &self.pipeline,
         )?);
         Ok(())
@@ -608,7 +615,9 @@ impl ElementTree {
         self.epoch = self.epoch.wrapping_add(1);
         let mut root = self.root.take().ok_or(ElementError::EmptyTree)?;
         self.view.refresh(crate::display::view_metrics(&self.ctx));
-        let result = root.flush(&self.ctx, 0, self.epoch, &self.view.scope());
+        self.platform_theme
+            .refresh(crate::display::platform_theme(&self.ctx));
+        let result = root.flush(&self.ctx, 0, self.epoch, &self.scope());
         match result {
             Ok(changed) => {
                 self.root = Some(root);
@@ -703,6 +712,9 @@ impl ElementTree {
             );
         }
         Ok(())
+    }
+    fn scope(&self) -> Scope {
+        self.platform_theme.child_scope(&self.view.scope())
     }
     /// Flush pending builds and compute current box geometry. State errors unmount
     /// the tree; layout errors keep component state mounted for a later retry.

@@ -1621,3 +1621,15 @@ RGB888, glyph, animation, scrolling, Wrap, ratio, lifecycle and restoration gate
 remain in place. Android runtime evidence above is for the preceding typed-form
 release; the new automatic policy and its stronger native assertion await the
 next CI run.
+
+## Platform-aware Material theme mode
+
+`ElementTree` now refreshes an inherited `PlatformTheme` snapshot before each
+update and flush. Desktop appearance comes from egui/winit input; the Android
+NativeActivity host maps `uiModeNight` into that input field. `MaterialApp` can
+select a supplied dark `ThemeData` automatically or force light/dark mode.
+Retained Material theme lookups subscribe to system appearance changes. Android
+target compilation, workspace compilation, strict Clippy and rustdoc passed
+locally for this change; workspace tests were not run. Exact-revision macOS build
+and Android CI results are pending. These checks do not prove device appearance-
+change behavior or complete Material theme parity.

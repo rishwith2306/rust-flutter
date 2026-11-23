@@ -307,6 +307,11 @@ impl<A: Application> Host<A> {
             events: std::mem::take(&mut self.input.events),
             ..Default::default()
         };
+        raw.system_theme = match self.activity.config().ui_mode_night() {
+            android_activity::ndk::configuration::UiModeNight::Yes => Some(egui::Theme::Dark),
+            android_activity::ndk::configuration::UiModeNight::No => Some(egui::Theme::Light),
+            _ => None,
+        };
         raw.viewports
             .entry(ViewportId::ROOT)
             .or_default()

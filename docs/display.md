@@ -49,6 +49,17 @@ and host safe area. NativeActivity content bounds remain the legacy safe-area
 fallback. Other soft-keyboard implementations, older Android geometry, physical
 devices and floating keyboards require further validation.
 
+## Platform appearance
+
+`ElementTree` also refreshes the read-only inherited `PlatformTheme` before each
+update and flush. Retained components can call
+`context.depend_on::<PlatformTheme>()` to rebuild when the system switches between
+light and dark appearance. Desktop receives theme changes from the native window
+backend; Android maps the NativeActivity configuration's `uiModeNight` value into
+egui input. Unknown host values remain `PlatformTheme::Unknown`. `MaterialApp`
+uses this model for `ThemeMode::System` when a dark theme is provided; see
+[Material theming](material.md).
+
 Read inside a frame: before the first frame, egui's default bounds are not a
 platform measurement. Measurements belong to the active viewport, not a global
 primary screen. Calling the immediate `view_metrics` function does not create an inherited

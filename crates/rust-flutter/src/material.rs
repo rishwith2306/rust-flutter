@@ -448,8 +448,20 @@ fn dynamic_role(
 #[derive(Clone, Debug, PartialEq)]
 pub struct ThemeData {
     pub color_scheme: ColorScheme,
+    /// Optional complete theme selected when dark mode is active.
+    pub dark_theme: Option<Box<ThemeData>>,
+    pub theme_mode: ThemeMode,
     pub use_material3: bool,
     pub progress_indicator_theme: ProgressIndicatorThemeData,
+}
+
+/// Select a fixed Material brightness or follow the platform appearance.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ThemeMode {
+    #[default]
+    System,
+    Light,
+    Dark,
 }
 
 /// Shared visual defaults for descendant Material progress indicators.
@@ -525,6 +537,8 @@ pub enum StrokeCap {
 pub struct MaterialApp {
     home: Widget,
     theme: ThemeData,
+    dark_theme: Option<ThemeData>,
+    theme_mode: ThemeMode,
     localizations: Option<Localizations>,
     text_direction: TextDirection,
 }
@@ -580,6 +594,8 @@ impl MaterialApp {
         Self {
             home,
             theme: ThemeData::default(),
+            dark_theme: None,
+            theme_mode: ThemeMode::System,
             localizations: None,
             text_direction: TextDirection::default(),
         }
@@ -640,6 +656,18 @@ impl MaterialApp {
         self
     }
 
+    /// Set the theme selected when the app resolves to dark mode.
+    pub fn dark_theme(mut self, theme: ThemeData) -> Self {
+        self.dark_theme = Some(theme);
+        self
+    }
+
+    /// Select whether the app follows the platform or forces a brightness.
+    pub fn theme_mode(mut self, mode: ThemeMode) -> Self {
+        self.theme_mode = mode;
+        self
+    }
+
     /// Provide a Fluent catalog to descendants through `Localizations::of`.
     /// Locale selection and platform locale discovery remain application-owned.
     pub fn localizations(mut self, localizations: Localizations) -> Self {
@@ -654,12 +682,16 @@ impl MaterialApp {
     }
 
     pub fn into_widget(self) -> Widget {
+        let mut theme = self.theme;
+        if let Some(dark_theme) = self.dark_theme {
+            theme.dark_theme = Some(Box::new(dark_theme));
+        }
+        theme.theme_mode = self.theme_mode;
         let child = match self.localizations {
             Some(catalog) => catalog.provide(self.home),
             None => self.home,
         };
-        self.theme
-            .provide(Directionality::provide(self.text_direction, child))
+        theme.provide(Directionality::provide(self.text_direction, child))
     }
 }
 
@@ -667,6 +699,8 @@ impl Default for ThemeData {
     fn default() -> Self {
         Self {
             color_scheme: ColorScheme::default(),
+            dark_theme: None,
+            theme_mode: ThemeMode::System,
             use_material3: true,
             progress_indicator_theme: ProgressIndicatorThemeData::default(),
         }
@@ -697,10 +731,22 @@ impl ProgressIndicatorThemeData {
 
 impl ThemeData {
     pub fn of(context: &BuildContext) -> Result<Self, DependencyError> {
-        Ok(context
+        let mut theme = context
             .depend_on::<Self>()?
             .map(|theme| theme.as_ref().clone())
-            .unwrap_or_default())
+            .unwrap_or_default();
+        let dark = match theme.theme_mode {
+            ThemeMode::Dark => true,
+            ThemeMode::Light => false,
+            ThemeMode::System if theme.dark_theme.is_some() => context
+                .depend_on::<crate::display::PlatformTheme>()?
+                .is_some_and(|platform| *platform == crate::display::PlatformTheme::Dark),
+            ThemeMode::System => false,
+        };
+        if dark && let Some(dark_theme) = theme.dark_theme.take() {
+            theme = *dark_theme;
+        }
+        Ok(theme)
     }
 
     pub fn provide(&self, child: Widget) -> Widget {
@@ -715,7 +761,20 @@ impl ThemeData {
     /// Apply the core scheme to egui defaults for apps that use backend
     /// controls. Retained framework controls can also read the inherited theme.
     pub fn apply(&self, context: &egui::Context) {
-        let scheme = self.color_scheme;
+        let dark = match self.theme_mode {
+            ThemeMode::Dark => true,
+            ThemeMode::Light => false,
+            ThemeMode::System => {
+                crate::display::platform_theme(context) == crate::display::PlatformTheme::Dark
+            }
+        };
+        let scheme = if dark {
+            self.dark_theme
+                .as_ref()
+                .map_or(self.color_scheme, |theme| theme.color_scheme)
+        } else {
+            self.color_scheme
+        };
         let mut visuals = match scheme.brightness {
             Brightness::Light => egui::Visuals::light(),
             Brightness::Dark => egui::Visuals::dark(),
