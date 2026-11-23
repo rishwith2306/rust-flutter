@@ -6,11 +6,11 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
-        AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
-        MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
-        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold,
-        ScaffoldMessengerController, ScaffoldMessengerHost, SnackBar, SnackBarAction, TextButton,
-        ThemeData,
+        AlertDialog, AppBar, Brightness, Card, CardVariant, ColorScheme, Divider, Drawer,
+        FloatingActionButton, ListTile, MaterialApp, MaterialDialogController, MaterialDialogHost,
+        ModalBottomSheetController, ModalBottomSheetHost, NavigationDrawer,
+        NavigationDrawerDestination, Scaffold, ScaffoldMessengerController, ScaffoldMessengerHost,
+        SnackBar, SnackBarAction, TextButton, ThemeData, ThemeMode,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -151,6 +151,50 @@ pub fn queued_messenger_showcase() -> Widget {
             .into_widget()
     })
     .into_widget()
+}
+
+/// A focused runnable example that follows the host's current appearance.
+pub fn platform_theme_showcase() -> Widget {
+    let seed = rust_flutter::egui::Color32::from_rgb(0x22, 0x66, 0xAA);
+    let light_theme = ThemeData {
+        color_scheme: ColorScheme::from_seed(seed, Brightness::Light),
+        ..ThemeData::default()
+    };
+    let dark_theme = ThemeData {
+        color_scheme: ColorScheme::from_seed(seed, Brightness::Dark),
+        ..ThemeData::default()
+    };
+    MaterialApp::new(Widget::stateless(PlatformThemeExample))
+        .theme(light_theme)
+        .dark_theme(dark_theme)
+        .theme_mode(ThemeMode::System)
+        .into_widget()
+}
+
+struct PlatformThemeExample;
+
+impl StatelessWidget for PlatformThemeExample {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let theme = ThemeData::of(context).unwrap_or_default();
+        let card = Card::new(
+            DefaultTextStyle {
+                style: TextStyle {
+                    color: Some(theme.color_scheme.on_surface),
+                    font_size: Some(20.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+            .provide(Text::new("This page follows the system appearance.").into_widget()),
+        )
+        .variant(CardVariant::Filled)
+        .theme(theme.clone())
+        .into_widget()
+        .expect("valid example adaptive Material card");
+        Scaffold::new(Widget::padding(Insets::all(24.0), card))
+            .app_bar_config(AppBar::new("System theme").theme(theme))
+            .into_widget()
+    }
 }
 
 struct MessengerExample {
@@ -373,9 +417,16 @@ impl State<DrawerExample> for DrawerExampleState {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: rust_flutter::AndroidApp) {
+    #[cfg(feature = "system-theme-showcase")]
+    let (root, on_back) = (platform_theme_showcase(), || false);
+    #[cfg(not(feature = "system-theme-showcase"))]
     let (root, on_back) = showcase_with_back_handler();
     rust_flutter::run_widget_with_options_and_back(
-        "Rust Flutter Material Showcase",
+        if cfg!(feature = "system-theme-showcase") {
+            "Rust Flutter System Theme"
+        } else {
+            "Rust Flutter Material Showcase"
+        },
         rust_flutter::NativeOptions {
             android_app: Some(app),
             ..rust_flutter::native_options(rust_flutter::GraphicsBackend::Gles)

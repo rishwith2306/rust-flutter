@@ -68,6 +68,10 @@ the desktop window backend; Android reads `uiModeNight` and refreshes the
 inherited theme after configuration changes. See [platform appearance](display.md).
 Retained Material controls subscribe and update automatically. Apps using
 immediate-mode egui controls should reapply `ThemeData` after a theme change.
+Run the repository's desktop theme-switching sample with
+`cargo run -p rust-flutter-material-example --bin system_theme`. Build the same
+showcase for Android with
+`cargo apk build -p rust-flutter-material-example --lib --features system-theme-showcase --target aarch64-linux-android`.
 
 Progress indicator defaults can be configured once in the inherited theme.
 Indicator-specific setters take precedence over these shared values:

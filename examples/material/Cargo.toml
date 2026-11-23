@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+system-theme-showcase = []
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 

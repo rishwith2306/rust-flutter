@@ -1630,6 +1630,12 @@ NativeActivity host maps `uiModeNight` into that input field. `MaterialApp` can
 select a supplied dark `ThemeData` automatically or force light/dark mode.
 Retained Material theme lookups subscribe to system appearance changes. Android
 target compilation, workspace compilation, strict Clippy and rustdoc passed
-locally for this change; workspace tests were not run. Exact-revision macOS build
-and Android CI results are pending. These checks do not prove device appearance-
-change behavior or complete Material theme parity.
+locally for this change; workspace tests were not run locally. [CI run 45103897453](https://github.com/rishwith2306/rust-flutter/actions/runs/45103897453)
+passed all four jobs, including the workspace test suite, macOS build/app-bundle
+checks, Android NativeActivity linking and the Android emulator lifecycle/render
+checks. These jobs do not change system appearance during the theme sample, so
+live appearance switching still needs a targeted device probe. A dedicated
+theme sample compiles as a desktop binary and as an Android library with the
+`system-theme-showcase` feature enabled. The alternate APK has not been packaged,
+and live appearance switching has not been exercised on-device.
+macOS window runtime and complete Material theme parity also remain unverified.
