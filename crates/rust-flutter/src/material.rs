@@ -5,7 +5,8 @@
 use crate::{
     animation::AnimationController,
     egui::{self, Color32},
-    element::{BuildContext, DependencyError, Widget},
+    element::{BuildContext, DependencyError, Directionality, Widget},
+    layout::TextDirection,
     localization::Localizations,
     navigation::NavigatorController,
     notifier::Listenable,
@@ -319,6 +320,7 @@ pub struct MaterialApp {
     home: Widget,
     theme: ThemeData,
     localizations: Option<Localizations>,
+    text_direction: TextDirection,
 }
 
 type UnknownRouteBuilder = dyn Fn(&BuildContext, &str) -> Widget;
@@ -373,6 +375,7 @@ impl MaterialApp {
             home,
             theme: ThemeData::default(),
             localizations: None,
+            text_direction: TextDirection::default(),
         }
     }
 
@@ -438,12 +441,19 @@ impl MaterialApp {
         self
     }
 
+    /// Set the inherited direction used by direction-aware descendants.
+    pub fn text_direction(mut self, direction: TextDirection) -> Self {
+        self.text_direction = direction;
+        self
+    }
+
     pub fn into_widget(self) -> Widget {
         let child = match self.localizations {
             Some(catalog) => catalog.provide(self.home),
             None => self.home,
         };
-        self.theme.provide(child)
+        self.theme
+            .provide(Directionality::provide(self.text_direction, child))
     }
 }
 

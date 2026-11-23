@@ -29,9 +29,12 @@ with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`. `MaterialApp::with_navigator`
 connects a retained `NavigatorController` to the root page builder, and
-`with_named_routes` adds a checked string route table. Localization catalogs can be attached with `.localizations(catalog)` and read
-through `Localizations::of(context)`; platform locale discovery and automatic
-RTL directionality remain unfinished. See [localization](localization.md) and
+`with_named_routes` adds a checked string route table. Localization catalogs
+can be attached with `.localizations(catalog)` and read through
+`Localizations::of(context)`; platform locale discovery and automatic direction
+selection remain unfinished. Set `.text_direction(...)` for an explicit app
+direction; direction-aware builders can read `Directionality::of(context)`.
+See [localization](localization.md), [text direction](directionality.md), and
 [retained navigation](navigation.md).
 
 Progress indicator defaults can be configured once in the inherited theme.

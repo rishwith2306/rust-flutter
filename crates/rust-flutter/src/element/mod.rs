@@ -25,6 +25,8 @@ use safe_area::SafeAreaNode;
 pub use safe_area::SafeAreaOptions;
 mod semantics;
 pub use semantics::Semantics;
+mod directionality;
+pub use directionality::Directionality;
 mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};

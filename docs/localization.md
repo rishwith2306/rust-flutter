@@ -33,7 +33,8 @@ let root = app.into_widget();
 Use `text`, `format`, or `attribute` to resolve Fluent messages; Fluent's plural
 rules and Unicode isolation marks are retained. Catalog locale selection is
 explicit: hosts do not yet discover the operating system's preferred locales or
-change directionality automatically. RTL text shaping, font fallback, and
+change directionality automatically; configure `MaterialApp::text_direction`
+explicitly when needed. RTL text shaping, font fallback, and
 translated component catalogs are also incomplete. See the official
 [Fluent syntax guide](https://projectfluent.org/fluent/guide/) and the
 [Flutter localization overview](https://docs.flutter.dev/ui/accessibility-and-internationalization/internationalization).
