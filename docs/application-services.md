@@ -88,8 +88,23 @@ impl Application for NotesApp {
 
 `run_with_options_and_services` and the retained-tree launchers accept the same
 registry. Implementations are app-owned and can call JNI, Objective-C or another
-platform library. The framework does not yet bundle a native plugin catalog or
-provide a cross-platform method-channel transport.
+platform library. Retained widgets can read the registry from their build context:
+
+```rust,ignore
+fn build(&self, context: &BuildContext) -> Widget {
+    let services = rust_flutter::services::Services::inherited(context)
+        .expect("mounted widget build")
+        .expect("host service registry");
+    let clipboard = services
+        .get::<rust_flutter::services::ClipboardService>()
+        .cloned();
+    // Capture `clipboard` in an action callback as needed.
+    Widget::empty()
+}
+```
+
+The framework does not yet bundle a native plugin catalog or provide a
+cross-platform method-channel transport.
 
 On Android, `AppContext::android_app` supplies an optional cloneable
 `AndroidApp` handle during application initialization and state callbacks. Use

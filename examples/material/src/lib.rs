@@ -359,7 +359,7 @@ impl State<DrawerExample> for DrawerExampleState {
                 FlexItem::fixed(card),
                 FlexItem::fixed(Text::new("Filter meals").into_widget()),
                 FlexItem::fixed(Widget::flex(
-                    chip_row_style.clone(),
+                    chip_row_style,
                     vec![FlexItem::fixed(filter_chip)],
                 )),
                 FlexItem::fixed(Text::new("List density").into_widget()),

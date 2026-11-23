@@ -344,6 +344,8 @@ impl WidgetApplication {
 impl Application for WidgetApplication {
     fn initialize(&mut self, context: &AppContext) {
         if let Some(root) = self.root.take() {
+            let root =
+                element::Widget::inherited_with(context.services.clone(), |_, _| false, root);
             match element::ElementTree::new(&context.egui, root) {
                 Ok(tree) => self.tree = Some(tree),
                 Err(error) => self.startup_error = Some(format!("{error:?}")),

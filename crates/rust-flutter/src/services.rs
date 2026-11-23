@@ -5,11 +5,22 @@ use std::{
     collections::HashMap,
     sync::Arc,
 };
+
 #[derive(Default)]
 pub struct Services {
     values: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 impl Services {
+    /// Read the app's immutable service registry from a retained widget build
+    /// context. The host installs this value at the root of `run_widget` trees.
+    pub fn inherited(
+        context: &crate::element::BuildContext,
+    ) -> Result<Option<Arc<Self>>, crate::element::DependencyError> {
+        context
+            .read::<Arc<Self>>()
+            .map(|services| services.map(|services| Arc::clone(&services)))
+    }
+
     /// Register a concrete type or `Arc<dyn MyPlatformService>`.
     pub fn insert<T: Send + Sync + 'static>(&mut self, value: T) -> Option<T> {
         self.values

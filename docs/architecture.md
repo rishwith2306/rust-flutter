@@ -113,9 +113,11 @@ Desktop accessibility containers carry hidden metadata. This does not provide
 lazy-list keep-alive storage or the complete platform semantics/focus pipeline.
 
 `Services` stores implementations by Rust type. Store `Arc<dyn Trait>` to abstract
-an OS API. Missing services return `None`. This is dependency injection within the
-Rust process, not a JNI/Swift message bridge. Native implementations must be added
-and exercised on each OS before being advertised as supported plugins.
+an OS API. App hooks read the registry through `AppContext`; retained widgets read
+the same registry through `Services::inherited(BuildContext)`. Missing services
+return `None`. This is dependency injection within the Rust process, not a
+JNI/Swift message bridge. Native implementations must be added and exercised on
+each OS before being advertised as supported plugins.
 
 The initial backend is deliberately a separate layer: Flutter compatibility needs
 additional retained layout, semantics, design systems and developer tools. Reusing
