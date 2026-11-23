@@ -280,7 +280,7 @@ pub mod prelude {
         material::{
             AppBar, Brightness, Checkbox, ColorScheme, FilledButton, MaterialApp, NavigationBar,
             NavigationDestination, OutlinedButton, Radio, Scaffold, Slider, Switch, TextButton,
-            TextField, ThemeData,
+            TextField, ThemeData, ThemeExtension,
         },
         navigation::{BackDispatcher, BackSubscription, Navigator, NavigatorController},
         state::Signal,

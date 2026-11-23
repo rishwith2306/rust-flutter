@@ -24,7 +24,12 @@ use material_color_utils::{
     },
     utils::color_utils::Argb,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    fmt,
+    rc::Rc,
+};
 
 mod bottom_sheet;
 mod button;
@@ -445,7 +450,6 @@ fn dynamic_role(
 }
 
 /// Inherited Material theme data and an optional egui global-style adapter.
-#[derive(Clone, Debug, PartialEq)]
 pub struct ThemeData {
     pub color_scheme: ColorScheme,
     /// Optional complete theme selected when dark mode is active.
@@ -453,6 +457,121 @@ pub struct ThemeData {
     pub theme_mode: ThemeMode,
     pub use_material3: bool,
     pub progress_indicator_theme: ProgressIndicatorThemeData,
+    pub extensions: ThemeExtensions,
+}
+
+/// Typed custom values attached to a [`ThemeData`]. Use `ThemeData`'s
+/// `with_extension` and `extension` methods to modify and retrieve values.
+#[derive(Default)]
+pub struct ThemeExtensions(HashMap<TypeId, Box<dyn ErasedThemeExtension>>);
+
+impl Clone for ThemeExtensions {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl fmt::Debug for ThemeExtensions {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.debug_map().entries(self.0.iter()).finish()
+    }
+}
+
+impl PartialEq for ThemeExtensions {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.len() == other.0.len()
+            && self.0.iter().all(|(id, extension)| {
+                other
+                    .0
+                    .get(id)
+                    .is_some_and(|other| extension.equals(other.as_ref()))
+            })
+    }
+}
+
+/// A typed addition to [`ThemeData`]. Implement `lerp` to define how the value
+/// transitions between themes; extension values must also support cloning and
+/// equality so inherited theme updates can be tracked.
+pub trait ThemeExtension: Clone + fmt::Debug + PartialEq + Send + Sync + 'static {
+    fn lerp(&self, other: &Self, t: f32) -> Self;
+}
+
+trait ErasedThemeExtension: fmt::Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn ErasedThemeExtension>;
+    fn equals(&self, other: &dyn ErasedThemeExtension) -> bool;
+    fn lerp_box(&self, other: &dyn ErasedThemeExtension, t: f32) -> Box<dyn ErasedThemeExtension>;
+}
+
+#[derive(Clone, Debug)]
+struct ThemeExtensionValue<T: ThemeExtension>(T);
+
+impl<T: ThemeExtension> ErasedThemeExtension for ThemeExtensionValue<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn ErasedThemeExtension> {
+        Box::new(self.clone())
+    }
+
+    fn equals(&self, other: &dyn ErasedThemeExtension) -> bool {
+        other
+            .as_any()
+            .downcast_ref::<Self>()
+            .is_some_and(|other| self.0 == other.0)
+    }
+
+    fn lerp_box(&self, other: &dyn ErasedThemeExtension, t: f32) -> Box<dyn ErasedThemeExtension> {
+        other.as_any().downcast_ref::<Self>().map_or_else(
+            || self.clone_box(),
+            |other| Box::new(Self(self.0.lerp(&other.0, t))),
+        )
+    }
+}
+
+impl Clone for Box<dyn ErasedThemeExtension> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
+impl Clone for ThemeData {
+    fn clone(&self) -> Self {
+        Self {
+            color_scheme: self.color_scheme,
+            dark_theme: self.dark_theme.clone(),
+            theme_mode: self.theme_mode,
+            use_material3: self.use_material3,
+            progress_indicator_theme: self.progress_indicator_theme.clone(),
+            extensions: self.extensions.clone(),
+        }
+    }
+}
+
+impl fmt::Debug for ThemeData {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ThemeData")
+            .field("color_scheme", &self.color_scheme)
+            .field("dark_theme", &self.dark_theme)
+            .field("theme_mode", &self.theme_mode)
+            .field("use_material3", &self.use_material3)
+            .field("progress_indicator_theme", &self.progress_indicator_theme)
+            .field("extensions", &self.extensions)
+            .finish()
+    }
+}
+
+impl PartialEq for ThemeData {
+    fn eq(&self, other: &Self) -> bool {
+        self.color_scheme == other.color_scheme
+            && self.dark_theme == other.dark_theme
+            && self.theme_mode == other.theme_mode
+            && self.use_material3 == other.use_material3
+            && self.progress_indicator_theme == other.progress_indicator_theme
+            && self.extensions == other.extensions
+    }
 }
 
 /// Select a fixed Material brightness or follow the platform appearance.
@@ -703,6 +822,7 @@ impl Default for ThemeData {
             theme_mode: ThemeMode::System,
             use_material3: true,
             progress_indicator_theme: ProgressIndicatorThemeData::default(),
+            extensions: ThemeExtensions::default(),
         }
     }
 }
@@ -730,6 +850,35 @@ impl ProgressIndicatorThemeData {
 }
 
 impl ThemeData {
+    /// Return a copy of this theme with one typed extension inserted or replaced.
+    pub fn with_extension<T: ThemeExtension>(mut self, extension: T) -> Self {
+        self.extensions
+            .0
+            .insert(TypeId::of::<T>(), Box::new(ThemeExtensionValue(extension)));
+        self
+    }
+
+    /// Read an extension previously inserted with [`ThemeData::with_extension`].
+    pub fn extension<T: ThemeExtension>(&self) -> Option<&T> {
+        self.extensions
+            .0
+            .get(&TypeId::of::<T>())?
+            .as_any()
+            .downcast_ref::<ThemeExtensionValue<T>>()
+            .map(|extension| &extension.0)
+    }
+
+    /// Interpolate an extension shared by both themes. Return `None` when either
+    /// theme lacks that extension; callers can then use their transition fallback.
+    pub fn lerp_extension<T: ThemeExtension>(&self, other: &Self, t: f32) -> Option<T> {
+        let left = self.extensions.0.get(&TypeId::of::<T>())?;
+        let right = other.extensions.0.get(&TypeId::of::<T>())?;
+        left.lerp_box(right.as_ref(), t)
+            .as_any()
+            .downcast_ref::<ThemeExtensionValue<T>>()
+            .map(|extension| extension.0.clone())
+    }
+
     pub fn of(context: &BuildContext) -> Result<Self, DependencyError> {
         let mut theme = context
             .depend_on::<Self>()?

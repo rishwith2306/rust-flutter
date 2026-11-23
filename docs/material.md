@@ -48,6 +48,33 @@ For inherited lookup inside a retained component, call `ThemeData::of(ctx)`;
 for a subtree, use `theme.provide(child)`. A custom brand palette can be made
 with a `ColorScheme` struct update from `ColorScheme::light()` or `dark()`.
 
+Add application-specific design tokens with a typed `ThemeExtension`. Values
+must be cloneable and comparable; `lerp` defines the value used during a theme
+transition:
+
+```rust
+use rust_flutter::material::{ThemeData, ThemeExtension};
+
+#[derive(Clone, Debug, PartialEq)]
+struct BrandMetrics {
+    card_gap: f32,
+}
+
+impl ThemeExtension for BrandMetrics {
+    fn lerp(&self, other: &Self, t: f32) -> Self {
+        Self { card_gap: self.card_gap + (other.card_gap - self.card_gap) * t }
+    }
+}
+
+let theme = ThemeData::default().with_extension(BrandMetrics { card_gap: 12.0 });
+let card_gap = theme.extension::<BrandMetrics>().unwrap().card_gap;
+# let _ = card_gap;
+```
+
+`ThemeData::lerp_extension` interpolates an extension present in both themes.
+The built-in `ThemeData` itself does not yet animate all properties between
+themes.
+
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`. `MaterialApp::with_navigator`
 connects a retained `NavigatorController` to the root page builder, and
