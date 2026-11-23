@@ -7,6 +7,11 @@ use crate::{AppEvent, Application, Error, LifecycleEvent, NativeOptions, Runtime
 use android_activity::{AndroidApp, MainEvent, PollEvent};
 use egui::ViewportId;
 use input::Input;
+use jni::{
+    jni_sig, jni_str,
+    objects::{JObject, JValue},
+    refs::Global,
+};
 use renderer::{Renderer, failure};
 use std::{
     sync::{
@@ -330,6 +335,12 @@ impl<A: Application> Host<A> {
             }
         });
 
+        for command in &output.platform_output.commands {
+            if let egui::OutputCommand::CopyText(text) = command {
+                copy_text_to_clipboard(self.activity.clone(), text.clone());
+            }
+        }
+
         if let Some(viewport) = output.viewport_output.get(&ViewportId::ROOT) {
             self.schedule
                 .lock()
@@ -370,6 +381,53 @@ impl<A: Application> Host<A> {
         }
         Ok(())
     }
+}
+
+fn copy_text_to_clipboard(activity: AndroidApp, text: String) {
+    let callback_activity = activity.clone();
+    activity.run_on_java_main_thread(Box::new(move || {
+        // SAFETY: AndroidApp owns a live JVM handle through this queued callback.
+        let vm = unsafe { jni::JavaVM::from_raw(callback_activity.vm_as_ptr().cast()) };
+        let result = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
+            let raw_activity = callback_activity.activity_as_ptr() as jni::sys::jobject;
+            // SAFETY: Borrow the global reference owned by AndroidApp; do not delete it.
+            let activity = unsafe { env.as_cast_raw::<Global<JObject>>(&raw_activity)? };
+            let service_name = env.new_string("clipboard")?;
+            let clipboard = env
+                .call_method(
+                    &activity,
+                    jni_str!("getSystemService"),
+                    jni_sig!("(Ljava/lang/String;)Ljava/lang/Object;"),
+                    &[JValue::Object(&service_name)],
+                )?
+                .l()?;
+            let label = env.new_string("rust-flutter")?;
+            let content = env.new_string(text)?;
+            let clip_data_class = env.find_class(jni_str!("android/content/ClipData"))?;
+            let clip = env
+                .call_static_method(
+                    &clip_data_class,
+                    jni_str!("newPlainText"),
+                    jni_sig!("(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Landroid/content/ClipData;"),
+                    &[JValue::Object(&label), JValue::Object(&content)],
+                )?
+                .l()?;
+            env.call_method(
+                &clipboard,
+                jni_str!("setPrimaryClip"),
+                jni_sig!("(Landroid/content/ClipData;)V"),
+                &[JValue::Object(&clip)],
+            )?;
+            Ok(())
+        });
+        if let Err(error) = result {
+            eprintln!("rust-flutter Android clipboard write failed: {error}");
+            let _ = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
+                env.exception_clear();
+                Ok(())
+            });
+        }
+    }));
 }
 fn request_finish(activity: &AndroidApp) {
     let app = activity.clone();
