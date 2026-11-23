@@ -1,6 +1,7 @@
+use super::Actions;
 use super::{StackItem, StackStyle, Widget};
 use crate::egui::{self, KeyboardShortcut};
-use std::rc::Rc;
+use std::{any::Any, rc::Rc};
 
 struct Binding {
     shortcut: KeyboardShortcut,
@@ -33,6 +34,18 @@ impl Shortcuts {
             action: Rc::new(action),
         });
         self
+    }
+
+    /// Bind a shortcut to a typed intent handled by the provided action registry.
+    pub fn bind_intent<I: Any + Clone>(
+        self,
+        shortcut: KeyboardShortcut,
+        actions: Actions,
+        intent: I,
+    ) -> Self {
+        self.bind(shortcut, move || {
+            actions.invoke(&intent);
+        })
     }
 
     pub fn into_widget(self) -> Widget {

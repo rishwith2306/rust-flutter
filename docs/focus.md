@@ -44,13 +44,14 @@ scope.request_focus(); // queued until a descendant control mounts
 
 This remains a partial match for Flutter's focus system. Nested-scope ancestry,
 remembered focused children, traversal policies and groups, arrow-key focus
-traversal, focus-ancestor shortcut resolution, typed Actions and screen-reader
-focus semantics remain unimplemented. A `FocusNode` attaches to one control at a time;
+traversal, focus-ancestor shortcut resolution, and screen-reader focus semantics
+remain unimplemented. A `FocusNode` attaches to one control at a time;
 ordinary egui controls do not yet attach to framework focus scopes.
 
 `element::Shortcuts` wraps a retained subtree and consumes configured egui
 `KeyboardShortcut`s. A nested scope gets first chance to handle a shortcut; an
-unmatched shortcut bubbles to the outer scope. Bind callbacks directly:
+unmatched shortcut bubbles to the outer scope. Bind callbacks directly, or bind
+a typed intent through a shared `element::Actions` registry:
 
 ```rust
 use std::{cell::Cell, rc::Rc};
@@ -65,9 +66,29 @@ let page = Shortcuts::new(Widget::empty())
 # let _ = (count, page);
 ```
 
+```rust
+use std::{cell::Cell, rc::Rc};
+use rust_flutter::{egui, element::{Actions, Shortcuts, Widget}};
+
+struct SaveIntent { document_id: u64 }
+let actions = Actions::new();
+let saved = Rc::new(Cell::new(0));
+let saved_count = saved.clone();
+actions.register::<SaveIntent>(move |intent| {
+    let _ = intent.document_id;
+    saved_count.set(saved_count.get() + 1);
+});
+let save = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::S);
+let page = Shortcuts::new(Widget::empty())
+    .bind_intent(save, actions.clone(), SaveIntent { document_id: 7 })
+    .into_widget();
+# let _ = (actions, saved, page);
+```
+
 This subtree scope is active while mounted and does not yet check which child
-owns focus. Bindings call closures directly; Flutter's typed `Intent` / `Action`
-lookup, focus ancestry, and platform-specific shortcut policy remain future work.
+owns focus. `Actions` matches intents by concrete Rust type and invokes the
+registered handler synchronously. Focus-based action lookup, inherited action
+scopes, and platform-specific shortcut policy remain future work.
 
 The API shape was checked against the official [Flutter Focus](https://api.flutter.dev/flutter/widgets/Focus-class.html)
 and [FocusNode](https://api.flutter.dev/flutter/widgets/FocusNode-class.html)

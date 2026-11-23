@@ -15,6 +15,8 @@ mod offstage;
 mod retained_child;
 mod shortcuts;
 pub use shortcuts::Shortcuts;
+mod actions;
+pub use actions::Actions;
 mod signal_builder;
 pub use offstage::Offstage;
 pub(crate) use retained_child::{RetainedBuilder, retained_child};
