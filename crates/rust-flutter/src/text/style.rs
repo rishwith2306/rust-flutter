@@ -77,6 +77,7 @@ pub struct TextStyle {
     pub color: Option<Color32>,
     pub background: Option<Color32>,
     pub letter_spacing: Option<f32>,
+    pub word_spacing: Option<f32>,
     pub line_height: Option<LineHeight>,
     pub italics: Option<bool>,
     pub underline: Option<Stroke>,
@@ -94,6 +95,7 @@ impl Default for TextStyle {
             color: None,
             background: None,
             letter_spacing: None,
+            word_spacing: None,
             line_height: None,
             italics: None,
             underline: None,
@@ -120,6 +122,7 @@ impl TextStyle {
             color: other.color.or(self.color),
             background: other.background.or(self.background),
             letter_spacing: other.letter_spacing.or(self.letter_spacing),
+            word_spacing: other.word_spacing.or(self.word_spacing),
             line_height: other.line_height.or(self.line_height),
             italics: other.italics.or(self.italics),
             underline: other.underline.or(self.underline),
@@ -355,10 +358,13 @@ impl InlineSpan {
             overlay.inherit = true;
             let resolved = parent.merge(&overlay);
             if let Some(text) = &span.text {
-                spans.push(TextSpan::new(
-                    text.clone(),
-                    platform_scale.apply(scale.apply(resolved.to_format())),
-                ));
+                spans.push(
+                    TextSpan::new(
+                        text.clone(),
+                        platform_scale.apply(scale.apply(resolved.to_format())),
+                    )
+                    .with_word_spacing(resolved.word_spacing.unwrap_or(0.0)),
+                );
             }
             for child in span.children.iter().rev() {
                 pending.push((child, resolved.clone()));

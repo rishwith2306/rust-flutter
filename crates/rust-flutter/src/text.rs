@@ -27,13 +27,23 @@ pub use style::{
 pub struct TextSpan {
     pub text: String,
     pub format: TextFormat,
+    /// Additional logical points after each sequence of whitespace.
+    pub word_spacing: f32,
 }
 impl TextSpan {
     pub fn new(text: impl Into<String>, format: TextFormat) -> Self {
         Self {
             text: text.into(),
             format,
+            word_spacing: 0.0,
         }
+    }
+
+    /// Set additional spacing between words. Non-finite values are rejected
+    /// during paragraph measurement.
+    pub fn with_word_spacing(mut self, word_spacing: f32) -> Self {
+        self.word_spacing = word_spacing;
+        self
     }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -81,7 +91,8 @@ impl Paragraph {
         }
         for span in &self.spans {
             let f = &span.format;
-            if !f.font_id.size.is_finite()
+            if !span.word_spacing.is_finite()
+                || !f.font_id.size.is_finite()
                 || f.font_id.size <= 0.0
                 || !f.extra_letter_spacing.is_finite()
                 || f.line_height.is_some_and(|h| !h.is_finite() || h <= 0.0)
@@ -100,8 +111,43 @@ impl Paragraph {
     }
     fn job(&self, width: f32, limited: bool) -> LayoutJob {
         let mut job = LayoutJob::default();
+        let mut spacing_after_whitespace = None;
         for span in &self.spans {
-            job.append(&span.text, 0.0, span.format.clone());
+            if span.text.is_empty() {
+                job.append("", 0.0, span.format.clone());
+                continue;
+            }
+            let mut start = 0;
+            let mut category = None;
+            for (index, character) in span.text.char_indices() {
+                let next_category = if character == '\n' {
+                    2
+                } else if character.is_whitespace() {
+                    1
+                } else {
+                    0
+                };
+                if category.is_some_and(|current| current != next_category) {
+                    Self::append_text_section(
+                        &mut job,
+                        &span.text[start..index],
+                        category.unwrap(),
+                        span,
+                        &mut spacing_after_whitespace,
+                    );
+                    start = index;
+                }
+                category = Some(next_category);
+            }
+            if let Some(category) = category {
+                Self::append_text_section(
+                    &mut job,
+                    &span.text[start..],
+                    category,
+                    span,
+                    &mut spacing_after_whitespace,
+                );
+            }
         }
         job.halign = self.align;
         job.wrap.max_width = width;
@@ -114,6 +160,26 @@ impl Paragraph {
             (limited && self.overflow == TextOverflow::Ellipsis).then_some('…');
         job.wrap.break_anywhere = limited && self.max_lines == Some(1);
         job
+    }
+
+    fn append_text_section(
+        job: &mut LayoutJob,
+        text: &str,
+        category: u8,
+        span: &TextSpan,
+        spacing_after_whitespace: &mut Option<f32>,
+    ) {
+        let leading_space = if category == 0 {
+            spacing_after_whitespace.take().unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        job.append(text, leading_space, span.format.clone());
+        match category {
+            1 => *spacing_after_whitespace = Some(span.word_spacing),
+            2 => *spacing_after_whitespace = None,
+            _ => {}
+        }
     }
 }
 /// Persistent paragraph render object. Pure queries may populate egui's font
@@ -187,7 +253,12 @@ impl ParagraphRender {
                 let a = start.max(section.byte_range.start);
                 let b = end_trimmed.min(section.byte_range.end);
                 if a < b {
-                    job.append(&full.text[a..b], 0.0, section.format.clone());
+                    let leading_space = if a == section.byte_range.start {
+                        section.leading_space
+                    } else {
+                        0.0
+                    };
+                    job.append(&full.text[a..b], leading_space, section.format.clone());
                 }
             }
             width = width.max(self.context.fonts_mut(|fonts| {

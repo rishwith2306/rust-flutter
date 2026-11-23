@@ -788,6 +788,7 @@ fn lerp_text_style(a: &TextStyle, b: &TextStyle, t: f32) -> TextStyle {
         color: color(a.color, b.color, t),
         background: color(a.background, b.background, t),
         letter_spacing: number(a.letter_spacing, b.letter_spacing, t),
+        word_spacing: number(a.word_spacing, b.word_spacing, t),
         line_height: match (a.line_height, b.line_height) {
             (Some(LineHeight::Points(a)), Some(LineHeight::Points(b))) => {
                 Some(LineHeight::Points(a + (b - a) * t))

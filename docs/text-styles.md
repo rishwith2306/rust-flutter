@@ -47,11 +47,14 @@ paragraph measurement and preserve mounted elements for recovery.
 ## Inheritance rules
 
 `TextStyle` contains optional font size/family/weight, foreground/background
-color, letter spacing, line height, italics, underline, strikethrough, vertical
-alignment and background expansion. `None` leaves a property unspecified.
+color, letter spacing, word spacing, line height, italics, underline,
+strikethrough, vertical alignment and background expansion. `None` leaves a
+property unspecified.
 `Some(false)`, transparent colors and `Stroke::NONE` can explicitly clear
 inherited effects. `LineHeight::Normal` restores font-derived line height;
 `LineHeight::Points(n)` sets a logical-point line height.
+Word spacing adds the requested number of logical points after each whitespace
+sequence; non-finite values are rejected during paragraph measurement.
 
 `FontWeight` represents weights 100 through 900 in steps of 100. To render an
 actual weight face, register its font data in egui under the family returned by
@@ -68,8 +71,9 @@ definitions.families.insert(medium, vec!["inter-medium".into()]);
 `base.merge(&overlay)` overlays specified properties. If `overlay.inherit` is
 false, it replaces the base entirely. The remaining unspecified fields resolve
 to 14-point proportional white text, normal line height, zero letter spacing,
-transparent background and no effects. Configure a scoped color appropriate to
-your application theme; these fallback defaults do not follow host visuals.
+zero word spacing, transparent background and no effects. Configure a scoped
+color appropriate to your application theme; these fallback defaults do not
+follow host visuals.
 
 An InlineSpan emits its own optional text before its children. Each child fills
 unspecified properties from its parent span, irrespective of its style's
@@ -105,9 +109,9 @@ pairs with positive sizes, strictly increasing authored sizes, and
 nondecreasing rendered sizes. It interpolates between samples and extends the
 first or last segment outside the sample range. The selected scale applies once,
 after all span inheritance, to font sizes and explicit point line heights.
-Letter spacing, decoration widths and background expansion remain in logical
-points. A Text can override the inherited scale. Overflow after scaling is
-rejected by the paragraph's geometry validation.
+Letter and word spacing, decoration widths and background expansion remain in
+logical points. A Text can override the inherited scale. Overflow after scaling
+is rejected by the paragraph's geometry validation.
 
 For a custom curve, pass authored/rendered sizes in logical points:
 
