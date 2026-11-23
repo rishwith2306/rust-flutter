@@ -74,6 +74,7 @@ impl LazyGridDemo {
         .expect("valid grid widget");
         Scrollbar::new(position, binding)
             .expect("valid grid scrollbar")
+            .axis(axis)
             .into_widget(grid)
             .expect("valid scrollbar child")
     }
