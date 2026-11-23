@@ -6,9 +6,9 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
-        AlertDialog, AppBar, Brightness, Card, CardVariant, ColorScheme, Divider, Drawer,
-        FloatingActionButton, ListTile, MaterialApp, MaterialDialogController, MaterialDialogHost,
-        ModalBottomSheetController, ModalBottomSheetHost, NavigationDrawer,
+        AlertDialog, AppBar, Brightness, Card, CardVariant, ChoiceChip, ColorScheme, Divider,
+        Drawer, FilterChip, FloatingActionButton, ListTile, MaterialApp, MaterialDialogController,
+        MaterialDialogHost, ModalBottomSheetController, ModalBottomSheetHost, NavigationDrawer,
         NavigationDrawerDestination, Scaffold, ScaffoldMessengerController, ScaffoldMessengerHost,
         SnackBar, SnackBarAction, TextButton, ThemeData, ThemeMode,
     },
@@ -257,6 +257,8 @@ struct DrawerExampleState {
     selected: usize,
     drawer_open: bool,
     snack_bar_visible: bool,
+    vegetarian: bool,
+    density_choice: usize,
 }
 
 impl StatefulWidget for DrawerExample {
@@ -267,6 +269,8 @@ impl StatefulWidget for DrawerExample {
             selected: 0,
             drawer_open: false,
             snack_bar_visible: false,
+            vegetarian: false,
+            density_choice: 0,
         }
     }
 }
@@ -309,8 +313,41 @@ impl State<DrawerExample> for DrawerExampleState {
         .provide(card_content);
         let open_sheet = widget.sheet_controller.clone();
         let show_snack_bar = handle.clone();
+        let filter_handle = handle.clone();
+        let filter_chip = FilterChip::new(
+            &widget.binding,
+            "Vegetarian",
+            self.vegetarian,
+            move |selected| {
+                let _ = filter_handle.update(move |state| state.vegetarian = selected);
+            },
+        )
+        .into_widget();
+        let compact_handle = handle.clone();
+        let compact_chip = ChoiceChip::new(
+            &widget.binding,
+            "Compact",
+            self.density_choice == 0,
+            move || {
+                let _ = compact_handle.update(|state| state.density_choice = 0);
+            },
+        )
+        .into_widget();
+        let comfortable_handle = handle.clone();
+        let comfortable_chip = ChoiceChip::new(
+            &widget.binding,
+            "Comfortable",
+            self.density_choice == 1,
+            move || {
+                let _ = comfortable_handle.update(|state| state.density_choice = 1);
+            },
+        )
+        .into_widget();
         let mut body_style = FlexStyle::new(Axis::Vertical);
         body_style.spacing = 12.0;
+        let mut chip_row_style = FlexStyle::new(Axis::Horizontal);
+        chip_row_style.spacing = 8.0;
+        chip_row_style.cross_alignment = CrossAxisAlignment::Center;
         let card = Card::new(Widget::padding(Insets::all(20.0), card_content))
             .variant(CardVariant::Filled)
             .theme(widget.theme.clone())
@@ -320,6 +357,19 @@ impl State<DrawerExample> for DrawerExampleState {
             body_style,
             vec![
                 FlexItem::fixed(card),
+                FlexItem::fixed(Text::new("Filter meals").into_widget()),
+                FlexItem::fixed(Widget::flex(
+                    chip_row_style.clone(),
+                    vec![FlexItem::fixed(filter_chip)],
+                )),
+                FlexItem::fixed(Text::new("List density").into_widget()),
+                FlexItem::fixed(Widget::flex(
+                    chip_row_style,
+                    vec![
+                        FlexItem::fixed(compact_chip),
+                        FlexItem::fixed(comfortable_chip),
+                    ],
+                )),
                 FlexItem::fixed(
                     TextButton::new(&widget.binding, "Open bottom sheet", move || {
                         let _ = open_sheet.present();
