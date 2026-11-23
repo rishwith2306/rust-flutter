@@ -123,6 +123,10 @@ pub struct LinearProgressIndicator {
     color: Option<Color32>,
     background_color: Option<Color32>,
     min_height: f32,
+    border_radius: Option<f32>,
+    track_gap: f32,
+    stop_indicator_radius: Option<f32>,
+    stop_indicator_color: Option<Color32>,
 }
 
 impl LinearProgressIndicator {
@@ -132,6 +136,10 @@ impl LinearProgressIndicator {
             color: None,
             background_color: None,
             min_height: 4.0,
+            border_radius: None,
+            track_gap: 0.0,
+            stop_indicator_radius: None,
+            stop_indicator_color: None,
         }
     }
 
@@ -150,9 +158,41 @@ impl LinearProgressIndicator {
         self
     }
 
+    /// Sets the corner radius for the track and active segment.
+    pub fn border_radius(mut self, radius: f32) -> Self {
+        self.border_radius = Some(radius);
+        self
+    }
+
+    /// Sets the gap between the active segment and remaining track.
+    pub fn track_gap(mut self, gap: f32) -> Self {
+        self.track_gap = gap;
+        self
+    }
+
+    /// Adds a circular completion marker at the end of the track.
+    pub fn stop_indicator_radius(mut self, radius: f32) -> Self {
+        self.stop_indicator_radius = Some(radius);
+        self
+    }
+
+    /// Sets the completion marker color; defaults to the indicator color.
+    pub fn stop_indicator_color(mut self, color: Color32) -> Self {
+        self.stop_indicator_color = Some(color);
+        self
+    }
+
     pub fn into_widget(self) -> Result<Widget, &'static str> {
         if !self.min_height.is_finite()
             || self.min_height <= 0.0
+            || !self.track_gap.is_finite()
+            || self.track_gap < 0.0
+            || self
+                .border_radius
+                .is_some_and(|radius| !radius.is_finite() || radius < 0.0)
+            || self
+                .stop_indicator_radius
+                .is_some_and(|radius| !radius.is_finite() || radius < 0.0)
             || self
                 .value
                 .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
@@ -173,6 +213,10 @@ impl StatelessWidget for LinearProgressView {
         let indicator = &self.0;
         let value = indicator.value;
         let height = indicator.min_height;
+        let border_radius = indicator.border_radius;
+        let track_gap = indicator.track_gap;
+        let stop_radius = indicator.stop_indicator_radius;
+        let stop_color = indicator.stop_indicator_color;
         let color = indicator.color.unwrap_or(colors.primary);
         let background = indicator
             .background_color
@@ -189,10 +233,15 @@ impl StatelessWidget for LinearProgressView {
             },
             move |ui| {
                 let rect = ui.max_rect();
-                let radius =
-                    egui::CornerRadius::same((height * 0.5).round().clamp(0.0, 255.0) as u8);
-                ui.painter().rect_filled(rect, radius, background);
+                let radius = egui::CornerRadius::same(
+                    border_radius
+                        .unwrap_or(height * 0.5)
+                        .round()
+                        .clamp(0.0, height * 0.5)
+                        .clamp(0.0, 255.0) as u8,
+                );
                 let Some(value) = value else {
+                    ui.painter().rect_filled(rect, radius, background);
                     let duration = 1.8_f64;
                     let phase = ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
                     let segment_width = rect.width() * 0.3;
@@ -208,6 +257,26 @@ impl StatelessWidget for LinearProgressView {
                     ui.ctx().request_repaint_after(Duration::from_millis(16));
                     return;
                 };
+                let gap = if value <= 0.0 {
+                    0.0
+                } else {
+                    track_gap.min(rect.width())
+                };
+                let track_start = (rect.left() + rect.width() * value + gap).min(rect.right());
+                if track_start < rect.right() {
+                    ui.painter().rect_filled(
+                        egui::Rect::from_min_max(egui::pos2(track_start, rect.top()), rect.max),
+                        radius,
+                        background,
+                    );
+                }
+                if let Some(stop_radius) = stop_radius.filter(|radius| *radius > 0.0) {
+                    ui.painter().circle_filled(
+                        egui::pos2(rect.right() - height * 0.5, rect.center().y),
+                        stop_radius.min(height * 0.5),
+                        stop_color.unwrap_or(color),
+                    );
+                }
                 if value > 0.0 {
                     let fill = egui::Rect::from_min_max(
                         rect.min,

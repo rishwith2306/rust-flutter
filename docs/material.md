@@ -363,6 +363,9 @@ use rust_flutter::material::{LinearProgressIndicator, MaterialApp, ThemeData};
 
 let progress = LinearProgressIndicator::new(Some(0.65))
     .min_height(6.0)
+    .border_radius(3.0)
+    .track_gap(4.0)
+    .stop_indicator_radius(3.0)
     .into_widget()?;
 let loading = LinearProgressIndicator::new(None).into_widget()?;
 let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
@@ -370,10 +373,11 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-This is a compact linear rendering: its indeterminate mode sweeps one segment
+The linear indicator supports configurable corner radius, track gap, and an
+optional completion marker. Its indeterminate mode still sweeps one segment
 across the track. Flutter's [LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
-also includes animation controllers, semantics, track gaps, stop markers and
-versioned Material appearances; those options remain unfinished.
+also includes animation controllers, semantics, coordinated Material progress
+indicator themes and versioned appearances; those options remain unfinished.
 
 `CircularProgressIndicator` provides the matching circular form with a
 determinate arc or rotating indeterminate arc. Set `size` and `stroke_width` to
