@@ -93,12 +93,13 @@ this Rust API is not a reproduction of its full constructor or cache-policy API.
 
 ## Fixed-extent lazy grids
 
-`scrolling::GridView::builder` builds a finite vertical grid by delegating its
-rows to the same lazy list viewport. Each row has a fixed cell height and a
-fixed number of equal-width columns:
+`scrolling::GridView::builder` builds a finite grid by delegating its rows or
+columns to the same lazy list viewport. Each cell has a fixed extent along the
+scrolling axis and equal sizing across the cross axis:
 
 ```rust
 use rust_flutter::scrolling::GridView;
+use rust_flutter::layout::Axis;
 
 let grid = GridView::builder(&position, &binding, 10_000, 3, 96.0,
     |_, index| make_card(index))?
@@ -106,13 +107,20 @@ let grid = GridView::builder(&position, &binding, 10_000, 3, 96.0,
     .cross_axis_spacing(8.0)?
     .cache_extent(192.0)?
     .into_widget()?;
+
+let horizontal = GridView::builder(&position, &binding, 10_000, 2, 160.0,
+    |_, index| make_card(index))?
+    .axis(Axis::Horizontal)
+    .into_widget()?;
+# let _ = horizontal;
 ```
 
-The builder receives the original item index, and only rows in the viewport
-and cache range are built. `main_axis_spacing` adds space below each row,
-including the final row; `cross_axis_spacing` separates columns. The final row
-is padded with empty cells. `.reverse(true)` reverses vertical row order. This
-is currently a vertical, fixed-height grid; horizontal grids, variable cell
+The builder receives the original item index, and only groups in the viewport
+and cache range are built. For vertical scrolling, `cross_axis_count` is the
+column count; for horizontal scrolling, it is the row count. `main_axis_spacing`
+adds space after each group, including the final group; `cross_axis_spacing`
+separates cells within a group. The final group is padded with empty cells.
+`.reverse(true)` reverses groups along the scrolling axis. Variable cell
 extents, masonry layouts, slivers, grid-specific keep-alive and complete
 Flutter `GridView` member compatibility remain unfinished. The caller owns the
 position and gesture binding exactly as for `ListView`.

@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 type ItemBuilder = dyn Fn(&BuildContext, usize) -> Widget;
 
-/// Vertical fixed-extent lazy grid. Each visible row is realized by a
+/// Fixed-extent lazy grid. Each visible row or column is realized by a
 /// [`ListView`], so construction remains proportional to the viewport/cache.
 #[derive(Clone)]
 pub struct GridView {
@@ -20,6 +20,7 @@ pub struct GridView {
     main_axis_spacing: f32,
     cross_axis_spacing: f32,
     cache_extent: f32,
+    axis: Axis,
     reverse: bool,
     builder: Rc<ItemBuilder>,
 }
@@ -53,6 +54,7 @@ impl GridView {
             main_axis_spacing: 0.0,
             cross_axis_spacing: 0.0,
             cache_extent: 250.0,
+            axis: Axis::Vertical,
             reverse: false,
             builder: Rc::new(builder),
         })
@@ -87,26 +89,38 @@ impl GridView {
         self
     }
 
+    /// Set the scrolling direction. The cross-axis count is the number of
+    /// columns for vertical scrolling and rows for horizontal scrolling.
+    pub fn axis(mut self, axis: Axis) -> Self {
+        self.axis = axis;
+        self
+    }
+
     pub fn into_widget(self) -> Result<Widget, ScrollError> {
-        let row_extent = self.item_extent + self.main_axis_spacing;
-        if !row_extent.is_finite() || row_extent <= 0.0 {
+        let group_extent = self.item_extent + self.main_axis_spacing;
+        if !group_extent.is_finite() || group_extent <= 0.0 {
             return Err(ScrollError::InvalidGridConfiguration);
         }
-        let row_count = self.item_count.div_ceil(self.cross_axis_count);
-        let columns = self.cross_axis_count;
+        let group_count = self.item_count.div_ceil(self.cross_axis_count);
+        let cells_per_group = self.cross_axis_count;
         let item_count = self.item_count;
         let main_spacing = self.main_axis_spacing;
         let cross_spacing = self.cross_axis_spacing;
+        let axis = self.axis;
+        let cross_axis = match axis {
+            Axis::Horizontal => Axis::Vertical,
+            Axis::Vertical => Axis::Horizontal,
+        };
         let builder = self.builder;
         ListView::builder(
             &self.position,
             &self.binding,
-            row_count,
-            row_extent,
-            move |context, row| {
-                let mut cells = Vec::with_capacity(columns);
-                for column in 0..columns {
-                    let index = row * columns + column;
+            group_count,
+            group_extent,
+            move |context, group| {
+                let mut cells = Vec::with_capacity(cells_per_group);
+                for cross_index in 0..cells_per_group {
+                    let index = group * cells_per_group + cross_index;
                     let child = if index < item_count {
                         builder(context, index)
                     } else {
@@ -114,20 +128,30 @@ impl GridView {
                     };
                     cells.push(FlexItem::expanded(child, 1));
                 }
-                let mut style = FlexStyle::new(Axis::Horizontal);
+                let mut style = FlexStyle::new(cross_axis);
                 style.spacing = cross_spacing;
                 style.cross_alignment = CrossAxisAlignment::Stretch;
-                let row = Widget::flex(style, cells);
+                let group = Widget::flex(style, cells);
                 Widget::padding(
                     Insets {
-                        bottom: main_spacing,
+                        right: if axis == Axis::Horizontal {
+                            main_spacing
+                        } else {
+                            0.0
+                        },
+                        bottom: if axis == Axis::Vertical {
+                            main_spacing
+                        } else {
+                            0.0
+                        },
                         ..Default::default()
                     },
-                    row,
+                    group,
                 )
             },
         )?
         .cache_extent(self.cache_extent)?
+        .axis(axis)
         .reverse(self.reverse)
         .into_widget()
     }
