@@ -6,11 +6,12 @@ use rust_flutter::{
     gestures::GestureBinding,
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
-        AlertDialog, AppBar, Brightness, Card, CardVariant, ChoiceChip, ColorScheme, Divider,
-        Drawer, FilterChip, FloatingActionButton, ListTile, MaterialApp, MaterialDialogController,
-        MaterialDialogHost, ModalBottomSheetController, ModalBottomSheetHost, NavigationDrawer,
-        NavigationDrawerDestination, Scaffold, ScaffoldMessengerController, ScaffoldMessengerHost,
-        SnackBar, SnackBarAction, TextButton, ThemeData, ThemeMode,
+        ActionChip, AlertDialog, AppBar, Brightness, Card, CardVariant, ChoiceChip, ColorScheme,
+        Divider, Drawer, FilterChip, FloatingActionButton, ListTile, MaterialApp,
+        MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
+        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold,
+        ScaffoldMessengerController, ScaffoldMessengerHost, SnackBar, SnackBarAction, TextButton,
+        ThemeData, ThemeMode,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -371,9 +372,10 @@ impl State<DrawerExample> for DrawerExampleState {
                     ],
                 )),
                 FlexItem::fixed(
-                    TextButton::new(&widget.binding, "Open bottom sheet", move || {
+                    ActionChip::new(&widget.binding, "Open options", move || {
                         let _ = open_sheet.present();
                     })
+                    .tooltip("Choose an option")
                     .into_widget(),
                 ),
                 FlexItem::fixed(

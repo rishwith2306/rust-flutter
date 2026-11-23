@@ -31,6 +31,7 @@ use std::{
     rc::Rc,
 };
 
+mod action_chip;
 mod bottom_sheet;
 mod button;
 mod card;
@@ -53,6 +54,7 @@ mod slider;
 mod snack_bar;
 mod switch;
 mod text_field;
+pub use action_chip::ActionChip;
 pub use bottom_sheet::{ModalBottomSheetController, ModalBottomSheetHost, ModalBottomSheetState};
 pub use button::{FilledButton, OutlinedButton, TextButton};
 pub use card::{Card, CardVariant};

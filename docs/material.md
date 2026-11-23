@@ -372,6 +372,21 @@ not bundled; applications supply an icon widget or asset. Flutter's
 [IconButton API](https://api.flutter.dev/flutter/material/IconButton-class.html)
 also offers these accessibility and interaction features.
 
+`ActionChip` runs an action and supports a disabled state and optional pointer
+hover tooltip. Its label is plain text in this initial API; Flutter also accepts
+an avatar, arbitrary label widgets, and a wider set of shape and animation
+options ([ActionChip API](https://api.flutter.dev/flutter/material/ActionChip-class.html)).
+
+```rust
+use rust_flutter::{gestures::GestureBinding, material::ActionChip};
+
+let binding = GestureBinding::new();
+let suggestion = ActionChip::new(&binding, "Create report", || {})
+    .tooltip("Create a new report")
+    .into_widget();
+# let _ = suggestion;
+```
+
 `FilterChip` is a controlled choice chip. Pass its selected value and update
 that value in the owner when `on_selected` runs. It exposes checkbox role,
 label, and toggled state to accessibility services:
