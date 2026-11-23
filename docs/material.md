@@ -74,8 +74,9 @@ let card_gap = theme.extension::<BrandMetrics>().unwrap().card_gap;
 ```
 
 `ThemeData::lerp_extension` interpolates an extension present in both themes.
-The built-in `ThemeData` itself does not yet animate all properties between
-themes.
+`ThemeData::lerp(&a, &b, t)` interpolates the scheme, progress-indicator theme,
+and shared extensions; discrete settings switch at the midpoint. Its scope is
+limited to properties currently represented by this `ThemeData`.
 
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`. `MaterialApp::with_navigator`

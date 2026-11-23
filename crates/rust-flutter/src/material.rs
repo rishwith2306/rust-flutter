@@ -553,6 +553,29 @@ impl PartialEq for ThemeExtensions {
     }
 }
 
+impl ThemeExtensions {
+    fn lerp(a: &Self, b: &Self, t: f32) -> Self {
+        let mut values = HashMap::with_capacity(a.0.len().max(b.0.len()));
+        for (id, left) in &a.0 {
+            match b.0.get(id) {
+                Some(right) => {
+                    values.insert(*id, left.lerp_box(right.as_ref(), t));
+                }
+                None if t < 0.5 => {
+                    values.insert(*id, left.clone());
+                }
+                None => {}
+            }
+        }
+        for (id, right) in &b.0 {
+            if !a.0.contains_key(id) && t >= 0.5 {
+                values.insert(*id, right.clone());
+            }
+        }
+        Self(values)
+    }
+}
+
 /// A typed addition to [`ThemeData`]. Implement `lerp` to define how the value
 /// transitions between themes; extension values must also support cloning and
 /// equality so inherited theme updates can be tracked.
@@ -892,6 +915,58 @@ impl Default for ThemeData {
 }
 
 impl ProgressIndicatorThemeData {
+    fn lerp(a: &Self, b: &Self, t: f32) -> Self {
+        fn optional<T>(
+            a: Option<T>,
+            b: Option<T>,
+            t: f32,
+            lerp: impl FnOnce(T, T, f32) -> T,
+        ) -> Option<T> {
+            match (a, b) {
+                (Some(a), Some(b)) => Some(lerp(a, b, t)),
+                (a, _) if t < 0.5 => a,
+                (_, b) => b,
+            }
+        }
+        fn color(a: Color32, b: Color32, t: f32) -> Color32 {
+            a.lerp_to_gamma(b, t)
+        }
+        fn optional_color(a: Option<Color32>, b: Option<Color32>, t: f32) -> Option<Color32> {
+            match (a, b) {
+                (Some(a), Some(b)) => Some(color(a, b, t)),
+                (Some(a), None) => Some(color(a, Color32::TRANSPARENT, t)),
+                (None, Some(b)) => Some(color(Color32::TRANSPARENT, b, t)),
+                (None, None) => None,
+            }
+        }
+        fn number(a: f32, b: f32, t: f32) -> f32 {
+            a + (b - a) * t
+        }
+        Self {
+            color: optional_color(a.color, b.color, t),
+            linear_track_color: optional_color(a.linear_track_color, b.linear_track_color, t),
+            linear_min_height: optional(a.linear_min_height, b.linear_min_height, t, number),
+            circular_track_color: optional_color(a.circular_track_color, b.circular_track_color, t),
+            stroke_width: optional(a.stroke_width, b.stroke_width, t, number),
+            stroke_align: optional(a.stroke_align, b.stroke_align, t, number),
+            stroke_cap: if t < 0.5 { a.stroke_cap } else { b.stroke_cap },
+            border_radius: optional(a.border_radius, b.border_radius, t, number),
+            track_gap: optional(a.track_gap, b.track_gap, t, number),
+            stop_indicator_color: optional_color(a.stop_indicator_color, b.stop_indicator_color, t),
+            stop_indicator_radius: optional(
+                a.stop_indicator_radius,
+                b.stop_indicator_radius,
+                t,
+                number,
+            ),
+            controller: if t < 0.5 {
+                a.controller.clone()
+            } else {
+                b.controller.clone()
+            },
+        }
+    }
+
     /// Merge subtree values over app-level defaults, preferring `self` when set.
     pub fn merge(self, defaults: Self) -> Self {
         Self {
@@ -914,6 +989,34 @@ impl ProgressIndicatorThemeData {
 }
 
 impl ThemeData {
+    /// Interpolate all theme fields represented by this foundation. Discrete
+    /// settings switch at the midpoint; colors, numeric progress properties and
+    /// extensions present in both themes interpolate continuously.
+    pub fn lerp(a: &Self, b: &Self, t: f32) -> Self {
+        let dark_theme = match (&a.dark_theme, &b.dark_theme) {
+            (Some(a), Some(b)) => Some(Box::new(Self::lerp(a, b, t))),
+            (Some(a), None) if t < 0.5 => Some(a.clone()),
+            (None, Some(b)) if t >= 0.5 => Some(b.clone()),
+            _ => None,
+        };
+        Self {
+            color_scheme: a.color_scheme.lerp(&b.color_scheme, t),
+            dark_theme,
+            theme_mode: if t < 0.5 { a.theme_mode } else { b.theme_mode },
+            use_material3: if t < 0.5 {
+                a.use_material3
+            } else {
+                b.use_material3
+            },
+            progress_indicator_theme: ProgressIndicatorThemeData::lerp(
+                &a.progress_indicator_theme,
+                &b.progress_indicator_theme,
+                t,
+            ),
+            extensions: ThemeExtensions::lerp(&a.extensions, &b.extensions, t),
+        }
+    }
+
     /// Return a copy of this theme with one typed extension inserted or replaced.
     pub fn with_extension<T: ThemeExtension>(mut self, extension: T) -> Self {
         self.extensions
