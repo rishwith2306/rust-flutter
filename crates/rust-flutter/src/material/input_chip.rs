@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{ChipThemeData, ThemeData};
 use crate::{
     egui::{self, FontId, Stroke},
     element::{BuildContext, FlexItem, FlexStyle, StatelessWidget, Tooltip, Widget},
@@ -58,14 +58,15 @@ impl InputChip {
 
 impl StatelessWidget for InputChip {
     fn build(&self, context: &BuildContext) -> Widget {
-        let scheme = ThemeData::of(context)
-            .expect("Material input chip resolves theme during build")
-            .color_scheme;
-        let (fill, foreground) = if self.selected {
-            (scheme.secondary_container, scheme.on_secondary_container)
-        } else {
-            (scheme.surface_container_low, scheme.on_surface_variant)
-        };
+        let theme =
+            ThemeData::of(context).expect("Material input chip resolves theme during build");
+        let scheme = theme.color_scheme;
+        let chip_theme = theme
+            .extension::<ChipThemeData>()
+            .cloned()
+            .unwrap_or_default();
+        let (chip_fill, foreground, outline) =
+            chip_theme.resolve(scheme, self.selected, self.enabled);
         let label = if self.selected {
             format!("✓  {}", self.label)
         } else {
@@ -80,10 +81,10 @@ impl StatelessWidget for InputChip {
         });
         let callback = self.on_selected.clone();
         let selected = self.selected;
-        let chip_fill = if self.enabled {
-            fill
+        let stroke = if self.selected {
+            Stroke::NONE
         } else {
-            fill.gamma_multiply(0.5)
+            Stroke::new(1.0_f32, outline)
         };
         let main = GestureButton::new(
             &self.binding,
@@ -96,7 +97,7 @@ impl StatelessWidget for InputChip {
         )
         .size(egui::vec2((width + 24.0).max(64.0), 32.0))
         .fill(chip_fill)
-        .stroke(Stroke::new(1.0_f32, scheme.outline))
+        .stroke(stroke)
         .corner_radius(egui::CornerRadius::same(8))
         .enabled(self.enabled && self.on_selected.is_some())
         .accessibility_role(GestureSemanticRole::CheckBox)
@@ -112,7 +113,7 @@ impl StatelessWidget for InputChip {
             let remove = GestureButton::new(&self.binding, "×", move || on_deleted())
                 .size(egui::vec2(28.0, 32.0))
                 .fill(chip_fill)
-                .stroke(Stroke::new(1.0_f32, scheme.outline))
+                .stroke(Stroke::new(1.0_f32, outline))
                 .corner_radius(egui::CornerRadius::same(8))
                 .enabled(self.enabled)
                 .accessibility_role(GestureSemanticRole::Button)

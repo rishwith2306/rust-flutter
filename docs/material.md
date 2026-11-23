@@ -89,6 +89,22 @@ progress-indicator theme, and shared extensions; discrete settings switch at
 the midpoint. Its scope is limited to properties currently represented by
 this `ThemeData`.
 
+`ChipThemeData` is a built-in typed extension for the shared Material chip
+family. Its optional background, selected, disabled, label, selected-label and
+outline colors override the scheme defaults for `Chip`, `ActionChip`,
+`FilterChip`, `ChoiceChip` and `InputChip`:
+
+```rust
+use rust_flutter::{egui::Color32, material::{ChipThemeData, ThemeData}};
+
+let theme = ThemeData::default().with_extension(ChipThemeData {
+    background_color: Some(Color32::from_rgb(242, 238, 250)),
+    selected_color: Some(Color32::from_rgb(80, 55, 110)),
+    ..ChipThemeData::default()
+});
+# let _ = theme;
+```
+
 `MaterialApp` is a root convenience widget that provides `ThemeData` to its
 home subtree. It can be passed to `run_widget`. `MaterialApp::with_navigator`
 connects a retained `NavigatorController` to the root page builder, and

@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{ChipThemeData, ThemeData};
 use crate::{
     egui::{self, FontId, Stroke},
     element::{BuildContext, StatelessWidget, Tooltip, Widget},
@@ -47,10 +47,14 @@ impl ActionChip {
 
 impl StatelessWidget for ActionChip {
     fn build(&self, context: &BuildContext) -> Widget {
-        let scheme = ThemeData::of(context)
-            .expect("Material action chip resolves theme during build")
-            .color_scheme;
-        let foreground = scheme.on_surface;
+        let theme =
+            ThemeData::of(context).expect("Material action chip resolves theme during build");
+        let scheme = theme.color_scheme;
+        let chip_theme = theme
+            .extension::<ChipThemeData>()
+            .cloned()
+            .unwrap_or_default();
+        let (fill, foreground, outline) = chip_theme.resolve(scheme, false, self.enabled);
         let label = self.label.clone();
         let font = FontId::proportional(14.0);
         let width = context.egui().fonts_mut(|fonts| {
@@ -66,12 +70,8 @@ impl StatelessWidget for ActionChip {
             move || callback(),
         )
         .size(egui::vec2((width + 24.0).max(64.0), 32.0))
-        .fill(if self.enabled {
-            scheme.surface_container_low
-        } else {
-            scheme.surface_container_low.gamma_multiply(0.5)
-        })
-        .stroke(Stroke::new(1.0_f32, scheme.outline))
+        .fill(fill)
+        .stroke(Stroke::new(1.0_f32, outline))
         .corner_radius(egui::CornerRadius::same(8))
         .enabled(self.enabled)
         .accessibility_role(GestureSemanticRole::Button)

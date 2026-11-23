@@ -537,6 +537,82 @@ pub struct ThemeData {
     pub extensions: ThemeExtensions,
 }
 
+/// Optional Material chip color roles. Attach it with
+/// [`ThemeData::with_extension`] to style all retained chip variants below a
+/// theme provider.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ChipThemeData {
+    pub background_color: Option<Color32>,
+    pub selected_color: Option<Color32>,
+    pub disabled_color: Option<Color32>,
+    pub label_color: Option<Color32>,
+    pub selected_label_color: Option<Color32>,
+    pub outline_color: Option<Color32>,
+}
+
+impl ChipThemeData {
+    pub(crate) fn resolve(
+        &self,
+        scheme: ColorScheme,
+        selected: bool,
+        enabled: bool,
+    ) -> (Color32, Color32, Color32) {
+        let fill = if !enabled {
+            self.disabled_color.unwrap_or_else(|| {
+                let default = if selected {
+                    scheme.secondary_container
+                } else {
+                    scheme.surface_container_low
+                };
+                default.gamma_multiply(0.5)
+            })
+        } else if selected {
+            self.selected_color.unwrap_or(scheme.secondary_container)
+        } else {
+            self.background_color
+                .unwrap_or(scheme.surface_container_low)
+        };
+        let foreground = if selected {
+            self.selected_label_color
+                .or(self.label_color)
+                .unwrap_or(scheme.on_secondary_container)
+        } else {
+            self.label_color.unwrap_or(scheme.on_surface_variant)
+        };
+        let foreground = if enabled {
+            foreground
+        } else {
+            foreground.gamma_multiply(0.38)
+        };
+        (
+            fill,
+            foreground,
+            self.outline_color.unwrap_or(scheme.outline),
+        )
+    }
+}
+
+impl ThemeExtension for ChipThemeData {
+    fn lerp(&self, other: &Self, t: f32) -> Self {
+        fn color(a: Option<Color32>, b: Option<Color32>, t: f32) -> Option<Color32> {
+            match (a, b) {
+                (Some(a), Some(b)) => Some(a.lerp_to_gamma(b, t)),
+                (Some(a), None) if t < 0.5 => Some(a),
+                (None, Some(b)) if t >= 0.5 => Some(b),
+                _ => None,
+            }
+        }
+        Self {
+            background_color: color(self.background_color, other.background_color, t),
+            selected_color: color(self.selected_color, other.selected_color, t),
+            disabled_color: color(self.disabled_color, other.disabled_color, t),
+            label_color: color(self.label_color, other.label_color, t),
+            selected_label_color: color(self.selected_label_color, other.selected_label_color, t),
+            outline_color: color(self.outline_color, other.outline_color, t),
+        }
+    }
+}
+
 /// Typed custom values attached to a [`ThemeData`]. Use `ThemeData`'s
 /// `with_extension` and `extension` methods to modify and retrieve values.
 #[derive(Default)]

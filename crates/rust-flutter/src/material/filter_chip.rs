@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{ChipThemeData, ThemeData};
 use crate::{
     egui::{self, FontId, Stroke},
     element::{BuildContext, StatelessWidget, Widget},
@@ -43,21 +43,18 @@ impl FilterChip {
 
 impl StatelessWidget for FilterChip {
     fn build(&self, context: &BuildContext) -> Widget {
-        let scheme = ThemeData::of(context)
-            .expect("Material filter chip resolves theme during build")
-            .color_scheme;
-        let (fill, foreground, stroke) = if self.selected {
-            (
-                scheme.secondary_container,
-                scheme.on_secondary_container,
-                Stroke::NONE,
-            )
+        let theme =
+            ThemeData::of(context).expect("Material filter chip resolves theme during build");
+        let scheme = theme.color_scheme;
+        let chip_theme = theme
+            .extension::<ChipThemeData>()
+            .cloned()
+            .unwrap_or_default();
+        let (fill, foreground, outline) = chip_theme.resolve(scheme, self.selected, self.enabled);
+        let stroke = if self.selected {
+            Stroke::NONE
         } else {
-            (
-                scheme.surface_container_low,
-                scheme.on_surface_variant,
-                Stroke::new(1.0_f32, scheme.outline),
-            )
+            Stroke::new(1.0_f32, outline)
         };
         let label = if self.selected {
             format!("✓  {}", self.label)
@@ -79,11 +76,7 @@ impl StatelessWidget for FilterChip {
             move || callback(!selected),
         )
         .size(egui::vec2((width + 24.0).max(64.0), 32.0))
-        .fill(if self.enabled {
-            fill
-        } else {
-            fill.gamma_multiply(0.5)
-        })
+        .fill(fill)
         .stroke(stroke)
         .corner_radius(egui::CornerRadius::same(8))
         .enabled(self.enabled)

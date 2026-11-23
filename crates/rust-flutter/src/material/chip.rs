@@ -1,4 +1,4 @@
-use super::ThemeData;
+use super::{ChipThemeData, ThemeData};
 use crate::{
     egui::{self, Align2, FontId, Stroke},
     element::{BuildContext, FlexItem, FlexStyle, StatelessWidget, Tooltip, Widget},
@@ -54,19 +54,13 @@ impl Chip {
 
 impl StatelessWidget for Chip {
     fn build(&self, context: &BuildContext) -> Widget {
-        let scheme = ThemeData::of(context)
-            .expect("Material chip resolves theme during build")
-            .color_scheme;
-        let foreground = if self.enabled {
-            scheme.on_surface_variant
-        } else {
-            scheme.on_surface.gamma_multiply(0.38)
-        };
-        let fill = if self.enabled {
-            scheme.surface_container_low
-        } else {
-            scheme.surface_container_low.gamma_multiply(0.5)
-        };
+        let theme = ThemeData::of(context).expect("Material chip resolves theme during build");
+        let scheme = theme.color_scheme;
+        let chip_theme = theme
+            .extension::<ChipThemeData>()
+            .cloned()
+            .unwrap_or_default();
+        let (fill, foreground, outline) = chip_theme.resolve(scheme, false, self.enabled);
         let font = FontId::proportional(14.0);
         let width = context.egui().fonts_mut(|fonts| {
             fonts
@@ -82,7 +76,7 @@ impl StatelessWidget for Chip {
             ui.painter().rect_stroke(
                 rect,
                 egui::CornerRadius::same(8),
-                Stroke::new(1.0_f32, scheme.outline),
+                Stroke::new(1.0_f32, outline),
                 egui::StrokeKind::Inside,
             );
             ui.painter().text(
@@ -99,7 +93,7 @@ impl StatelessWidget for Chip {
             let delete = GestureButton::new(binding, "×", move || callback())
                 .size(egui::vec2(28.0, 32.0))
                 .fill(fill)
-                .stroke(Stroke::new(1.0_f32, scheme.outline))
+                .stroke(Stroke::new(1.0_f32, outline))
                 .corner_radius(egui::CornerRadius::same(8))
                 .enabled(self.enabled)
                 .accessibility_role(GestureSemanticRole::Button)
