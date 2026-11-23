@@ -34,10 +34,14 @@ building the UI. `StreamSink::emit` replaces the latest data and clears an older
 error. `report_error` retains the latest data while publishing an error; the
 producer may continue and emit a later value. A returned `Err` stores the error
 and completes the stream. Panics and cooperative cancellation are terminal.
+Dropping the handle does not cancel the producer; call `cancel()` explicitly.
 
 The worker is synchronous Rust on a framework-owned thread. Check
 `StreamSink::is_cancelled` inside long loops; cancellation does not forcibly stop
 blocking work. Signals request UI repaints, but they do not provide an async
 runtime, event history, backpressure, or guaranteed rendering of every rapid
 intermediate update. Use Tokio or another executor for async I/O and advanced
-stream scheduling.
+stream scheduling. There is not yet a retained `StreamBuilder` adapter: a
+background signal requests an egui frame, but it does not by itself mark a
+retained component dirty. Immediate-mode app frames can read the snapshot on
+each repaint; retained apps need an explicit UI-thread notifier bridge.
