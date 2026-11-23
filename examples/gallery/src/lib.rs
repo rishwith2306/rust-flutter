@@ -15,6 +15,7 @@ mod components;
 mod forms;
 mod grids;
 mod lazy_lists;
+mod stream_builder;
 
 // Use the same explicit pixel profile on desktop and Android. Dithering is
 // useful for gradients, but introduces noise into exact-color gallery probes.
@@ -47,6 +48,7 @@ enum Route {
     Components,
     LazyList,
     LazyGrid,
+    RetainedStream,
     Form,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +78,7 @@ pub struct Gallery {
     form_demo: Option<forms::FormDemo>,
     lazy_list_demo: Option<lazy_lists::LazyListDemo>,
     lazy_grid_demo: Option<grids::LazyGridDemo>,
+    stream_builder_demo: Option<stream_builder::StreamBuilderDemo>,
 }
 impl Default for Gallery {
     fn default() -> Self {
@@ -101,6 +104,7 @@ impl Default for Gallery {
             form_demo: None,
             lazy_list_demo: None,
             lazy_grid_demo: None,
+            stream_builder_demo: None,
         }
     }
 }
@@ -233,6 +237,11 @@ impl Application for Gallery {
         {
             demo.cancel_input();
         }
+        if *self.navigator.current() != Route::RetainedStream
+            && let Some(demo) = &self.stream_builder_demo
+        {
+            demo.cancel();
+        }
         match *self.navigator.current() {
             Route::Home => {
                 scroll(ui, "home", |ui| {
@@ -334,6 +343,9 @@ impl Application for Gallery {
                                 Ok(())
                             }));
                         }
+                        if button(ui, self.tr("retained-stream")).clicked() {
+                            self.navigator.push(Route::RetainedStream);
+                        }
                         if let Some(stream) = &self.stream {
                             let snapshot = stream.state().get();
                             if let Some(value) = snapshot.data {
@@ -387,6 +399,15 @@ impl Application for Gallery {
                 heading(ui, self.tr("lazy-grid"));
                 self.lazy_grid_demo
                     .get_or_insert_with(|| grids::LazyGridDemo::new(ui.ctx()))
+                    .show(ui);
+                if button(ui, self.tr("back")).clicked() {
+                    self.navigator.pop();
+                }
+            }
+            Route::RetainedStream => {
+                heading(ui, self.tr("retained-stream"));
+                self.stream_builder_demo
+                    .get_or_insert_with(|| stream_builder::StreamBuilderDemo::new(ui.ctx()))
                     .show(ui);
                 if button(ui, self.tr("back")).clicked() {
                     self.navigator.pop();

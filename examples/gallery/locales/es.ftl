@@ -16,6 +16,7 @@ run-task = Ejecutar tarea
 worker-result = Tarea completada sin bloquear la interfaz
 worker-panic = La tarea falló
 run-stream = Iniciar flujo
+retained-stream = Flujo con constructor retenido
 cancel-stream = Cancelar flujo
 stream-progress = Valor del flujo
 stream-pending = Iniciando flujo

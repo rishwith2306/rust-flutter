@@ -74,4 +74,6 @@ intermediate update. Use Tokio or another executor for async I/O and advanced
 stream scheduling.
 
 The gallery's **Background work** card demonstrates both a one-shot task and a
-stream with progress and cancellation.
+stream with progress and cancellation. Its **Retained stream builder** route
+renders stream snapshots through an `ElementTree` and lets you restart or cancel
+the worker.

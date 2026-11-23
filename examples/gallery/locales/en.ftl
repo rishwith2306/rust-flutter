@@ -16,6 +16,7 @@ run-task = Run task
 worker-result = Worker completed without blocking the UI
 worker-panic = Worker panicked
 run-stream = Run stream
+retained-stream = Retained stream builder
 cancel-stream = Cancel stream
 stream-progress = Stream value
 stream-pending = Stream starting
