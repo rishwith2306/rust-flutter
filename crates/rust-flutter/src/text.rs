@@ -113,7 +113,7 @@ impl Paragraph {
         let mut job = LayoutJob::default();
         let mut spacing_after_whitespace = None;
         for span in &self.spans {
-            if span.word_spacing == 0.0 {
+            if span.word_spacing == 0.0 && spacing_after_whitespace.is_none() {
                 job.append(&span.text, 0.0, span.format.clone());
                 continue;
             }
