@@ -1,0 +1,51 @@
+# Accessibility semantics
+
+The framework uses AccessKit for desktop and Android accessibility. egui builds
+the semantics tree from framework controls and app content. On Android,
+NativeActivity forwards that tree to the decor view and returns accessibility
+actions to the UI event loop. The bridge supports TalkBack integration, but
+screen-reader behavior still needs testing on physical devices.
+
+## Label custom content
+
+Wrap custom visuals with `element::Semantics` to provide a role and accessible
+name. Keep pointer or keyboard interaction on the child widget; `on_click` adds
+the corresponding screen-reader action.
+
+```rust,ignore
+use rust_flutter::{egui, element::{Semantics, Widget}};
+
+let accessible_play = Semantics::new(egui::accesskit::Role::Button)
+    .label("Play")
+    .on_click(|| start_playback())
+    .into_widget(play_icon);
+```
+
+The wrapper can also set a value, enabled state, selected state, and toggle state.
+Material and Cupertino buttons expose their button role and names; navigation
+tabs expose selected state. Material `IconButton` accepts an optional
+`semantics_label` because its icon may not contain readable text.
+
+```rust,ignore
+let save = IconButton::new(&binding, save_icon, save_document)
+    .semantics_label("Save document")
+    .enabled(can_save)
+    .into_widget()?;
+```
+
+`Semantics::on_click` does not add pointer input by itself. Use it with a child
+that already handles pointer input, or with a child whose only action is
+screen-reader activation. A disabled wrapper omits the click action and reports
+the disabled state.
+
+## Current scope
+
+The retained wrapper supports one child, role, label, value, enabled, selected,
+toggled, and click action. Full Flutter semantics support remains incomplete:
+merging and excluding descendants, traversal ordering, focus actions, custom
+action catalogs, and some control-specific metadata are not implemented.
+
+Desktop builds use AccessKit through eframe. Android builds use the direct
+NativeActivity bridge. Compile checks do not verify VoiceOver or TalkBack; follow
+the interactive gates in [platform development](platforms.md) and record the OS,
+device, and screen reader versions used.

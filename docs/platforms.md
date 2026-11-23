@@ -60,6 +60,8 @@ background/resume, permissions or TalkBack. Those remain explicit device gates.
 NativeActivity uses a direct AccessKit Android `InjectingAdapter` bridge. The
 host forwards egui's accessibility tree to Android and routes accessibility
 actions back into egui. TalkBack traversal and actions still need device testing.
+For app-facing roles, labels, states and click actions, see the
+[accessibility guide](accessibility.md).
 
 ## Release gates
 
