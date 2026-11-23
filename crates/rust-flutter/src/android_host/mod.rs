@@ -55,7 +55,21 @@ pub(super) fn run<A: Application>(
         }
     });
     let accessibility = AndroidAccessibility::new(&activity, wake).map_err(failure)?;
-    let runtime = Runtime::with_services(app, activity.internal_data_path(), services);
+    let preferred_locales = activity
+        .config()
+        .language()
+        .map(|language| {
+            let country = activity.config().country();
+            country.map_or(language.clone(), |country| format!("{language}-{country}"))
+        })
+        .into_iter()
+        .collect();
+    let runtime = Runtime::with_services_and_locales(
+        app,
+        activity.internal_data_path(),
+        services,
+        preferred_locales,
+    );
     let serial = HOST_SERIAL.fetch_add(1, Ordering::Relaxed) + 1;
     let mut host = Host {
         runtime,

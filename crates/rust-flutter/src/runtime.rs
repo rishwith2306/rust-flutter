@@ -11,6 +11,8 @@ pub struct AppContext {
     pub data_dir: Option<PathBuf>,
     /// Immutable platform implementations installed before the app starts.
     pub services: Arc<Services>,
+    /// Host-preferred BCP 47 language tags captured when the runtime is created.
+    pub preferred_locales: Vec<String>,
 }
 impl AppContext {
     /// Return a custom clipboard service or the host clipboard implementation.
@@ -66,6 +68,7 @@ pub struct Runtime<A: Application> {
     app: A,
     data_dir: Option<PathBuf>,
     services: Arc<Services>,
+    preferred_locales: Vec<String>,
     initialized: bool,
     stopped: bool,
     focused: Option<bool>,
@@ -77,10 +80,26 @@ impl<A: Application> Runtime<A> {
 
     /// Create a runtime with per-platform implementations registered before startup.
     pub fn with_services(app: A, data_dir: Option<PathBuf>, services: Services) -> Self {
+        Self::with_services_and_locales(
+            app,
+            data_dir,
+            services,
+            sys_locale::get_locales().collect(),
+        )
+    }
+
+    /// Create a runtime with explicit preferred BCP 47 locale tags.
+    pub fn with_services_and_locales(
+        app: A,
+        data_dir: Option<PathBuf>,
+        services: Services,
+        preferred_locales: Vec<String>,
+    ) -> Self {
         Self {
             app,
             data_dir,
             services: Arc::new(services),
+            preferred_locales,
             initialized: false,
             stopped: false,
             focused: None,
@@ -107,12 +126,16 @@ impl<A: Application> Runtime<A> {
     }
     fn initialize(&mut self, ctx: &egui::Context) {
         if !self.initialized {
-            self.app.initialize(&AppContext {
-                egui: ctx.clone(),
-                data_dir: self.data_dir.clone(),
-                services: self.services.clone(),
-            });
+            self.app.initialize(&self.app_context(ctx));
             self.initialized = true;
+        }
+    }
+    fn app_context(&self, ctx: &egui::Context) -> AppContext {
+        AppContext {
+            egui: ctx.clone(),
+            data_dir: self.data_dir.clone(),
+            services: self.services.clone(),
+            preferred_locales: self.preferred_locales.clone(),
         }
     }
     pub fn app(&self) -> &A {
@@ -127,14 +150,8 @@ impl<A: Application> Runtime<A> {
             return;
         }
         self.initialize(ctx);
-        self.app.restore_state(
-            &AppContext {
-                egui: ctx.clone(),
-                data_dir: self.data_dir.clone(),
-                services: self.services.clone(),
-            },
-            state,
-        );
+        let app_context = self.app_context(ctx);
+        self.app.restore_state(&app_context, state);
     }
 
     /// Ask the application for a best-effort saved-instance snapshot.
@@ -143,11 +160,8 @@ impl<A: Application> Runtime<A> {
             return None;
         }
         self.initialize(ctx);
-        self.app.save_state(&AppContext {
-            egui: ctx.clone(),
-            data_dir: self.data_dir.clone(),
-            services: self.services.clone(),
-        })
+        let app_context = self.app_context(ctx);
+        self.app.save_state(&app_context)
     }
     /// Run inside `egui::Context::run`. Once shut down, no further frames are built.
     pub fn frame(&mut self, ctx: &egui::Context) {

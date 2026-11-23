@@ -574,6 +574,7 @@ mod tests {
             egui: egui::Context::default(),
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
+            preferred_locales: Vec::new(),
         };
         let mut first = Gallery::default();
         first.initialize(&context);
@@ -606,6 +607,7 @@ mod tests {
             egui: egui::Context::default(),
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
+            preferred_locales: Vec::new(),
         };
         let mut app = Gallery::default();
         app.initialize(&context);
@@ -628,6 +630,7 @@ mod route_restoration_tests {
             egui: egui::Context::default(),
             data_dir: Some(dir.path().to_owned()),
             services: std::sync::Arc::new(rust_flutter::services::Services::default()),
+            preferred_locales: Vec::new(),
         };
         let mut first = Gallery::default();
         first.initialize(&context);
