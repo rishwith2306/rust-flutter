@@ -371,10 +371,31 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 ```
 
 This is a compact linear rendering: its indeterminate mode sweeps one segment
-across the track. Flutter also provides the circular indicator, controller
-synchronization, semantics labels and values, year-specific visual variants,
-track gaps and stop markers; these remain unfinished. See the official
-[LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html).
+across the track. Flutter's [LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
+also includes animation controllers, semantics, track gaps, stop markers and
+versioned Material appearances; those options remain unfinished.
+
+`CircularProgressIndicator` provides the matching circular form with a
+determinate arc or rotating indeterminate arc. Set `size` and `stroke_width` to
+fit the surrounding layout:
+
+```rust
+use rust_flutter::material::{CircularProgressIndicator, MaterialApp, ThemeData};
+
+let progress = CircularProgressIndicator::new(Some(0.65))
+    .size(48.0)
+    .stroke_width(5.0)
+    .into_widget()?;
+let loading = CircularProgressIndicator::new(None).into_widget()?;
+let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
+# let _ = (loading, app);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Both modes share the checked value range and theme colors. Stroke cap/alignment,
+semantics labels and values, versioned Material appearance and a controller for
+synchronizing multiple indicators remain unfinished. See Flutter's
+[CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
 
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
 shows a selected dialog above it, and dismisses that dialog when the user taps

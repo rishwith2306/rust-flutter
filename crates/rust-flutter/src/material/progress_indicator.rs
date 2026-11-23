@@ -5,6 +5,118 @@ use crate::{
 };
 use std::time::Duration;
 
+/// Themed Material circular progress indicator with determinate or indeterminate progress.
+pub struct CircularProgressIndicator {
+    value: Option<f32>,
+    color: Option<Color32>,
+    background_color: Option<Color32>,
+    stroke_width: f32,
+    size: f32,
+}
+
+impl CircularProgressIndicator {
+    pub fn new(value: Option<f32>) -> Self {
+        Self {
+            value,
+            color: None,
+            background_color: None,
+            stroke_width: 4.0,
+            size: 40.0,
+        }
+    }
+
+    pub fn color(mut self, color: Color32) -> Self {
+        self.color = Some(color);
+        self
+    }
+
+    pub fn background_color(mut self, color: Color32) -> Self {
+        self.background_color = Some(color);
+        self
+    }
+
+    pub fn stroke_width(mut self, width: f32) -> Self {
+        self.stroke_width = width;
+        self
+    }
+
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = size;
+        self
+    }
+
+    pub fn into_widget(self) -> Result<Widget, &'static str> {
+        if !self.stroke_width.is_finite()
+            || self.stroke_width <= 0.0
+            || !self.size.is_finite()
+            || self.size <= 0.0
+            || self.stroke_width > self.size
+            || self
+                .value
+                .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
+        {
+            return Err("progress size and stroke must be positive and value must be in 0..=1");
+        }
+        Ok(Widget::stateless(CircularProgressView(self)))
+    }
+}
+
+struct CircularProgressView(CircularProgressIndicator);
+
+impl StatelessWidget for CircularProgressView {
+    fn build(&self, context: &BuildContext) -> Widget {
+        let colors = ThemeData::of(context)
+            .expect("Material progress indicators resolve theme during build")
+            .color_scheme;
+        let indicator = &self.0;
+        let value = indicator.value;
+        let size = indicator.size;
+        let stroke_width = indicator.stroke_width;
+        let color = indicator.color.unwrap_or(colors.primary);
+        let background = indicator
+            .background_color
+            .unwrap_or(colors.surface_container_highest);
+        Widget::measured(
+            move |constraints| constraints.constrain(Vec2::splat(size)),
+            move |ui| {
+                let rect = ui.max_rect();
+                let center = rect.center();
+                let radius = (rect.width().min(rect.height()) - stroke_width) * 0.5;
+                if radius <= 0.0 {
+                    return;
+                }
+                ui.painter().circle_stroke(
+                    center,
+                    radius,
+                    egui::Stroke::new(stroke_width, background),
+                );
+                let (start, sweep) = if let Some(value) = value {
+                    (-std::f32::consts::FRAC_PI_2, std::f32::consts::TAU * value)
+                } else {
+                    let duration = 1.25_f64;
+                    let phase = ui.ctx().input(|input| input.time).rem_euclid(duration) / duration;
+                    ui.ctx().request_repaint_after(Duration::from_millis(16));
+                    (
+                        -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU * phase as f32,
+                        std::f32::consts::TAU * 0.28,
+                    )
+                };
+                if sweep <= 0.0 {
+                    return;
+                }
+                let segments = ((sweep * radius / 2.0).ceil() as usize).clamp(2, 96);
+                let point = |angle: f32| center + Vec2::new(angle.cos(), angle.sin()) * radius;
+                let stroke = egui::Stroke::new(stroke_width, color);
+                for index in 0..segments {
+                    let from = start + sweep * index as f32 / segments as f32;
+                    let to = start + sweep * (index + 1) as f32 / segments as f32;
+                    ui.painter().line_segment([point(from), point(to)], stroke);
+                }
+            },
+        )
+    }
+}
+
 /// Themed Material linear progress indicator with determinate or indeterminate progress.
 pub struct LinearProgressIndicator {
     value: Option<f32>,

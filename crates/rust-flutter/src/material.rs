@@ -38,7 +38,7 @@ pub use icon_button::{IconButton, IconButtonVariant};
 pub use list_tile::ListTile;
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
-pub use progress_indicator::LinearProgressIndicator;
+pub use progress_indicator::{CircularProgressIndicator, LinearProgressIndicator};
 pub use radio::Radio;
 pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;
