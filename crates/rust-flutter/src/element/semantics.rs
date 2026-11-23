@@ -3,7 +3,8 @@ use super::{RenderBox, RenderContext, RenderObjectWidget, Widget};
 use crate::{
     egui::{self, accesskit},
     layout::{
-        BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, IntrinsicDimension, LayoutError,
+        Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, IntrinsicDimension,
+        LayoutError, TextBaseline,
     },
 };
 use std::rc::Rc;
@@ -89,6 +90,20 @@ pub struct SemanticsRenderBox {
 }
 
 impl RenderBox for SemanticsRenderBox {
+    fn dry_baseline(
+        &self,
+        constraints: BoxConstraints,
+        kind: TextBaseline,
+        children: &BoxQueries<'_>,
+    ) -> Result<Option<f32>, LayoutError> {
+        if children.len() != 1 {
+            return Err(LayoutError::InvalidConfiguration(
+                "Semantics requires one child",
+            ));
+        }
+        children.dry_baseline(0, constraints, kind)
+    }
+
     fn dry_layout(
         &self,
         constraints: BoxConstraints,
@@ -128,8 +143,13 @@ impl RenderBox for SemanticsRenderBox {
             ));
         }
         let size = children.layout(0, constraints)?;
+        let mut geometry = BoxGeometry::new(size);
+        geometry.baselines = Baselines {
+            alphabetic: children.baseline(0, TextBaseline::Alphabetic, true)?,
+            ideographic: children.baseline(0, TextBaseline::Ideographic, true)?,
+        };
         children.place(0, egui::Vec2::ZERO)?;
-        Ok(BoxGeometry::new(size))
+        Ok(geometry)
     }
 
     fn paint(&mut self, ui: &mut egui::Ui, _context: &RenderContext) {
