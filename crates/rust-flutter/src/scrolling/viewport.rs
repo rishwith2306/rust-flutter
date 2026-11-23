@@ -30,6 +30,7 @@ pub struct SingleChildScrollView {
     dimensions: Rc<Cell<Option<ScrollDimensions>>>,
     keyboard: Rc<ScrollKeyboard>,
     keyboard_enabled: bool,
+    drag_coefficient: f64,
     content_origin: Option<(f64, f64)>,
 }
 impl SingleChildScrollView {
@@ -46,6 +47,7 @@ impl SingleChildScrollView {
             dimensions: Rc::new(Cell::new(None)),
             keyboard: Rc::new(ScrollKeyboard::default()),
             keyboard_enabled: true,
+            drag_coefficient: 0.135,
             content_origin: None,
         })
     }
@@ -61,6 +63,15 @@ impl SingleChildScrollView {
     pub fn keyboard_scrolling(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
         self
+    }
+    /// Set exponential friction drag for touch and pointer-release flings.
+    /// Valid coefficients are strictly between zero and one; default is 0.135.
+    pub fn drag_coefficient(mut self, coefficient: f64) -> Result<Self, ScrollError> {
+        if !coefficient.is_finite() || !(0.0..1.0).contains(&coefficient) {
+            return Err(ScrollError::InvalidDragCoefficient);
+        }
+        self.drag_coefficient = coefficient;
+        Ok(self)
     }
     // Lazy content stores item coordinates near its realized range. Keep the
     // viewport's full metrics while avoiding large f32 coordinate subtraction.
@@ -84,6 +95,7 @@ impl SingleChildScrollView {
         let scroll_dimensions = self.dimensions.clone();
         let scroll_scale = self.scale.clone();
         let reverse = self.reverse;
+        let drag_coefficient = self.drag_coefficient;
         let config = GestureTargetConfig {
             on_scroll: Some(Rc::new(move |event| {
                 if event.modifiers.ctrl || event.modifiers.command {
@@ -166,7 +178,7 @@ impl SingleChildScrollView {
                             if let Some(scale) = end_scale.get() {
                                 let _ = p.end_drag(
                                     sign * main(axis, d.velocity.pixels_per_second()) / scale,
-                                    0.135,
+                                    drag_coefficient,
                                 );
                             } else {
                                 let _ = p.cancel_activity();

@@ -37,6 +37,8 @@ roots, as in the [viewport guide](scroll-viewports.md). Wrap the list in a
 [Scrollbar](scrollbars.md) using the same position/binding. Set `.axis()` and
 `.reverse()` consistently on the list and scrollbar for horizontal or reversed
 content. `.keyboard_scrolling(false)` disables the viewport's keyboard shortcuts.
+`.drag_coefficient(value)?` configures bounded touch-release friction; values
+must be strictly between zero and one, and the default is `0.135`.
 
 The item extent is enforced along the scrolling axis; rows receive tight
 cross-axis constraints. The content reports the full count×extent scroll range

@@ -33,6 +33,7 @@ pub struct ListView {
     cache: f32,
     limit: usize,
     keyboard: bool,
+    drag_coefficient: f64,
     builder: Rc<ItemBuilder>,
     key: Rc<ItemKey>,
     find_index: Option<Rc<FindIndex>>,
@@ -68,6 +69,7 @@ impl ListView {
             cache: 250.0,
             limit: 4096,
             keyboard: true,
+            drag_coefficient: 0.135,
             builder: Rc::new(builder),
             key: Rc::new(|index| Key::U64(index as u64)),
             find_index: None,
@@ -105,6 +107,15 @@ impl ListView {
     pub fn keyboard_scrolling(mut self, enabled: bool) -> Self {
         self.keyboard = enabled;
         self
+    }
+    /// Set exponential friction drag for touch and pointer-release flings.
+    /// Valid coefficients are strictly between zero and one; default is 0.135.
+    pub fn drag_coefficient(mut self, coefficient: f64) -> Result<Self, ScrollError> {
+        if !coefficient.is_finite() || !(0.0..1.0).contains(&coefficient) {
+            return Err(ScrollError::InvalidDragCoefficient);
+        }
+        self.drag_coefficient = coefficient;
+        Ok(self)
     }
     pub fn into_widget(self) -> Result<Widget, ScrollError> {
         if self.position.is_disposed() || self.binding.is_disposed() {
@@ -279,6 +290,7 @@ impl ListView {
             view.axis(self.axis)
                 .reverse(self.reverse)
                 .keyboard_scrolling(self.keyboard)
+                .drag_coefficient(self.drag_coefficient)?
                 .rebased_origin(origin, self.exact_total)
                 .into_widget(content)
         });

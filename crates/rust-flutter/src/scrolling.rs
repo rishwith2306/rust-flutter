@@ -28,6 +28,7 @@ pub enum ScrollError {
     InvalidOffset,
     InvalidDimensions,
     InvalidDuration,
+    InvalidDragCoefficient,
     InvalidScrollbarStyle,
     InvalidItemExtent,
     InvalidCacheExtent,

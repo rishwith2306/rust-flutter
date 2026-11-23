@@ -83,6 +83,11 @@ dragging, includes the threshold-crossing displacement, and captures subsequent
 movement outside the viewport. Positive finger movement decreases normal offset;
 reverse flips the sign. End supplies the axis component of effective fling
 velocity to bounded fluid friction with drag 0.135. Cancel stops an active drag.
+Configure the bounded release simulation with
+`.drag_coefficient(value)?`; the accepted range is strictly `0 < value < 1`.
+A lower coefficient decelerates more quickly. This exposes the existing
+exponential model for app tuning, but it is not a complete Android/macOS
+platform physics policy.
 
 Uniform positive layer scale is sampled during paint and divides global deltas/
 velocity before applying content motion. Shared frames paint before dispatch;
