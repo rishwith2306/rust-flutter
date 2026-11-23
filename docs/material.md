@@ -18,6 +18,8 @@ theme.apply(&egui::Context::default());
 ```
 
 `ColorScheme::light()` and `ColorScheme::dark()` provide fixed starter palettes.
+`ColorScheme::lerp(&other, t)` interpolates every semantic role and switches
+brightness at the midpoint, including extrapolation outside `0..=1`.
 For app branding, `ColorScheme::from_seed` generates the full Material role set
 from an RGB seed using the Material Color Utilities 2026 specification. The
 options constructor supports tonal spot, fidelity, content, expressive, vibrant,

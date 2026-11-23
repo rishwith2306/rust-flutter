@@ -153,6 +153,70 @@ pub struct ColorScheme {
 }
 
 impl ColorScheme {
+    /// Linearly interpolate all semantic colors; brightness switches at the
+    /// midpoint. Values outside `0..=1` extrapolate the color channels.
+    pub fn lerp(&self, other: &Self, t: f32) -> Self {
+        macro_rules! colors {
+            ($($field:ident),+ $(,)?) => {
+                Self {
+                    brightness: if t < 0.5 { self.brightness } else { other.brightness },
+                    $( $field: self.$field.lerp_to_gamma(other.$field, t), )+
+                }
+            };
+        }
+        colors!(
+            primary,
+            on_primary,
+            primary_container,
+            on_primary_container,
+            primary_fixed,
+            primary_fixed_dim,
+            on_primary_fixed,
+            on_primary_fixed_variant,
+            secondary,
+            on_secondary,
+            secondary_container,
+            on_secondary_container,
+            secondary_fixed,
+            secondary_fixed_dim,
+            on_secondary_fixed,
+            on_secondary_fixed_variant,
+            tertiary,
+            on_tertiary,
+            tertiary_container,
+            on_tertiary_container,
+            tertiary_fixed,
+            tertiary_fixed_dim,
+            on_tertiary_fixed,
+            on_tertiary_fixed_variant,
+            error,
+            on_error,
+            error_container,
+            on_error_container,
+            surface,
+            on_surface,
+            surface_dim,
+            surface_bright,
+            surface_container_lowest,
+            surface_container_low,
+            surface_container,
+            surface_container_high,
+            surface_container_highest,
+            on_surface_variant,
+            outline,
+            outline_variant,
+            inverse_surface,
+            on_inverse_surface,
+            inverse_primary,
+            surface_tint,
+            shadow,
+            scrim,
+            background,
+            on_background,
+            surface_variant,
+        )
+    }
+
     /// Generate a Material 3 light or dark palette from a seed color.
     ///
     /// Uses the `tonalSpot` variant, zero contrast adjustment, and the Material
