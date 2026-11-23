@@ -1,7 +1,7 @@
 use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
-    element::{FlexItem, FlexStyle, Widget},
+    element::{FlexItem, FlexStyle, Semantics, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{Axis, BoxConstraints, CrossAxisAlignment, HitTestBehavior, Insets},
     text::{DefaultTextStyle, TextStyle},
@@ -24,6 +24,7 @@ pub struct ListTile {
     background_color: Option<crate::egui::Color32>,
     theme: ThemeData,
     on_tap: Option<Rc<dyn Fn()>>,
+    semantics_label: Option<String>,
 }
 
 impl ListTile {
@@ -46,6 +47,7 @@ impl ListTile {
             background_color: None,
             theme: ThemeData::default(),
             on_tap: None,
+            semantics_label: None,
         }
     }
 
@@ -101,6 +103,12 @@ impl ListTile {
 
     pub fn on_tap(mut self, callback: impl Fn() + 'static) -> Self {
         self.on_tap = Some(Rc::new(callback));
+        self
+    }
+
+    /// Sets the screen reader name when child content does not provide one.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -224,11 +232,24 @@ impl ListTile {
         });
         let tile = DecoratedBox::new(BoxDecoration::solid(background))
             .into_widget(Widget::constrained(height, row));
+        let role = if self.on_tap.is_some() {
+            crate::egui::accesskit::Role::Button
+        } else {
+            crate::egui::accesskit::Role::ListItem
+        };
+        let mut semantics = Semantics::new(role)
+            .enabled(self.enabled)
+            .selected(self.selected);
+        if let Some(label) = self.semantics_label {
+            semantics = semantics.label(label);
+        }
         if self.enabled
             && let Some(on_tap) = self.on_tap
         {
-            let callback = on_tap.clone();
-            return Ok(GestureDetector::new(
+            let semantic_callback = on_tap.clone();
+            semantics = semantics.on_click(move || semantic_callback());
+            let callback = on_tap;
+            let visual = GestureDetector::new(
                 &self.binding,
                 GestureTargetConfig {
                     tap: Some((
@@ -243,8 +264,9 @@ impl ListTile {
             )
             .map_err(|_| "Material list tile gesture binding is unavailable")?
             .behavior(HitTestBehavior::Opaque)
-            .into_widget(tile));
+            .into_widget(tile);
+            return Ok(semantics.into_widget(visual));
         }
-        Ok(tile)
+        Ok(semantics.into_widget(tile))
     }
 }

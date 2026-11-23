@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke},
-    element::Widget,
+    element::{Semantics, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{HitTestBehavior, Insets},
 };
@@ -24,6 +24,7 @@ pub struct Card {
     color: Option<Color32>,
     theme: ThemeData,
     tap: Option<(GestureBinding, Rc<dyn Fn()>)>,
+    semantics_label: Option<String>,
 }
 
 impl Card {
@@ -35,6 +36,7 @@ impl Card {
             color: None,
             theme: ThemeData::default(),
             tap: None,
+            semantics_label: None,
         }
     }
 
@@ -60,6 +62,12 @@ impl Card {
 
     pub fn on_tap(mut self, binding: &GestureBinding, callback: impl Fn() + 'static) -> Self {
         self.tap = Some((binding.clone(), Rc::new(callback)));
+        self
+    }
+
+    /// Sets the accessible name for a tappable card.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -93,8 +101,9 @@ impl Card {
         })
         .into_widget(self.child);
         let card = Widget::padding(self.margin, surface);
-        if let Some((binding, callback)) = self.tap {
-            Ok(GestureDetector::new(
+        let interactive = if let Some((binding, callback)) = self.tap {
+            let semantics_callback = callback.clone();
+            let visual = GestureDetector::new(
                 &binding,
                 GestureTargetConfig {
                     tap: Some((
@@ -109,9 +118,16 @@ impl Card {
             )
             .map_err(|_| "Material card gesture binding is unavailable")?
             .behavior(HitTestBehavior::Opaque)
-            .into_widget(card))
+            .into_widget(card);
+            let mut semantics = Semantics::new(egui::accesskit::Role::Button)
+                .on_click(move || semantics_callback());
+            if let Some(label) = self.semantics_label {
+                semantics = semantics.label(label);
+            }
+            semantics.into_widget(visual)
         } else {
-            Ok(card)
-        }
+            card
+        };
+        Ok(interactive)
     }
 }
