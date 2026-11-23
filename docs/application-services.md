@@ -103,8 +103,35 @@ fn build(&self, context: &BuildContext) -> Widget {
 }
 ```
 
-The framework does not yet bundle a native plugin catalog or provide a
-cross-platform method-channel transport.
+`MethodChannel` defines a shared asynchronous JSON request/reply contract for
+plugin crates. Register one `MethodChannelService` in the same registry and get
+it from `AppContext::method_channel()` or `Services::inherited(context)`. Each
+plugin still supplies its target-native transport; the framework does not yet
+bundle a native plugin catalog or Android/macOS channel implementations.
+
+```rust,ignore
+services.insert::<rust_flutter::services::MethodChannelService>(
+    std::sync::Arc::new(MyNativeMethodChannel::new()),
+);
+
+// From an Application hook:
+let channel = context
+    .method_channel()
+    .expect("register a target-specific method channel");
+channel.invoke_method(
+    "com.example.device",
+    "getInfo",
+    serde_json::Value::Null,
+    Box::new(|result| {
+        // The reply may run on a platform thread; forward it into UI state.
+        let _ = result;
+    }),
+);
+```
+
+Replies are `Send` and may arrive asynchronously. Keep UI updates on the
+framework's state/signal mechanisms rather than touching widget state directly
+from the native callback.
 
 On Android, `AppContext::android_app` supplies an optional cloneable
 `AndroidApp` handle during application initialization and state callbacks. Use

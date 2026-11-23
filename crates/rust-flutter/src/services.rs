@@ -1,5 +1,6 @@
 //! Typed service registry for app-defined platform implementations.
 //! Register real implementations per target; this module does not emulate OS APIs.
+use serde_json::Value;
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -10,6 +11,21 @@ use std::{
 pub struct Services {
     values: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
+
+/// Completion callback for an asynchronous platform method call.
+pub type MethodReply = Box<dyn FnOnce(Result<Value, String>) + Send + 'static>;
+
+/// A named, asynchronous method-call bridge implemented by an application or
+/// plugin crate for each target platform.
+pub trait MethodChannel: Send + Sync {
+    /// Invoke a method on `channel` with a JSON-compatible argument value.
+    /// Implementations may complete `reply` later and from another thread.
+    fn invoke_method(&self, channel: &str, method: &str, arguments: Value, reply: MethodReply);
+}
+
+/// Type-erased shared method-channel bridge stored in [`Services`].
+pub type MethodChannelService = Arc<dyn MethodChannel>;
+
 impl Services {
     /// Read the app's immutable service registry from a retained widget build
     /// context. The host installs this value at the root of `run_widget` trees.

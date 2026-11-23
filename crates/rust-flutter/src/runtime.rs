@@ -18,6 +18,13 @@ pub struct AppContext {
     pub android_app: Option<android_activity::AndroidApp>,
 }
 impl AppContext {
+    /// Return the app-defined asynchronous method-channel bridge, if installed.
+    pub fn method_channel(&self) -> Option<crate::services::MethodChannelService> {
+        self.services
+            .get::<crate::services::MethodChannelService>()
+            .cloned()
+    }
+
     /// Return a custom clipboard service or the host clipboard implementation.
     /// Host writes are queued through egui's platform output.
     pub fn clipboard(&self) -> crate::services::ClipboardService {
