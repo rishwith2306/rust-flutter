@@ -110,9 +110,10 @@ dash marks painted by the framework. It does not yet provide the complete
 Material interaction-state or accessibility semantics surface.
 
 `Switch` is also controlled: supply its value and update that value in the
-owner after the callback. The framework paints its track and moving thumb, but
-the thumb currently jumps between states without the animated slide Flutter
-provides:
+owner after the callback. The framework animates the thumb to the new value
+over 200 ms when the owner rebuilds, while the track and thumb colors update
+immediately. Flutter's controlled `Switch` also waits for the owner to rebuild
+with its new value after invoking `onChanged` ([Flutter Switch API](https://api.flutter.dev/flutter/material/Switch-class.html)):
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::Switch};
