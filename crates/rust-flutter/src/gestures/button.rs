@@ -20,6 +20,14 @@ pub enum GestureSemanticRole {
     RadioButton,
 }
 
+/// Semantic on/off/mixed state for accessibility toggle controls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GestureToggleState {
+    Off,
+    On,
+    Mixed,
+}
+
 /// An opt-in egui-painted button whose pointer action participates in the shared
 /// gesture arena. Ordinary egui buttons remain independent. Keyboard Enter/Space
 /// activation uses focus and does not compete with pointer gestures.
@@ -34,7 +42,9 @@ pub struct GestureButton {
     paint_content: Option<ButtonPaint>,
     enabled: bool,
     accessibility_role: Option<GestureSemanticRole>,
-    accessibility_toggled: Option<bool>,
+    accessibility_label: Option<String>,
+    accessibility_toggled: Option<GestureToggleState>,
+    accessibility_selected: Option<bool>,
     activate: Rc<dyn Fn()>,
 }
 impl GestureButton {
@@ -53,7 +63,9 @@ impl GestureButton {
             paint_content: None,
             enabled: true,
             accessibility_role: None,
+            accessibility_label: None,
             accessibility_toggled: None,
+            accessibility_selected: None,
             activate: Rc::new(activate),
         }
     }
@@ -88,9 +100,28 @@ impl GestureButton {
         self.accessibility_role = Some(role);
         self
     }
-    /// Sets the AccessKit toggled state for switch-like controls.
+    /// Supplies the accessible name for a custom painted control.
+    pub fn accessibility_label(mut self, label: impl Into<String>) -> Self {
+        self.accessibility_label = Some(label.into());
+        self
+    }
+    /// Sets the AccessKit toggled state for switch and checkbox controls.
     pub fn accessibility_toggled(mut self, toggled: bool) -> Self {
-        self.accessibility_toggled = Some(toggled);
+        self.accessibility_toggled = Some(if toggled {
+            GestureToggleState::On
+        } else {
+            GestureToggleState::Off
+        });
+        self
+    }
+    /// Sets an on, off, or mixed AccessKit state for toggle controls.
+    pub fn accessibility_toggle_state(mut self, state: GestureToggleState) -> Self {
+        self.accessibility_toggled = Some(state);
+        self
+    }
+    /// Sets the AccessKit selected state for radio-like controls.
+    pub fn accessibility_selected(mut self, selected: bool) -> Self {
+        self.accessibility_selected = Some(selected);
         self
     }
     pub fn into_widget(self) -> Widget {
@@ -373,8 +404,23 @@ impl RenderBox for GestureButtonRenderBox {
                         GestureSemanticRole::RadioButton => egui::accesskit::Role::RadioButton,
                     });
                 }
+                if let Some(label) = self
+                    .config
+                    .accessibility_label
+                    .as_deref()
+                    .filter(|label| !label.is_empty())
+                {
+                    node.set_label(label.to_owned());
+                }
                 if let Some(toggled) = self.config.accessibility_toggled {
-                    node.set_toggled(toggled.into());
+                    node.set_toggled(match toggled {
+                        GestureToggleState::Off => egui::accesskit::Toggled::False,
+                        GestureToggleState::On => egui::accesskit::Toggled::True,
+                        GestureToggleState::Mixed => egui::accesskit::Toggled::Mixed,
+                    });
+                }
+                if let Some(selected) = self.config.accessibility_selected {
+                    node.set_selected(selected);
                 }
                 if response.enabled() {
                     node.add_action(egui::accesskit::Action::Click);

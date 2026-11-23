@@ -3,7 +3,7 @@ use super::ThemeData;
 use crate::{
     egui::{self, Color32, Stroke, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
 };
 use std::rc::Rc;
 
@@ -15,6 +15,7 @@ pub struct Radio<T: Clone + PartialEq + 'static> {
     group_value: Option<T>,
     enabled: bool,
     on_changed: Rc<dyn Fn(T)>,
+    semantics_label: Option<String>,
 }
 
 impl<T: Clone + PartialEq + 'static> Radio<T> {
@@ -30,11 +31,18 @@ impl<T: Clone + PartialEq + 'static> Radio<T> {
             group_value,
             enabled: true,
             on_changed: Rc::new(on_changed),
+            semantics_label: None,
         }
     }
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// Sets an accessible name for screen readers on hosts with semantics support.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -78,6 +86,7 @@ impl<T: Clone + PartialEq + 'static> StatelessWidget for RadioView<T> {
         };
         let callback = radio.on_changed.clone();
         let value = radio.value.clone();
+        let semantics_label = radio.semantics_label.clone();
         GestureButton::new(&radio.binding, egui::RichText::new(""), move || {
             if !selected {
                 callback(value.clone());
@@ -88,6 +97,9 @@ impl<T: Clone + PartialEq + 'static> StatelessWidget for RadioView<T> {
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::NONE)
         .corner_radius(egui::CornerRadius::ZERO)
+        .accessibility_role(GestureSemanticRole::RadioButton)
+        .accessibility_selected(selected)
+        .accessibility_label(semantics_label.unwrap_or_default())
         .paint_content(paint)
         .into_widget()
     }

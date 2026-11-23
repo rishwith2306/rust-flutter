@@ -96,8 +96,9 @@ StateHandle updates, as elsewhere in the retained tree.
 The backend widget ID is tied to the retained element, so focus and desktop
 accessibility actions survive moving the same tree between parent Ui scopes.
 On desktop, the button exposes and consumes the egui/AccessKit Click action once
-per frame and can override the node role and toggled value for controls such as
-Material Switch. A headless action-request test verifies that bridge; actual macOS
+per frame and can override the node role, accessible label, toggle state
+(including mixed), and selected state for controls such as Material Switch,
+Checkbox, and Radio. A headless action-request test verifies that bridge; actual macOS
 VoiceOver interaction and the complete semantics pipeline remain unverified.
 The Android host still lacks TalkBack/semantics integration. This button does
 not make other backend controls or backend window dragging join its arena.

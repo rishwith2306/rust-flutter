@@ -107,13 +107,16 @@ let selected = Checkbox::new(&binding, Some(false), |next| {
 For tristate selection, pass an `Option<bool>` and call `.tristate(true)`; the
 callback receives the next controlled value. This first version uses check and
 dash marks painted by the framework. It does not yet provide the complete
-Material interaction-state or accessibility semantics surface.
+Material interaction-state surface. Desktop AccessKit nodes expose checkbox
+role and checked/mixed state when `.semantics_label(...)` is supplied; Android
+TalkBack integration remains unavailable.
 
 `Switch` is also controlled: supply its value and update that value in the
 owner after the callback. The framework animates the thumb to the new value
 over 200 ms when the owner rebuilds, while the track and thumb colors update
-immediately. On desktop the control exposes the AccessKit switch role and its
-toggled state; Android TalkBack semantics are not integrated yet. Flutter's controlled `Switch` also waits for the owner to rebuild
+immediately. On desktop the control exposes the AccessKit switch role, an
+optional accessible name, and its toggled state; Android TalkBack semantics are
+not integrated yet. Flutter's controlled `Switch` also waits for the owner to rebuild
 with its new value after invoking `onChanged` ([Flutter Switch API](https://api.flutter.dev/flutter/material/Switch-class.html)):
 
 ```rust
@@ -128,7 +131,9 @@ let notifications = Switch::new(&binding, true, |next| {
 ```
 
 `Radio<T>` draws one option from an owner-managed selection group. Give every
-option the same current `group_value` and handle callbacks in the owning state:
+option the same current `group_value` and handle callbacks in the owning state.
+On desktop it exposes the radio role and selection state, with an optional
+accessible label; Android TalkBack integration remains unavailable:
 
 ```rust
 use rust_flutter::{gestures::GestureBinding, material::Radio};

@@ -3,7 +3,7 @@ use super::ThemeData;
 use crate::{
     egui::{self, Color32, Stroke, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole, GestureToggleState},
 };
 use std::rc::Rc;
 
@@ -17,6 +17,7 @@ pub struct Checkbox {
     tristate: bool,
     enabled: bool,
     on_changed: Rc<dyn Fn(Option<bool>)>,
+    semantics_label: Option<String>,
 }
 
 impl Checkbox {
@@ -31,6 +32,7 @@ impl Checkbox {
             tristate: false,
             enabled: true,
             on_changed: Rc::new(on_changed),
+            semantics_label: None,
         }
     }
 
@@ -41,6 +43,12 @@ impl Checkbox {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// Sets an accessible name for screen readers on hosts with semantics support.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -81,6 +89,7 @@ impl StatelessWidget for CheckboxView {
         let value = checkbox.value;
         let tristate = checkbox.tristate;
         let paint_value = checkbox.value;
+        let semantics_label = checkbox.semantics_label.clone();
         let paint = move |painter: &egui::Painter, bounds: egui::Rect| {
             let box_rect = egui::Rect::from_center_size(bounds.center(), Vec2::splat(18.0));
             let radius = egui::CornerRadius::same(4);
@@ -120,6 +129,11 @@ impl StatelessWidget for CheckboxView {
                 Some(false) => {}
             }
         };
+        let toggle_state = match value {
+            Some(false) => GestureToggleState::Off,
+            Some(true) => GestureToggleState::On,
+            None => GestureToggleState::Mixed,
+        };
         GestureButton::new(&checkbox.binding, egui::RichText::new(""), move || {
             changed(checkbox_next(value, tristate));
         })
@@ -128,6 +142,9 @@ impl StatelessWidget for CheckboxView {
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::NONE)
         .corner_radius(egui::CornerRadius::ZERO)
+        .accessibility_role(GestureSemanticRole::CheckBox)
+        .accessibility_toggle_state(toggle_state)
+        .accessibility_label(semantics_label.unwrap_or_default())
         .paint_content(paint)
         .into_widget()
     }
