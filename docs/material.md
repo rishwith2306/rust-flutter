@@ -394,6 +394,7 @@ let progress = LinearProgressIndicator::new(Some(0.65))
     .border_radius(3.0)
     .track_gap(4.0)
     .stop_indicator_radius(3.0)
+    .semantics_label("Download progress")
     .into_widget()?;
 let loading = LinearProgressIndicator::new(None).into_widget()?;
 let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
@@ -404,7 +405,7 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 The linear indicator supports configurable corner radius, track gap, and an
 optional completion marker. Its indeterminate mode still sweeps one segment
 across the track. Flutter's [LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html)
-also includes animation controllers, semantics, coordinated Material progress
+also includes animation controllers, coordinated Material progress
 indicator themes and versioned appearances; those options remain unfinished.
 
 `CircularProgressIndicator` provides the matching circular form with a
@@ -419,6 +420,7 @@ let progress = CircularProgressIndicator::new(Some(0.65))
     .stroke_width(5.0)
     .stroke_align(-1.0)
     .stroke_cap(rust_flutter::material::StrokeCap::Round)
+    .semantics_label("Loading")
     .into_widget()?;
 let loading = CircularProgressIndicator::new(None).into_widget()?;
 let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
@@ -426,10 +428,13 @@ let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Both modes share the checked value range and theme colors. Stroke alignment
+Both modes expose a progress-bar role, optional label/value, and a percentage
+value for determinate progress through the desktop AccessKit path. Android
+TalkBack integration remains unavailable. Both modes share the checked value
+range and theme colors. Stroke alignment
 supports the range from inside (-1) to outside (1), and caps can be butt, round,
-or square. Semantics labels and values, versioned Material appearance and a
-controller for synchronizing multiple indicators remain unfinished. See Flutter's
+or square. Versioned Material appearance and a controller for synchronizing
+multiple indicators remain unfinished. See Flutter's
 [CircularProgressIndicator API](https://api.flutter.dev/flutter/material/CircularProgressIndicator-class.html).
 
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,

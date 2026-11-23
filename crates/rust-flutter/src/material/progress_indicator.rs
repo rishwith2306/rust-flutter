@@ -5,6 +5,65 @@ use crate::{
 };
 use std::time::Duration;
 
+#[cfg(not(target_os = "android"))]
+fn expose_progress_semantics(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    value: Option<f32>,
+    label: &Option<String>,
+    semantic_value: &Option<String>,
+) {
+    if crate::layout::ui_is_offstage(ui) {
+        return;
+    }
+    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+        node.set_role(egui::accesskit::Role::ProgressIndicator);
+        node.set_bounds(egui::accesskit::Rect {
+            x0: f64::from(rect.left()),
+            y0: f64::from(rect.top()),
+            x1: f64::from(rect.right()),
+            y1: f64::from(rect.bottom()),
+        });
+        if let Some(label) = label {
+            node.set_label(label.clone());
+        } else {
+            node.clear_label();
+        }
+        match value {
+            Some(value) => {
+                node.set_value(
+                    semantic_value
+                        .clone()
+                        .unwrap_or_else(|| format!("{:.0}%", value * 100.0)),
+                );
+                node.set_numeric_value(f64::from(value * 100.0));
+                node.set_min_numeric_value(0.0);
+                node.set_max_numeric_value(100.0);
+            }
+            None => {
+                if let Some(value) = semantic_value {
+                    node.set_value(value.clone());
+                } else {
+                    node.clear_value();
+                }
+                node.clear_numeric_value();
+                node.clear_min_numeric_value();
+                node.clear_max_numeric_value();
+            }
+        }
+    });
+}
+
+#[cfg(target_os = "android")]
+fn expose_progress_semantics(
+    _ui: &egui::Ui,
+    _rect: egui::Rect,
+    _value: Option<f32>,
+    _label: &Option<String>,
+    _semantic_value: &Option<String>,
+) {
+}
+
 /// Themed Material circular progress indicator with determinate or indeterminate progress.
 pub struct CircularProgressIndicator {
     value: Option<f32>,
@@ -14,6 +73,8 @@ pub struct CircularProgressIndicator {
     stroke_align: Option<f32>,
     stroke_cap: Option<StrokeCap>,
     size: f32,
+    semantics_label: Option<String>,
+    semantics_value: Option<String>,
 }
 
 impl CircularProgressIndicator {
@@ -26,6 +87,8 @@ impl CircularProgressIndicator {
             stroke_align: None,
             stroke_cap: None,
             size: 40.0,
+            semantics_label: None,
+            semantics_value: None,
         }
     }
 
@@ -61,6 +124,18 @@ impl CircularProgressIndicator {
         self
     }
 
+    /// Sets the screen reader label where the host exposes AccessKit semantics.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
+        self
+    }
+
+    /// Overrides the announced value; determinate progress defaults to a percentage.
+    pub fn semantics_value(mut self, value: impl Into<String>) -> Self {
+        self.semantics_value = Some(value.into());
+        self
+    }
+
     pub fn into_widget(self) -> Result<Widget, &'static str> {
         if self
             .stroke_width
@@ -90,6 +165,8 @@ impl StatelessWidget for CircularProgressView {
         let progress_theme = theme.progress_indicator_theme;
         let indicator = &self.0;
         let value = indicator.value;
+        let semantics_label = indicator.semantics_label.clone();
+        let semantics_value = indicator.semantics_value.clone();
         let size = indicator.size;
         let stroke_width = indicator
             .stroke_width
@@ -120,6 +197,7 @@ impl StatelessWidget for CircularProgressView {
             move |constraints| constraints.constrain(Vec2::splat(size)),
             move |ui| {
                 let rect = ui.max_rect();
+                expose_progress_semantics(ui, rect, value, &semantics_label, &semantics_value);
                 let center = rect.center();
                 let radius =
                     rect.width().min(rect.height()) * 0.5 + stroke_width * stroke_align * 0.5;
@@ -188,6 +266,8 @@ pub struct LinearProgressIndicator {
     track_gap: Option<f32>,
     stop_indicator_radius: Option<f32>,
     stop_indicator_color: Option<Color32>,
+    semantics_label: Option<String>,
+    semantics_value: Option<String>,
 }
 
 impl LinearProgressIndicator {
@@ -201,6 +281,8 @@ impl LinearProgressIndicator {
             track_gap: None,
             stop_indicator_radius: None,
             stop_indicator_color: None,
+            semantics_label: None,
+            semantics_value: None,
         }
     }
 
@@ -243,6 +325,18 @@ impl LinearProgressIndicator {
         self
     }
 
+    /// Sets the screen reader label where the host exposes AccessKit semantics.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
+        self
+    }
+
+    /// Overrides the announced value; determinate progress defaults to a percentage.
+    pub fn semantics_value(mut self, value: impl Into<String>) -> Self {
+        self.semantics_value = Some(value.into());
+        self
+    }
+
     pub fn into_widget(self) -> Result<Widget, &'static str> {
         if self
             .min_height
@@ -276,6 +370,8 @@ impl StatelessWidget for LinearProgressView {
         let progress_theme = theme.progress_indicator_theme;
         let indicator = &self.0;
         let value = indicator.value;
+        let semantics_label = indicator.semantics_label.clone();
+        let semantics_value = indicator.semantics_value.clone();
         let height = indicator
             .min_height
             .or(progress_theme
@@ -317,6 +413,7 @@ impl StatelessWidget for LinearProgressView {
             },
             move |ui| {
                 let rect = ui.max_rect();
+                expose_progress_semantics(ui, rect, value, &semantics_label, &semantics_value);
                 let radius = egui::CornerRadius::same(
                     border_radius
                         .unwrap_or(height * 0.5)
