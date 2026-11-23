@@ -423,6 +423,9 @@ impl RenderBox for GestureButtonRenderBox {
                 if let Some(selected) = self.config.accessibility_selected {
                     node.set_selected(selected);
                 }
+                if self.config.accessibility_role.is_some() && !response.enabled() {
+                    node.set_disabled();
+                }
                 if response.enabled() {
                     node.add_action(egui::accesskit::Action::Click);
                 }
