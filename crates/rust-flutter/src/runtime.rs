@@ -91,6 +91,32 @@ impl<A: Application> Runtime<A> {
     pub fn app_mut(&mut self) -> &mut A {
         &mut self.app
     }
+    /// Deliver Android saved-instance bytes before the first restored frame.
+    pub fn restore_state(&mut self, ctx: &egui::Context, state: &[u8]) {
+        if self.stopped {
+            return;
+        }
+        self.initialize(ctx);
+        self.app.restore_state(
+            &AppContext {
+                egui: ctx.clone(),
+                data_dir: self.data_dir.clone(),
+            },
+            state,
+        );
+    }
+
+    /// Ask the application for a best-effort saved-instance snapshot.
+    pub fn save_state(&mut self, ctx: &egui::Context) -> Option<Vec<u8>> {
+        if self.stopped {
+            return None;
+        }
+        self.initialize(ctx);
+        self.app.save_state(&AppContext {
+            egui: ctx.clone(),
+            data_dir: self.data_dir.clone(),
+        })
+    }
     /// Run inside `egui::Context::run`. Once shut down, no further frames are built.
     pub fn frame(&mut self, ctx: &egui::Context) {
         if self.stopped {

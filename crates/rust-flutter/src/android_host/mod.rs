@@ -161,11 +161,14 @@ impl<A: Application> Host<A> {
     fn main_event(&mut self, event: MainEvent<'_>) -> Result<(), Error> {
         match event {
             MainEvent::Start => self.lifecycle(LifecycleEvent::Started),
-            MainEvent::Resume { .. } => {
+            MainEvent::Resume { loader, .. } => {
                 self.resumed = true;
                 #[cfg(debug_assertions)]
                 {
                     self.presented_geometry = None;
+                }
+                if let Some(state) = loader.load() {
+                    self.runtime.restore_state(&self.ctx, &state);
                 }
                 self.lifecycle(LifecycleEvent::Resumed);
                 self.trace("resumed");
@@ -249,7 +252,12 @@ impl<A: Application> Host<A> {
                 self.draw()?;
             }
             MainEvent::LowMemory => self.lifecycle(LifecycleEvent::LowMemory),
-            MainEvent::SaveState { .. } => self.lifecycle(LifecycleEvent::SaveStateRequested),
+            MainEvent::SaveState { saver, .. } => {
+                self.lifecycle(LifecycleEvent::SaveStateRequested);
+                if let Some(state) = self.runtime.save_state(&self.ctx) {
+                    saver.store(&state);
+                }
+            }
             _ => {}
         }
         Ok(())

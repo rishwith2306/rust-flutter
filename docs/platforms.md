@@ -102,9 +102,11 @@ every new surface to accept touch. See [verification](verification.md) for the
 instrumentable test-only packaging qualification and ordinary APK smoke test.
 
 The native host emits `AppEvent::Lifecycle` for activity, surface, memory,
-configuration and save-state notifications. Applications should persist durable
-state on pause/save-state; native saved-instance byte serialization is pending.
-Mobile IME composition, clipboard and URL output commands, native child viewports
+configuration and save-state notifications. `Application::save_state` can return
+a compact byte snapshot during Android's save-state callback; the matching
+`restore_state` hook receives it on activity resume. Android controls when these
+callbacks occur, so this is best-effort instance restoration, not durable storage.
+Mobile IME composition, clipboard, URL output commands, native child viewports
 and accessibility semantics are not implemented by this host yet. Winit-specific
 window/event-loop hooks and unsupported depth/stencil/multisampling options return
 an explicit error. These limits remain part of the feature backlog.

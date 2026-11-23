@@ -67,6 +67,14 @@ pub trait Application: 'static {
     fn build(&mut self, ui: &mut egui::Ui);
     /// Called once before the first frame to load state or install resources.
     fn initialize(&mut self, _context: &AppContext) {}
+    /// Restore bytes supplied by Android when recreating a NativeActivity.
+    /// The app owns the format and should validate the snapshot before use.
+    fn restore_state(&mut self, _context: &AppContext, _state: &[u8]) {}
+    /// Return a compact snapshot for Android's saved-instance-state bundle.
+    /// This is best-effort; durable application data belongs in persistent storage.
+    fn save_state(&mut self, _context: &AppContext) -> Option<Vec<u8>> {
+        None
+    }
     fn on_event(&mut self, _ctx: &egui::Context, _event: AppEvent) -> EventResponse {
         EventResponse::Continue
     }
