@@ -220,13 +220,15 @@ state. The slider supports continuous or discrete ranges, drag callbacks, and
 theme-based Cupertino track colors while reusing the shared gesture engine.
 The activity indicator draws a rotating radial tick pattern and supports a
 static partially revealed progress value. `CupertinoSwitch` exposes its switch
-role, optional label, disabled state, and on/off state. Switch thumb animation, slider value
-indicators and semantics, persistent tile activation while asynchronous tap work
-runs, semantics for the remaining controls, and the broader Cupertino component
-catalog remain to be implemented. Sliding segmented options expose labeled
-radio roles, selected/disabled state, and screen-reader click actions; this is
-still awaiting TalkBack and VoiceOver device validation. Tiles provide a pressed background and allow a custom
-activated color through `background_color_activated`.
+role, optional label, disabled state, and on/off state. Switch thumb animation,
+slider value indicators and semantics, persistent tile activation while
+asynchronous tap work runs, semantics for remaining controls, and the broader
+Cupertino component catalog remain to be implemented. `CupertinoListTile` exposes
+list-item/button roles, enabled state and an optional name. Sliding segmented
+options expose labeled radio roles, selected/disabled state, and screen-reader
+click actions; this is still awaiting TalkBack and VoiceOver device validation.
+Tiles provide a pressed background and allow a custom activated color through
+`background_color_activated`.
 
 `CupertinoAlertDialog` builds a rounded panel with optional explanatory content
 and vertically separated actions. `CupertinoDialogAction` supports default

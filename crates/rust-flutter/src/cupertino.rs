@@ -8,7 +8,7 @@ use crate::{
     egui::{self, Color32, Stroke, Vec2},
     element::{
         BuildContext, DependencyError, FlexItem, FlexStyle, RenderBox, RenderContext,
-        RenderObjectWidget, SafeAreaOptions, StatelessWidget, Widget,
+        RenderObjectWidget, SafeAreaOptions, Semantics, StatelessWidget, Widget,
     },
     forms::{TextEditingController, TextFormField},
     gestures::{
@@ -398,6 +398,7 @@ pub struct CupertinoListTile {
     leading: Option<Widget>,
     trailing: Option<Widget>,
     on_tap: Option<Rc<dyn Fn()>>,
+    semantics_label: Option<String>,
     enabled: bool,
     background_color: Color32,
     background_color_activated: Option<Color32>,
@@ -416,6 +417,7 @@ impl CupertinoListTile {
             leading: None,
             trailing: None,
             on_tap: None,
+            semantics_label: None,
             enabled: true,
             background_color: CupertinoThemeData::default().scaffold_background_color,
             background_color_activated: None,
@@ -457,6 +459,12 @@ impl CupertinoListTile {
 
     pub fn on_tap(mut self, callback: impl Fn() + 'static) -> Self {
         self.on_tap = Some(Rc::new(callback));
+        self
+    }
+
+    /// Sets the screen reader name when the tile's child content is not enough.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
 
@@ -560,9 +568,20 @@ impl CupertinoListTile {
                 tile,
             );
         }
+        let role = if self.on_tap.is_some() {
+            egui::accesskit::Role::Button
+        } else {
+            egui::accesskit::Role::ListItem
+        };
+        let mut semantics = Semantics::new(role).enabled(self.enabled);
+        if let Some(label) = self.semantics_label {
+            semantics = semantics.label(label);
+        }
         if self.enabled
-            && let Some(callback) = self.on_tap
+            && let Some(callback) = self.on_tap.clone()
         {
+            let semantic_callback = callback.clone();
+            semantics = semantics.on_click(move || semantic_callback());
             let config = GestureTargetConfig {
                 tap: Some((
                     TapConfig::default(),
@@ -591,7 +610,7 @@ impl CupertinoListTile {
                 .behavior(HitTestBehavior::Opaque)
                 .into_widget(tile);
         }
-        Ok(tile)
+        Ok(semantics.into_widget(tile))
     }
 }
 
