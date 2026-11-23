@@ -24,6 +24,10 @@ let accessible_play = Semantics::new(egui::accesskit::Role::Button)
 The wrapper can also set a value, enabled state, selected state, and toggle state.
 Retained `Text` and `Paragraph` widgets expose their combined span text as a
 screen-reader label, including rich paragraphs with multiple styled spans.
+`Semantics::hidden(true)` removes a node and its descendants from accessibility
+and hit testing. `live_region(Live::Polite)` and
+`live_region(Live::Assertive)` mark announcement regions, and
+`heading_level(level)` attaches a level to a `Role::Heading` node.
 Material and Cupertino buttons expose their button role and names; navigation
 tabs expose selected state. Tappable Material cards, list tiles, and floating
 action buttons expose action roles and states. Material `IconButton` and
@@ -54,8 +58,9 @@ the disabled state.
 ## Current scope
 
 The retained wrapper supports one child, role, label, value, enabled, selected,
-toggled, and click action. Retained text currently exposes a label and bounds;
-per-run text ranges, selection, and text-navigation actions remain unfinished.
+toggled, hidden state, heading level, live region, and click action. Retained
+text currently exposes a label and bounds; per-run text ranges, selection, and
+text-navigation actions remain unfinished.
 Full Flutter semantics support remains incomplete:
 merging and excluding descendants, traversal ordering, focus actions, custom
 action catalogs, and some control-specific metadata are not implemented.

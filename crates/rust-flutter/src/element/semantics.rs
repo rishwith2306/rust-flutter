@@ -18,6 +18,9 @@ pub struct Semantics {
     enabled: bool,
     selected: Option<bool>,
     toggled: Option<accesskit::Toggled>,
+    hidden: bool,
+    live_region: Option<accesskit::Live>,
+    heading_level: Option<usize>,
     on_click: Option<Rc<dyn Fn()>>,
 }
 
@@ -30,6 +33,9 @@ impl Semantics {
             enabled: true,
             selected: None,
             toggled: None,
+            hidden: false,
+            live_region: None,
+            heading_level: None,
             on_click: None,
         }
     }
@@ -56,6 +62,24 @@ impl Semantics {
 
     pub fn toggled(mut self, toggled: accesskit::Toggled) -> Self {
         self.toggled = Some(toggled);
+        self
+    }
+
+    /// Exclude this node and its descendants from accessibility and hit testing.
+    pub fn hidden(mut self, hidden: bool) -> Self {
+        self.hidden = hidden;
+        self
+    }
+
+    /// Mark this node as a polite or assertive live announcement region.
+    pub fn live_region(mut self, live: accesskit::Live) -> Self {
+        self.live_region = Some(live);
+        self
+    }
+
+    /// Set the heading level when the role is `Role::Heading`.
+    pub fn heading_level(mut self, level: usize) -> Self {
+        self.heading_level = Some(level);
         self
     }
 
@@ -173,6 +197,17 @@ impl RenderBox for SemanticsRenderBox {
             }
             if let Some(toggled) = self.config.toggled {
                 node.set_toggled(toggled);
+            }
+            if self.config.hidden {
+                node.set_hidden();
+            } else {
+                node.clear_hidden();
+            }
+            if let Some(live_region) = self.config.live_region {
+                node.set_live(live_region);
+            }
+            if let Some(heading_level) = self.config.heading_level {
+                node.set_level(heading_level);
             }
             if self.config.enabled && self.config.on_click.is_some() {
                 node.add_action(accesskit::Action::Click);
