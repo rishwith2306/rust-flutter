@@ -27,6 +27,8 @@ tabs expose selected state. Tappable Material cards, list tiles, and floating
 action buttons expose action roles and states. Material `IconButton` and
 `FloatingActionButton` accept optional
 `semantics_label` values for icon-only actions.
+Cupertino sliding segmented controls expose each option as a labeled radio
+with selected and disabled state.
 
 ```rust,ignore
 let save = IconButton::new(&binding, save_icon, save_document)

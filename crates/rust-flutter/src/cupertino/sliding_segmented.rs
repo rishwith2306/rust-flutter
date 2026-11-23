@@ -179,6 +179,12 @@ impl<T: Clone + PartialEq + 'static> StatelessWidget for SlidingControlView<T> {
             .iter()
             .map(|item| item.enabled)
             .collect::<Vec<_>>();
+        let semantic_values: Vec<_> = control
+            .segments
+            .iter()
+            .map(|segment| segment.value.clone())
+            .collect();
+        let semantic_on_changed = control.on_changed.clone();
         let selected_index = control
             .segments
             .iter()
@@ -209,6 +215,13 @@ impl<T: Clone + PartialEq + 'static> StatelessWidget for SlidingControlView<T> {
                 theme.scaffold_background_color,
             );
             for (index, label) in labels.iter().enumerate() {
+                let segment_rect = Rect::from_min_max(
+                    egui::pos2(rect.left() + index as f32 * segment_width, rect.top()),
+                    egui::pos2(
+                        rect.left() + (index + 1) as f32 * segment_width,
+                        rect.bottom(),
+                    ),
+                );
                 let center = egui::pos2(
                     rect.left() + (index as f32 + 0.5) * segment_width,
                     rect.center().y,
@@ -227,6 +240,34 @@ impl<T: Clone + PartialEq + 'static> StatelessWidget for SlidingControlView<T> {
                     FontId::proportional(13.0),
                     color,
                 );
+                let id = ui.id().with(("cupertino-sliding-segment", index));
+                let response = ui.interact(segment_rect, id, egui::Sense::hover());
+                ui.ctx().accesskit_node_builder(response.id, |node| {
+                    node.set_role(egui::accesskit::Role::RadioButton);
+                    node.set_label(label.clone());
+                    node.set_selected(index == selected_index);
+                    if !enabled[index] {
+                        node.set_disabled();
+                    } else {
+                        node.add_action(egui::accesskit::Action::Click);
+                    }
+                });
+                if enabled[index] {
+                    let mut activate = false;
+                    ui.input_mut(|input| {
+                        input.consume_accesskit_action_requests(response.id, |request| {
+                            if request.action == egui::accesskit::Action::Click {
+                                activate = true;
+                                true
+                            } else {
+                                false
+                            }
+                        });
+                    });
+                    if activate && index != selected_index {
+                        semantic_on_changed(semantic_values[index].clone());
+                    }
+                }
             }
         });
         GestureDetector::new(&control.binding, gestures)
