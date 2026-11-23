@@ -378,4 +378,14 @@ impl Widget {
     pub fn stateless<W: StatelessWidget>(widget: W) -> Self {
         Self::new(Kind::Component(Box::new(Stateless(widget))), vec![])
     }
+
+    /// Rebuild a retained subtree with the latest thread-safe signal value.
+    /// The subscription is removed automatically when this widget unmounts or
+    /// when its signal source is replaced.
+    pub fn signal_builder<T: Clone + Send + 'static>(
+        signal: crate::state::Signal<T>,
+        builder: impl Fn(&BuildContext, T) -> Widget + 'static,
+    ) -> Self {
+        Self::stateful(super::signal_builder::SignalBuilder { signal, builder })
+    }
 }

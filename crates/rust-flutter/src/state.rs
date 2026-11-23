@@ -1,17 +1,46 @@
 //! Thread-safe shared state that wakes the UI after mutations.
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
+
+type SignalListener = Arc<dyn Fn() + Send + Sync>;
+struct SignalObserver {
+    id: u64,
+    listener: SignalListener,
+}
 
 pub struct Signal<T> {
     inner: Arc<Mutex<T>>,
+    observers: Arc<Mutex<Vec<SignalObserver>>>,
     context: egui::Context,
 }
+static NEXT_SIGNAL_OBSERVER: AtomicU64 = AtomicU64::new(1);
+
+/// Owned cross-thread signal listener registration. Dropping it unregisters
+/// that exact callback.
+pub struct SignalSubscription {
+    observers: Arc<Mutex<Vec<SignalObserver>>>,
+    id: u64,
+}
+impl Drop for SignalSubscription {
+    fn drop(&mut self) {
+        let removed = {
+            let mut observers = self.observers.lock().unwrap();
+            observers
+                .iter()
+                .position(|observer| observer.id == self.id)
+                .map(|index| observers.remove(index))
+        };
+        drop(removed);
+    }
+}
+
 impl<T> Clone for Signal<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            observers: self.observers.clone(),
             context: self.context.clone(),
         }
     }
@@ -20,6 +49,7 @@ impl<T> Signal<T> {
     pub fn new(value: T, context: &egui::Context) -> Self {
         Self {
             inner: Arc::new(Mutex::new(value)),
+            observers: Arc::new(Mutex::new(Vec::new())),
             context: context.clone(),
         }
     }
@@ -30,10 +60,55 @@ impl<T> Signal<T> {
     pub fn update<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
         let result = f(&mut self.inner.lock().expect("signal lock poisoned"));
         self.context.request_repaint();
+        let listeners = self
+            .observers
+            .lock()
+            .expect("signal observers poisoned")
+            .iter()
+            .map(|observer| observer.listener.clone())
+            .collect::<Vec<_>>();
+        for listener in listeners {
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| listener()));
+        }
         result
     }
     pub fn set(&self, value: T) {
         self.update(|slot| *slot = value);
+    }
+
+    pub fn same_source(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
+    /// Listen for value mutations from any thread. Callbacks execute after the
+    /// value lock has been released, so they may safely schedule UI rebuilds.
+    pub fn subscribe(&self, listener: impl Fn() + Send + Sync + 'static) -> SignalSubscription {
+        let mut id = NEXT_SIGNAL_OBSERVER.load(Ordering::Relaxed);
+        loop {
+            let next = id
+                .checked_add(1)
+                .expect("signal observer ID space exhausted");
+            match NEXT_SIGNAL_OBSERVER.compare_exchange_weak(
+                id,
+                next,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(actual) => id = actual,
+            }
+        }
+        self.observers
+            .lock()
+            .expect("signal observers poisoned")
+            .push(SignalObserver {
+                id,
+                listener: Arc::new(listener),
+            });
+        SignalSubscription {
+            observers: self.observers.clone(),
+            id,
+        }
     }
 }
 impl<T: Clone> Signal<T> {
@@ -91,11 +166,20 @@ pub enum StreamStatus {
 
 /// Latest stream snapshot. Values are shared so cloning a snapshot does not
 /// require `T` or `E` to implement `Clone`.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct StreamState<T, E> {
     pub status: StreamStatus,
     pub data: Option<Arc<T>>,
     pub error: Option<Arc<E>>,
+}
+impl<T, E> Clone for StreamState<T, E> {
+    fn clone(&self) -> Self {
+        Self {
+            status: self.status,
+            data: self.data.clone(),
+            error: self.error.clone(),
+        }
+    }
 }
 
 /// Handle to a background producer and its repainting snapshot signal.
@@ -112,6 +196,20 @@ impl<T, E> TaskStream<T, E> {
     /// Requests cooperative cancellation. The producer must check its sink.
     pub fn cancel(&self) {
         self.cancellation.0.store(true, Ordering::Release);
+    }
+
+    /// Build a retained subtree from the latest stream snapshot and rebuild it
+    /// whenever the worker publishes an update.
+    pub fn builder(
+        &self,
+        builder: impl Fn(&crate::element::BuildContext, StreamState<T, E>) -> crate::element::Widget
+        + 'static,
+    ) -> crate::element::Widget
+    where
+        T: Send + Sync + 'static,
+        E: Send + Sync + 'static,
+    {
+        crate::element::Widget::signal_builder(self.state.clone(), builder)
     }
 }
 

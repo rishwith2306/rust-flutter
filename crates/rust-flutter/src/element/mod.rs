@@ -13,6 +13,7 @@ pub use layout_builder::LayoutBuilder;
 mod notifier_builder;
 mod offstage;
 mod retained_child;
+mod signal_builder;
 pub use offstage::Offstage;
 pub(crate) use retained_child::{RetainedBuilder, retained_child};
 mod render_object;
