@@ -60,8 +60,9 @@ history, deep links, transition overlays or restoration.
 mutation. It is coarse-grained: there is no dependency graph or automatic subtree
 rebuild optimization. `spawn_task` publishes results and panics through a signal;
 `spawn_cancellable_task` adds cooperative cancellation through a token and
-publishes a cancelled state. An application can integrate Tokio or another
-executor independently.
+publishes a cancelled state. `spawn_stream` publishes latest data/error snapshots
+and a terminal status to a repainting signal. These APIs use standard Rust worker
+threads; an application can integrate Tokio or another executor independently.
 
 `rust-flutter-assets` compiles a manifest into embedded bytes without a UI build
 dependency. `AssetBundle` supports substitution, while `AssetImages` selects

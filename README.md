@@ -154,7 +154,10 @@ I/O outside `build`; `state::spawn_task` runs work on a background thread and
 requests a frame when results are available. `spawn_cancellable_task` passes a
 `CancellationToken` to cooperative work and exposes `TaskState::Cancelled` when
 cancellation is requested. `Signal` read/update closures must not recursively
-access the same signal. Ordinary tasks are not automatically cancelled.
+access the same signal. For repeated updates, `state::spawn_stream` publishes a
+latest data/error snapshot and lifecycle state through a repainting signal. Keep
+its handle in app state; its limitations are described in
+[background tasks and streams](docs/asynchronous-work.md).
 
 ## Android
 

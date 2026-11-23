@@ -79,6 +79,80 @@ impl<T, E> CancellableTask<T, E> {
     }
 }
 
+/// Lifecycle of a background value stream.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StreamStatus {
+    Pending,
+    Active,
+    Done,
+    Panicked,
+    Cancelled,
+}
+
+/// Latest stream snapshot. Values are shared so cloning a snapshot does not
+/// require `T` or `E` to implement `Clone`.
+#[derive(Clone, Debug)]
+pub struct StreamState<T, E> {
+    pub status: StreamStatus,
+    pub data: Option<Arc<T>>,
+    pub error: Option<Arc<E>>,
+}
+
+/// Handle to a background producer and its repainting snapshot signal.
+pub struct TaskStream<T, E> {
+    state: Signal<StreamState<T, E>>,
+    cancellation: CancellationToken,
+}
+
+impl<T, E> TaskStream<T, E> {
+    pub fn state(&self) -> &Signal<StreamState<T, E>> {
+        &self.state
+    }
+
+    /// Requests cooperative cancellation. The producer must check its sink.
+    pub fn cancel(&self) {
+        self.cancellation.0.store(true, Ordering::Release);
+    }
+}
+
+/// Producer side of a background stream. Each update wakes the UI for another
+/// frame; the snapshot retains the latest data when the producer completes.
+pub struct StreamSink<T, E> {
+    state: Signal<StreamState<T, E>>,
+    cancellation: CancellationToken,
+}
+
+impl<T, E> StreamSink<T, E> {
+    /// Publishes a value and clears the previous error. Returns false if cancelled.
+    pub fn emit(&self, value: T) -> bool {
+        if self.cancellation.is_cancelled() {
+            return false;
+        }
+        self.state.update(|state| {
+            state.status = StreamStatus::Active;
+            state.data = Some(Arc::new(value));
+            state.error = None;
+        });
+        true
+    }
+
+    /// Publishes a recoverable error while retaining the latest data.
+    pub fn report_error(&self, error: E) -> bool {
+        if self.cancellation.is_cancelled() {
+            return false;
+        }
+        self.state.update(|state| {
+            state.status = StreamStatus::Active;
+            state.error = Some(Arc::new(error));
+        });
+        true
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.cancellation.is_cancelled()
+    }
+}
+
 /// Spawn blocking I/O or computation without blocking the UI. Panics become `Panicked`.
 /// Dropping the returned signal does not cancel the worker.
 pub fn spawn_task<T, E>(
@@ -128,6 +202,56 @@ where
         });
     });
     CancellableTask {
+        state,
+        cancellation,
+    }
+}
+
+/// Runs a synchronous producer on a background thread and publishes its latest
+/// data/error snapshot through a repainting signal. Check `sink.is_cancelled()`
+/// periodically during long-running work. Panics and completion are retained
+/// in the final stream snapshot.
+pub fn spawn_stream<T, E>(
+    ctx: &egui::Context,
+    work: impl FnOnce(StreamSink<T, E>) -> Result<(), E> + Send + 'static,
+) -> TaskStream<T, E>
+where
+    T: Send + Sync + 'static,
+    E: Send + Sync + 'static,
+{
+    let state = Signal::new(
+        StreamState {
+            status: StreamStatus::Pending,
+            data: None,
+            error: None,
+        },
+        ctx,
+    );
+    let cancellation = CancellationToken(Arc::new(AtomicBool::new(false)));
+    let sink = StreamSink {
+        state: state.clone(),
+        cancellation: cancellation.clone(),
+    };
+    let worker = state.clone();
+    let token = cancellation.clone();
+    std::thread::spawn(move || {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(sink)));
+        worker.update(|state| {
+            state.status = if token.is_cancelled() {
+                StreamStatus::Cancelled
+            } else {
+                match result {
+                    Ok(Ok(())) => StreamStatus::Done,
+                    Ok(Err(error)) => {
+                        state.error = Some(Arc::new(error));
+                        StreamStatus::Done
+                    }
+                    Err(_) => StreamStatus::Panicked,
+                }
+            };
+        });
+    });
+    TaskStream {
         state,
         cancellation,
     }
