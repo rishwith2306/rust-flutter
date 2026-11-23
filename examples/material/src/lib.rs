@@ -1,12 +1,16 @@
 use rust_flutter::{
-    element::{FlexItem, FlexStyle, State, StateContext, StatefulWidget, Widget},
+    element::{
+        BuildContext, FlexItem, FlexStyle, State, StateContext, StatefulWidget, StatelessWidget,
+        Widget,
+    },
     gestures::GestureBinding,
     layout::{Axis, CrossAxisAlignment, Insets},
     material::{
         AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
         MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
-        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold, SnackBar,
-        SnackBarAction, TextButton, ThemeData,
+        ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold,
+        ScaffoldMessengerController, ScaffoldMessengerHost, SnackBar, SnackBarAction, TextButton,
+        ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -111,6 +115,90 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
     let root = MaterialApp::new(host).theme(theme.clone()).into_widget();
     let on_back = back_dispatcher.handler();
     (root, on_back)
+}
+
+/// A focused runnable example of timed, queued snackbars.
+pub fn queued_messenger_showcase() -> Widget {
+    let binding = GestureBinding::new();
+    let theme = ThemeData::default();
+    let host_theme = theme.clone();
+    ScaffoldMessengerHost::new(move |messenger, current| {
+        let mut style = FlexStyle::new(Axis::Vertical);
+        style.spacing = 12.0;
+        let body = Widget::padding(
+            Insets::all(24.0),
+            Widget::flex(
+                style,
+                vec![
+                    FlexItem::fixed(
+                        Text::new("Press both buttons; the messages will be queued.").into_widget(),
+                    ),
+                    FlexItem::fixed(Widget::stateless(MessengerExample {
+                        binding: binding.clone(),
+                        messenger,
+                        theme: host_theme.clone(),
+                    })),
+                ],
+            ),
+        );
+        let mut scaffold = Scaffold::new(body)
+            .app_bar_config(AppBar::new("Snackbar queue").theme(host_theme.clone()));
+        if let Some(snack_bar) = current {
+            scaffold = scaffold.snack_bar(snack_bar);
+        }
+        MaterialApp::new(scaffold.into_widget())
+            .theme(host_theme.clone())
+            .into_widget()
+    })
+    .into_widget()
+}
+
+struct MessengerExample {
+    binding: GestureBinding,
+    messenger: ScaffoldMessengerController,
+    theme: ThemeData,
+}
+
+impl StatelessWidget for MessengerExample {
+    fn build(&self, _context: &BuildContext) -> Widget {
+        let first = self.messenger.clone();
+        let first_action = first.clone();
+        let first_theme = self.theme.clone();
+        let second = self.messenger.clone();
+        let second_action = second.clone();
+        let second_theme = self.theme.clone();
+        let mut style = FlexStyle::new(Axis::Vertical);
+        style.spacing = 8.0;
+        Widget::flex(
+            style,
+            vec![
+                FlexItem::fixed(
+                    TextButton::new(&self.binding, "Queue first message", move || {
+                        let action_controller = first_action.clone();
+                        let snack_bar = SnackBar::new("First message")
+                            .action(SnackBarAction::new("Dismiss", move || {
+                                let _ = action_controller.hide_current_snack_bar();
+                            }))
+                            .theme(first_theme.clone());
+                        let _ = first.show_snack_bar(snack_bar);
+                    })
+                    .into_widget(),
+                ),
+                FlexItem::fixed(
+                    TextButton::new(&self.binding, "Queue second message", move || {
+                        let action_controller = second_action.clone();
+                        let snack_bar = SnackBar::new("Second message")
+                            .action(SnackBarAction::new("Dismiss", move || {
+                                let _ = action_controller.hide_current_snack_bar();
+                            }))
+                            .theme(second_theme.clone());
+                        let _ = second.show_snack_bar(snack_bar);
+                    })
+                    .into_widget(),
+                ),
+            ],
+        )
+    }
 }
 
 struct DrawerExample {

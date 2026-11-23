@@ -62,6 +62,8 @@ cargo run -p rust-flutter-material-example
 
 Build its Android APK with
 `cargo apk build -p rust-flutter-material-example --lib --target aarch64-linux-android`.
+The queued `ScaffoldMessengerHost` API also has a focused desktop example:
+`cargo run -p rust-flutter-material-example --bin queued_messenger`.
 
 On macOS install Xcode Command Line Tools (`xcode-select --install`). The renderer
 uses wgpu with Metal on macOS. On Linux, Wayland/X11 development libraries and a

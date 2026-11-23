@@ -80,6 +80,8 @@ Calling `show_snack_bar` appends a message after the visible and queued messages
 Each message uses the host duration; timeout or `hide_current_snack_bar` advances
 the queue. Transition animation, FAB avoidance, per-message duration, and full
 `ScaffoldMessenger` member compatibility remain unfinished.
+The repository's focused queue demo runs on desktop with
+`cargo run -p rust-flutter-material-example --bin queued_messenger`.
 
 The shared theme currently supports indicator and track colors, linear height,
 circular stroke width, stroke alignment and cap, corner radius, track gap,
