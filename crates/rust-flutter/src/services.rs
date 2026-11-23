@@ -26,6 +26,14 @@ pub trait Clipboard: Send + Sync {
 }
 pub type ClipboardService = Arc<dyn Clipboard>;
 
+/// Open a URL using the host platform's default handler.
+pub trait UrlLauncher: Send + Sync {
+    /// Queue a URL for the host. The result reports queueing, not whether the
+    /// operating system later finds a handler or successfully opens it.
+    fn open(&self, url: &str) -> Result<(), String>;
+}
+pub type UrlLauncherService = Arc<dyn UrlLauncher>;
+
 struct EguiClipboard(egui::Context);
 impl Clipboard for EguiClipboard {
     fn write_text(&self, text: &str) -> Result<(), String> {
@@ -36,4 +44,16 @@ impl Clipboard for EguiClipboard {
 
 pub(crate) fn host_clipboard(context: &egui::Context) -> ClipboardService {
     Arc::new(EguiClipboard(context.clone()))
+}
+
+struct EguiUrlLauncher(egui::Context);
+impl UrlLauncher for EguiUrlLauncher {
+    fn open(&self, url: &str) -> Result<(), String> {
+        self.0.open_url(egui::OpenUrl::same_tab(url));
+        Ok(())
+    }
+}
+
+pub(crate) fn host_url_launcher(context: &egui::Context) -> UrlLauncherService {
+    Arc::new(EguiUrlLauncher(context.clone()))
 }

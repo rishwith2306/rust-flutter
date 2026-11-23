@@ -97,6 +97,13 @@ and desktop eframe delivers it to the native clipboard. The returned `Result`
 reports whether the request was queued, not a later OS permission or delivery
 failure. Register `ClipboardService` in `Services` to replace the default.
 
+`AppContext::url_launcher()` similarly returns an overridable host-backed
+service. Its default queues URLs through egui's platform output; Android starts
+the default URL handler with an `ACTION_VIEW` intent, and desktop eframe opens
+the URL with the host. Its result confirms queueing only. Register a
+`UrlLauncherService` to apply app-specific URL policy or provide another
+platform implementation.
+
 ## Fluent translations
 
 `localization::Localizations` loads Fluent FTL resources. The first locale is the

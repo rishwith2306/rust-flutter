@@ -21,6 +21,15 @@ impl AppContext {
             .cloned()
             .unwrap_or_else(|| crate::services::host_clipboard(&self.egui))
     }
+
+    /// Return a custom URL launcher or the host's default URL handler.
+    /// Opening a URL is queued through egui's platform output.
+    pub fn url_launcher(&self) -> crate::services::UrlLauncherService {
+        self.services
+            .get::<crate::services::UrlLauncherService>()
+            .cloned()
+            .unwrap_or_else(|| crate::services::host_url_launcher(&self.egui))
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppEvent {
