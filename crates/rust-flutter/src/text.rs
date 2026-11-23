@@ -345,17 +345,11 @@ impl RenderBox for ParagraphRender {
         if crate::layout::ui_is_offstage(ui) {
             return;
         }
-        let text = self
-            .paragraph
-            .spans
-            .iter()
-            .map(|span| span.text.as_str())
-            .collect::<String>();
-        let response = ui.interact(ui.max_rect(), ui.unique_id(), egui::Sense::hover());
-        response.widget_info(|| {
-            egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text.clone())
-        });
         if let Some(galley) = &self.painted {
+            let response = ui.interact(ui.max_rect(), ui.unique_id(), egui::Sense::hover());
+            response.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), galley.text())
+            });
             let origin = ui.max_rect().min
                 + egui::vec2(
                     self.paragraph.align.to_factor() * ui.max_rect().width(),
