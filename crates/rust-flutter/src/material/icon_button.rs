@@ -2,7 +2,7 @@ use super::ThemeData;
 use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Color32, Stroke, Vec2},
-    element::Widget,
+    element::{Semantics, Widget},
     gestures::{GestureBinding, GestureDetector, GestureTargetConfig, TapCallbacks, TapConfig},
     layout::{Alignment, BoxConstraints, HitTestBehavior},
     text::{DefaultTextStyle, TextStyle},
@@ -26,6 +26,7 @@ pub struct IconButton {
     on_pressed: Rc<dyn Fn()>,
     enabled: bool,
     selected: bool,
+    semantics_label: Option<String>,
     size: Vec2,
     variant: IconButtonVariant,
     theme: ThemeData,
@@ -42,6 +43,7 @@ impl IconButton {
             on_pressed: Rc::new(on_pressed),
             enabled: true,
             selected: false,
+            semantics_label: None,
             size: egui::vec2(48.0, 48.0),
             variant: IconButtonVariant::Standard,
             theme: ThemeData::default(),
@@ -64,6 +66,11 @@ impl IconButton {
     }
     pub fn selected_icon(mut self, icon: Widget) -> Self {
         self.selected_icon = Some(icon);
+        self
+    }
+    /// Sets the screen reader name for an icon-only action.
+    pub fn semantics_label(mut self, label: impl Into<String>) -> Self {
+        self.semantics_label = Some(label.into());
         self
     }
     pub fn size(mut self, size: Vec2) -> Self {
@@ -161,25 +168,41 @@ impl IconButton {
             constraints,
             Widget::align(Alignment::CENTER, icon),
         ));
-        if !self.enabled {
-            return Ok(surface);
-        }
         let callback = self.on_pressed;
-        Ok(GestureDetector::new(
-            &self.binding,
-            GestureTargetConfig {
-                tap: Some((
-                    TapConfig::default(),
-                    TapCallbacks {
-                        on_tap: Some(Rc::new(move |_| callback())),
-                        ..Default::default()
-                    },
-                )),
-                ..Default::default()
-            },
-        )
-        .map_err(|_| "Material icon button gesture binding is unavailable")?
-        .behavior(HitTestBehavior::Opaque)
-        .into_widget(surface))
+        let visual = if self.enabled {
+            let pointer_callback = callback.clone();
+            GestureDetector::new(
+                &self.binding,
+                GestureTargetConfig {
+                    tap: Some((
+                        TapConfig::default(),
+                        TapCallbacks {
+                            on_tap: Some(Rc::new(move |_| pointer_callback())),
+                            ..Default::default()
+                        },
+                    )),
+                    ..Default::default()
+                },
+            )
+            .map_err(|_| "Material icon button gesture binding is unavailable")?
+            .behavior(HitTestBehavior::Opaque)
+            .into_widget(surface)
+        } else {
+            surface
+        };
+        let mut semantics = Semantics::new(egui::accesskit::Role::Button)
+            .enabled(self.enabled)
+            .toggled(if self.selected {
+                egui::accesskit::Toggled::True
+            } else {
+                egui::accesskit::Toggled::False
+            });
+        if let Some(label) = self.semantics_label {
+            semantics = semantics.label(label);
+        }
+        if self.enabled {
+            semantics = semantics.on_click(move || callback());
+        }
+        Ok(semantics.into_widget(visual))
     }
 }

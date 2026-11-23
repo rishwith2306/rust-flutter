@@ -23,6 +23,8 @@ pub use ticker::TickerMode;
 mod safe_area;
 use safe_area::SafeAreaNode;
 pub use safe_area::SafeAreaOptions;
+mod semantics;
+pub use semantics::Semantics;
 mod state;
 mod widget;
 use crate::layout::{self, BoxConstraints, BoxKind, BoxNode, LayoutBox, LayoutError};
