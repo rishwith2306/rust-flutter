@@ -88,14 +88,18 @@ DefaultTextStyle value, including properties a particular Text overrides.
 ## Scaling and scope
 
 `TextScale::linear(factor)` accepts finite, positive factors and defaults to one.
-It applies once, after all span inheritance, to font sizes and explicit point
-line heights. Letter spacing, decoration widths and background expansion remain
-in logical points. A Text can override the inherited scale. Overflow after
-scaling is rejected by the paragraph's geometry validation.
+`TextScale::nonlinear(samples)` accepts finite `(authored_size, rendered_size)`
+pairs with positive sizes, strictly increasing authored sizes, and
+nondecreasing rendered sizes. It interpolates between samples and extends the
+first or last segment outside the sample range. The selected scale applies once,
+after all span inheritance, to font sizes and explicit point line heights.
+Letter spacing, decoration widths and background expansion remain in logical
+points. A Text can override the inherited scale. Overflow after scaling is
+rejected by the paragraph's geometry validation.
 
-This is explicit linear scaling. It does not read Android/macOS accessibility
-settings, implement nonlinear scaling, or override system bold/spacing settings.
-Zero-size scaling is not currently supported by the font backend contract.
+The nonlinear API supports host-provided curves, but the Android and macOS hosts
+do not yet read the system accessibility settings or provide those curves.
+System bold/spacing settings are also not applied.
 
 The implementation supplies the subset represented by egui TextFormat and the
 current Paragraph policy. Font weight/variable axes, shaping, bidi, locale-aware

@@ -94,13 +94,20 @@ impl TextStyle {
         }
     }
 }
-/// Explicit positive linear text scaling. This does not read OS accessibility
-/// settings and does not implement a nonlinear font-scaling strategy.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TextScale(f32);
+/// Maps authored logical font sizes to rendered font sizes. Linear scaling is
+/// available through [`TextScale::linear`]; nonlinear scaling can represent
+/// platform accessibility curves such as Android's large-text scaling.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextScale {
+    linear: f32,
+    curve: Option<std::sync::Arc<[(f32, f32)]>>,
+}
 impl Default for TextScale {
     fn default() -> Self {
-        Self(1.0)
+        Self {
+            linear: 1.0,
+            curve: None,
+        }
     }
 }
 impl TextScale {
@@ -110,14 +117,64 @@ impl TextScale {
                 "text scale must be finite and positive",
             ));
         }
-        Ok(Self(factor))
+        Ok(Self {
+            linear: factor,
+            curve: None,
+        })
     }
-    pub fn factor(self) -> f32 {
-        self.0
+    /// Create a piecewise-linear scaler from `(authored_size, rendered_size)`
+    /// samples. Samples must have finite, positive sizes, strictly increasing
+    /// authored sizes, and nondecreasing rendered sizes. Values outside the
+    /// sample range extend using the nearest segment's slope.
+    pub fn nonlinear(samples: impl IntoIterator<Item = (f32, f32)>) -> Result<Self, LayoutError> {
+        let samples: Vec<_> = samples.into_iter().collect();
+        if samples.len() < 2
+            || samples.iter().any(|(authored, rendered)| {
+                !authored.is_finite()
+                    || !rendered.is_finite()
+                    || *authored <= 0.0
+                    || *rendered <= 0.0
+            })
+            || samples
+                .windows(2)
+                .any(|pair| pair[1].0 <= pair[0].0 || pair[1].1 < pair[0].1)
+        {
+            return Err(LayoutError::InvalidConfiguration(
+                "nonlinear text scale samples must be finite, positive, and ordered",
+            ));
+        }
+        Ok(Self {
+            linear: 1.0,
+            curve: Some(samples.into()),
+        })
     }
-    fn apply(self, mut format: TextFormat) -> TextFormat {
-        format.font_id.size *= self.0;
-        format.line_height = format.line_height.map(|height| height * self.0);
+    /// Return the scale ratio at a 14-point authored font size.
+    pub fn factor(&self) -> f32 {
+        self.scale(14.0) / 14.0
+    }
+    /// Convert an authored logical font size to its rendered size.
+    pub fn scale(&self, size: f32) -> f32 {
+        if size == 0.0 {
+            return 0.0;
+        }
+        let Some(samples) = &self.curve else {
+            return size * self.linear;
+        };
+        let upper = samples.partition_point(|(authored, _)| *authored < size);
+        let (left, right) = if upper == 0 {
+            let (authored, rendered) = samples[0];
+            return size * (rendered / authored);
+        } else if upper == samples.len() {
+            (samples[samples.len() - 2], samples[samples.len() - 1])
+        } else {
+            (samples[upper - 1], samples[upper])
+        };
+        let proportion = (size - left.0) / (right.0 - left.0);
+        left.1 + proportion * (right.1 - left.1)
+    }
+    fn apply(&self, mut format: TextFormat) -> TextFormat {
+        format.font_id.size = self.scale(format.font_id.size);
+        format.line_height = format.line_height.map(|height| self.scale(height));
         format
     }
 }
@@ -189,7 +246,7 @@ impl InlineSpan {
         self.style = style;
         self
     }
-    fn flatten(&self, base: &TextStyle, scale: TextScale) -> Vec<TextSpan> {
+    fn flatten(&self, base: &TextStyle, scale: &TextScale) -> Vec<TextSpan> {
         let mut spans = vec![];
         let mut pending = vec![(self, base.clone())];
         while let Some((span, parent)) = pending.pop() {
@@ -254,7 +311,7 @@ impl Text {
         let style = defaults.style.merge(&self.style);
         let mut paragraph = Paragraph::rich(
             self.content
-                .flatten(&style, self.scale.unwrap_or(defaults.scale)),
+                .flatten(&style, self.scale.as_ref().unwrap_or(&defaults.scale)),
         );
         paragraph.align = self.align.unwrap_or(defaults.align);
         paragraph.soft_wrap = self.soft_wrap.unwrap_or(defaults.soft_wrap);
