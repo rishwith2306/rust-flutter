@@ -97,9 +97,10 @@ Letter spacing, decoration widths and background expansion remain in logical
 points. A Text can override the inherited scale. Overflow after scaling is
 rejected by the paragraph's geometry validation.
 
-The nonlinear API supports host-provided curves, but the Android and macOS hosts
-do not yet read the system accessibility settings or provide those curves.
-System bold/spacing settings are also not applied.
+The Android host obtains the user's actual nonlinear SP conversion from
+`TypedValue.applyDimension` and supplies a sampled curve to the retained text
+tree. The macOS host does not yet read system accessibility settings. System
+bold/spacing settings are also not applied.
 
 The implementation supplies the subset represented by egui TextFormat and the
 current Paragraph policy. Font weight/variable axes, shaping, bidi, locale-aware

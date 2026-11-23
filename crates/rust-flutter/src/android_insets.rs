@@ -2,6 +2,7 @@
 use crate::{
     AndroidApp,
     display::{KeyboardVisibility, PlatformInsets},
+    text::TextScale,
 };
 use egui::{SafeAreaInsets, epaint::MarginF32};
 use jni::{
@@ -22,7 +23,14 @@ struct Sample {
 #[derive(Default)]
 struct Snapshot {
     sample: Option<Sample>,
+    text_scale: Option<TextScaleSample>,
     pending: bool,
+}
+#[derive(Clone, Debug, PartialEq)]
+struct TextScaleSample {
+    font_scale: f32,
+    density: f32,
+    scale: TextScale,
 }
 pub(crate) struct AndroidInsets {
     activity: AndroidApp,
@@ -61,6 +69,9 @@ impl AndroidInsets {
         }
         let mut snapshot = self.snapshot.lock().unwrap();
         let sample = snapshot.sample;
+        if let Some(text_scale) = &snapshot.text_scale {
+            crate::text::set_platform_text_scale(ctx, text_scale.scale.clone());
+        }
         let platform = sample.map(|mut sample| {
             if let Some((size, _, _)) = sample.platform.geometry {
                 let actual = self
@@ -95,23 +106,138 @@ impl AndroidInsets {
         self.activity.run_on_java_main_thread(Box::new(move || {
             // SAFETY: AndroidApp supplies the VM pointer, valid for the app lifetime.
             let vm = unsafe { jni::JavaVM::from_raw(activity.vm_as_ptr().cast()) };
-            let result: jni::errors::Result<Option<Sample>> = vm.attach_current_thread(|env| {
-                let result = read_insets(env, &activity);
-                if result.is_err() {
-                    env.exception_clear();
-                }
-                result
-            });
+            let old_text_scale = cache.lock().unwrap().text_scale.clone();
+            let result: jni::errors::Result<(Option<Sample>, Option<TextScaleSample>)> = vm
+                .attach_current_thread(|env| -> jni::errors::Result<_> {
+                    let insets = match read_insets(env, &activity) {
+                        Ok(value) => value,
+                        Err(_) => {
+                            env.exception_clear();
+                            None
+                        }
+                    };
+                    let text_scale = match read_text_scale(env, &activity, old_text_scale.as_ref())
+                    {
+                        Ok(value) => value,
+                        Err(_) => {
+                            env.exception_clear();
+                            None
+                        }
+                    };
+                    if insets.is_none() && text_scale.is_none() {
+                        env.exception_clear();
+                    }
+                    Ok((insets, text_scale))
+                });
             let mut snapshot = cache.lock().unwrap();
             snapshot.pending = false;
-            let sample = result.ok().flatten();
-            if snapshot.sample != sample {
-                snapshot.sample = sample;
+            let (sample, text_scale) = result.unwrap_or((None, None));
+            let mut changed = false;
+            if let Some(sample) = sample
+                && snapshot.sample != Some(sample)
+            {
+                snapshot.sample = Some(sample);
+                changed = true;
+            }
+            if let Some(text_scale) = text_scale
+                && snapshot.text_scale.as_ref() != Some(&text_scale)
+            {
+                snapshot.text_scale = Some(text_scale);
+                changed = true;
+            }
+            if changed {
                 drop(snapshot);
                 context.request_repaint();
             }
         }));
     }
+}
+fn read_text_scale(
+    env: &mut jni::Env<'_>,
+    app: &AndroidApp,
+    old: Option<&TextScaleSample>,
+) -> jni::errors::Result<Option<TextScaleSample>> {
+    let raw_activity = app.activity_as_ptr() as jni::sys::jobject;
+    // SAFETY: AndroidApp retains this global Activity reference for its lifetime.
+    let activity = unsafe { env.as_cast_raw::<Global<JObject>>(&raw_activity)? };
+    let resources = env
+        .call_method(
+            &activity,
+            jni_str!("getResources"),
+            jni_sig!("()Landroid/content/res/Resources;"),
+            &[],
+        )?
+        .l()?;
+    let configuration = env
+        .call_method(
+            &resources,
+            jni_str!("getConfiguration"),
+            jni_sig!("()Landroid/content/res/Configuration;"),
+            &[],
+        )?
+        .l()?;
+    let font_scale = env
+        .get_field(&configuration, jni_str!("fontScale"), jni_sig!("F"))?
+        .f()?;
+    let metrics = env
+        .call_method(
+            &resources,
+            jni_str!("getDisplayMetrics"),
+            jni_sig!("()Landroid/util/DisplayMetrics;"),
+            &[],
+        )?
+        .l()?;
+    let density = env
+        .get_field(&metrics, jni_str!("density"), jni_sig!("F"))?
+        .f()?;
+    if !font_scale.is_finite() || font_scale <= 0.0 || !density.is_finite() || density <= 0.0 {
+        return Ok(None);
+    }
+    if let Some(old) = old
+        && old.font_scale == font_scale
+        && old.density == density
+    {
+        return Ok(Some(old.clone()));
+    }
+    let mut samples = Vec::with_capacity(132);
+    for size in 1..=128 {
+        let pixels = env
+            .call_static_method(
+                jni_str!("android/util/TypedValue"),
+                jni_str!("applyDimension"),
+                jni_sig!("(IFLandroid/util/DisplayMetrics;)F"),
+                &[
+                    JValue::Int(2),
+                    JValue::Float(size as f32),
+                    JValue::Object(&metrics),
+                ],
+            )?
+            .f()?;
+        samples.push((size as f32, pixels / density));
+    }
+    for size in [160.0_f32, 192.0, 224.0, 256.0] {
+        let pixels = env
+            .call_static_method(
+                jni_str!("android/util/TypedValue"),
+                jni_str!("applyDimension"),
+                jni_sig!("(IFLandroid/util/DisplayMetrics;)F"),
+                &[
+                    JValue::Int(2),
+                    JValue::Float(size),
+                    JValue::Object(&metrics),
+                ],
+            )?
+            .f()?;
+        samples.push((size, pixels / density));
+    }
+    let Some(scale) = TextScale::nonlinear(samples).ok() else {
+        return Ok(None);
+    };
+    Ok(Some(TextScaleSample {
+        font_scale,
+        density,
+        scale,
+    }))
 }
 fn read_insets(env: &mut jni::Env<'_>, app: &AndroidApp) -> jni::errors::Result<Option<Sample>> {
     if AndroidApp::sdk_version() < 30 {

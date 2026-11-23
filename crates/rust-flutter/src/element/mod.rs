@@ -567,6 +567,7 @@ pub struct ElementTree {
     paint: HashMap<egui::Id, PaintEntry>,
     view: AmbientModel<crate::display::ViewMetrics>,
     platform_theme: AmbientModel<crate::display::PlatformTheme>,
+    platform_text_scale: AmbientModel<crate::text::PlatformTextScale>,
     pipeline: Arc<Pipeline>,
 }
 impl ElementTree {
@@ -586,6 +587,10 @@ impl ElementTree {
                 ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
                 crate::display::platform_theme(ctx),
             ),
+            platform_text_scale: AmbientModel::new(
+                ElementId(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
+                crate::text::PlatformTextScale(crate::text::platform_text_scale(ctx)),
+            ),
         };
         tree.update(root)?;
         Ok(tree)
@@ -600,6 +605,10 @@ impl ElementTree {
         self.view.refresh(crate::display::view_metrics(&self.ctx));
         self.platform_theme
             .refresh(crate::display::platform_theme(&self.ctx));
+        self.platform_text_scale
+            .refresh(crate::text::PlatformTextScale(
+                crate::text::platform_text_scale(&self.ctx),
+            ));
         self.root = Some(Element::reconcile(
             self.root.take(),
             widget,
@@ -617,6 +626,10 @@ impl ElementTree {
         self.view.refresh(crate::display::view_metrics(&self.ctx));
         self.platform_theme
             .refresh(crate::display::platform_theme(&self.ctx));
+        self.platform_text_scale
+            .refresh(crate::text::PlatformTextScale(
+                crate::text::platform_text_scale(&self.ctx),
+            ));
         let result = root.flush(&self.ctx, 0, self.epoch, &self.scope());
         match result {
             Ok(changed) => {
@@ -714,7 +727,8 @@ impl ElementTree {
         Ok(())
     }
     fn scope(&self) -> Scope {
-        self.platform_theme.child_scope(&self.view.scope())
+        self.platform_text_scale
+            .child_scope(&self.platform_theme.child_scope(&self.view.scope()))
     }
     /// Flush pending builds and compute current box geometry. State errors unmount
     /// the tree; layout errors keep component state mounted for a later retry.

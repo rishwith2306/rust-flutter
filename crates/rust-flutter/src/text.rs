@@ -13,7 +13,13 @@ use egui::{
     text::{Galley, LayoutJob, TextFormat},
 };
 use std::sync::Arc;
-pub use style::{DefaultTextStyle, InlineSpan, LineHeight, LineLimit, Text, TextScale, TextStyle};
+pub(crate) use style::platform_text_scale;
+#[cfg(target_os = "android")]
+pub(crate) use style::set_platform_text_scale;
+pub use style::{
+    DefaultTextStyle, InlineSpan, LineHeight, LineLimit, PlatformTextScale, Text, TextScale,
+    TextStyle,
+};
 
 /// Fully resolved formatting for a contiguous UTF-8 span. No implicit style
 /// inheritance: configure fonts through the host Context and each TextFormat.

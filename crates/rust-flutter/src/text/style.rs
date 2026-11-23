@@ -178,6 +178,43 @@ impl TextScale {
         format
     }
 }
+/// The current operating-system accessibility text scaler. It is refreshed by
+/// the host each frame; applications can observe it during a widget build.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlatformTextScale(pub TextScale);
+impl PlatformTextScale {
+    pub fn of(ctx: &BuildContext) -> Result<TextScale, DependencyError> {
+        Ok(ctx
+            .depend_on::<Self>()?
+            .map(|value| value.0.clone())
+            .unwrap_or_default())
+    }
+}
+impl crate::element::InheritedModel for PlatformTextScale {
+    type Aspect = ();
+
+    fn update_should_notify(&self, old: &Self) -> bool {
+        self != old
+    }
+
+    fn update_should_notify_dependent(
+        &self,
+        old: &Self,
+        _aspects: &std::collections::HashSet<Self::Aspect>,
+    ) -> bool {
+        self != old
+    }
+}
+#[cfg(target_os = "android")]
+pub(crate) fn set_platform_text_scale(ctx: &egui::Context, scale: TextScale) {
+    ctx.data_mut(|data| data.insert_temp(egui::Id::new("rust_flutter_platform_text_scale"), scale));
+}
+pub(crate) fn platform_text_scale(ctx: &egui::Context) -> TextScale {
+    ctx.data_mut(|data| {
+        data.get_temp(egui::Id::new("rust_flutter_platform_text_scale"))
+            .unwrap_or_default()
+    })
+}
 /// Closest scoped defaults for high-level Text widgets. Providing a value
 /// replaces the outer defaults. Use `merged_style` to overlay just typography.
 #[derive(Clone, Debug, PartialEq)]
@@ -246,7 +283,12 @@ impl InlineSpan {
         self.style = style;
         self
     }
-    fn flatten(&self, base: &TextStyle, scale: &TextScale) -> Vec<TextSpan> {
+    fn flatten(
+        &self,
+        base: &TextStyle,
+        scale: &TextScale,
+        platform_scale: &TextScale,
+    ) -> Vec<TextSpan> {
         let mut spans = vec![];
         let mut pending = vec![(self, base.clone())];
         while let Some((span, parent)) = pending.pop() {
@@ -257,7 +299,7 @@ impl InlineSpan {
             if let Some(text) = &span.text {
                 spans.push(TextSpan::new(
                     text.clone(),
-                    scale.apply(resolved.to_format()),
+                    platform_scale.apply(scale.apply(resolved.to_format())),
                 ));
             }
             for child in span.children.iter().rev() {
@@ -309,10 +351,11 @@ impl Text {
     /// resulting Paragraph is measured, just like directly configured paragraphs.
     pub fn resolve(&self, defaults: &DefaultTextStyle) -> Paragraph {
         let style = defaults.style.merge(&self.style);
-        let mut paragraph = Paragraph::rich(
-            self.content
-                .flatten(&style, self.scale.as_ref().unwrap_or(&defaults.scale)),
-        );
+        let mut paragraph = Paragraph::rich(self.content.flatten(
+            &style,
+            self.scale.as_ref().unwrap_or(&defaults.scale),
+            &TextScale::default(),
+        ));
         paragraph.align = self.align.unwrap_or(defaults.align);
         paragraph.soft_wrap = self.soft_wrap.unwrap_or(defaults.soft_wrap);
         paragraph.max_lines = match self.line_limit {
@@ -326,7 +369,15 @@ impl Text {
 }
 impl StatelessWidget for Text {
     fn build(&self, ctx: &BuildContext) -> Widget {
-        self.resolve(&DefaultTextStyle::of(ctx).expect("Text resolves defaults during build"))
-            .into_widget()
+        let defaults = DefaultTextStyle::of(ctx).expect("Text resolves defaults during build");
+        let mut paragraph = self.resolve(&defaults);
+        let platform_scale =
+            PlatformTextScale::of(ctx).expect("Text resolves platform text scale during build");
+        if platform_scale != TextScale::default() {
+            for span in &mut paragraph.spans {
+                span.format = platform_scale.apply(span.format.clone());
+            }
+        }
+        paragraph.into_widget()
     }
 }

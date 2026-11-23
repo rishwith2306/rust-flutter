@@ -1639,3 +1639,16 @@ theme sample compiles as a desktop binary and as an Android library with the
 `system-theme-showcase` feature enabled. The alternate APK has not been packaged,
 and live appearance switching has not been exercised on-device.
 macOS window runtime and complete Material theme parity also remain unverified.
+
+## Android accessibility text scaling
+
+`TextScale` supports a validated piecewise-linear curve in addition to a single
+linear factor. The Android host samples `TypedValue.applyDimension` at common
+font sizes and publishes the result through the inherited `PlatformTextScale`
+model; retained `Text` elements subscribe and rebuild when the sampled system
+scale changes. Sampling is cached by Android `fontScale` and display density.
+Workspace formatting, compilation, Android ARM64 compilation, strict Clippy and
+rustdoc passed locally after this change. Tests were not run locally. The
+Android system font-size setting has not yet been changed in an emulator/device
+probe, and macOS accessibility scaling remains unimplemented. The CI run for
+this revision is pending.
