@@ -13,6 +13,8 @@ pub use layout_builder::LayoutBuilder;
 mod notifier_builder;
 mod offstage;
 mod retained_child;
+mod shortcuts;
+pub use shortcuts::Shortcuts;
 mod signal_builder;
 pub use offstage::Offstage;
 pub(crate) use retained_child::{RetainedBuilder, retained_child};

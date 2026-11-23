@@ -44,9 +44,30 @@ scope.request_focus(); // queued until a descendant control mounts
 
 This remains a partial match for Flutter's focus system. Nested-scope ancestry,
 remembered focused children, traversal policies and groups, arrow-key focus
-traversal, keyboard bubbling, Shortcuts, Actions and screen-reader focus
-semantics remain unimplemented. A `FocusNode` attaches to one control at a time;
+traversal, focus-ancestor shortcut resolution, typed Actions and screen-reader
+focus semantics remain unimplemented. A `FocusNode` attaches to one control at a time;
 ordinary egui controls do not yet attach to framework focus scopes.
+
+`element::Shortcuts` wraps a retained subtree and consumes configured egui
+`KeyboardShortcut`s. A nested scope gets first chance to handle a shortcut; an
+unmatched shortcut bubbles to the outer scope. Bind callbacks directly:
+
+```rust
+use std::{cell::Cell, rc::Rc};
+use rust_flutter::{egui, element::{Shortcuts, Widget}};
+
+let count = Rc::new(Cell::new(0));
+let action_count = count.clone();
+let shortcut = egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::K);
+let page = Shortcuts::new(Widget::empty())
+    .bind(shortcut, move || action_count.set(action_count.get() + 1))
+    .into_widget();
+# let _ = (count, page);
+```
+
+This subtree scope is active while mounted and does not yet check which child
+owns focus. Bindings call closures directly; Flutter's typed `Intent` / `Action`
+lookup, focus ancestry, and platform-specific shortcut policy remain future work.
 
 The API shape was checked against the official [Flutter Focus](https://api.flutter.dev/flutter/widgets/Focus-class.html)
 and [FocusNode](https://api.flutter.dev/flutter/widgets/FocusNode-class.html)
