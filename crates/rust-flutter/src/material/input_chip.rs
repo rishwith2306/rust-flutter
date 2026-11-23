@@ -15,7 +15,9 @@ pub struct InputChip {
     enabled: bool,
     tooltip: Option<String>,
     on_selected: Option<Rc<dyn Fn(bool)>>,
+    on_pressed: Option<Rc<dyn Fn()>>,
     on_deleted: Option<Rc<dyn Fn()>>,
+    delete_tooltip: Option<String>,
 }
 
 impl InputChip {
@@ -27,12 +29,22 @@ impl InputChip {
             enabled: true,
             tooltip: None,
             on_selected: None,
+            on_pressed: None,
             on_deleted: None,
+            delete_tooltip: None,
         }
     }
 
     pub fn on_selected(mut self, callback: impl Fn(bool) + 'static) -> Self {
         self.on_selected = Some(Rc::new(callback));
+        self.on_pressed = None;
+        self
+    }
+
+    /// Make the label area activate an action instead of changing selection.
+    pub fn on_pressed(mut self, callback: impl Fn() + 'static) -> Self {
+        self.on_pressed = Some(Rc::new(callback));
+        self.on_selected = None;
         self
     }
 
@@ -48,6 +60,11 @@ impl InputChip {
 
     pub fn tooltip(mut self, message: impl Into<String>) -> Self {
         self.tooltip = Some(message.into());
+        self
+    }
+
+    pub fn delete_tooltip(mut self, message: impl Into<String>) -> Self {
+        self.delete_tooltip = Some(message.into());
         self
     }
 
@@ -79,7 +96,8 @@ impl StatelessWidget for InputChip {
                 .size()
                 .x
         });
-        let callback = self.on_selected.clone();
+        let on_selected = self.on_selected.clone();
+        let on_pressed = self.on_pressed.clone();
         let selected = self.selected;
         let stroke = if self.selected {
             Stroke::NONE
@@ -90,8 +108,10 @@ impl StatelessWidget for InputChip {
             &self.binding,
             egui::RichText::new(label).font(font).color(foreground),
             move || {
-                if let Some(callback) = &callback {
+                if let Some(callback) = &on_selected {
                     callback(!selected);
+                } else if let Some(callback) = &on_pressed {
+                    callback();
                 }
             },
         )
@@ -99,10 +119,17 @@ impl StatelessWidget for InputChip {
         .fill(chip_fill)
         .stroke(stroke)
         .corner_radius(egui::CornerRadius::same(8))
-        .enabled(self.enabled && self.on_selected.is_some())
-        .accessibility_role(GestureSemanticRole::CheckBox)
-        .accessibility_label(self.label.clone())
-        .accessibility_toggled(self.selected)
+        .enabled(self.enabled && (self.on_selected.is_some() || self.on_pressed.is_some()));
+        let main = if self.on_selected.is_some() {
+            main.accessibility_role(GestureSemanticRole::CheckBox)
+                .accessibility_label(self.label.clone())
+                .accessibility_toggled(self.selected)
+        } else if self.on_pressed.is_some() {
+            main.accessibility_role(GestureSemanticRole::Button)
+                .accessibility_label(self.label.clone())
+        } else {
+            main.accessibility_label(self.label.clone())
+        }
         .into_widget();
 
         let mut style = FlexStyle::new(Axis::Horizontal);
@@ -119,6 +146,10 @@ impl StatelessWidget for InputChip {
                 .accessibility_role(GestureSemanticRole::Button)
                 .accessibility_label(format!("Remove {}", self.label))
                 .into_widget();
+            let remove = match &self.delete_tooltip {
+                Some(message) => Tooltip::new(remove, message.clone()).into_widget(),
+                None => remove,
+            };
             Widget::flex(style, vec![FlexItem::fixed(main), FlexItem::fixed(remove)])
         } else {
             main
