@@ -37,8 +37,9 @@ impl ProgressIndicatorTheme {
 
     /// Builds the inherited theme and optional controller providers.
     pub fn into_widget(self) -> Widget {
+        let controller = self.controller.or(self.data.controller.clone());
         let child = Widget::inherited(self.data, self.child);
-        match self.controller {
+        match controller {
             Some(controller) => Widget::inherited_notifier(Some(controller), child),
             None => child,
         }
@@ -286,12 +287,14 @@ impl StatelessWidget for CircularProgressView {
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
+        let default_progress_theme = theme.progress_indicator_theme.clone();
         let progress_theme = context
             .depend_on::<ProgressIndicatorThemeData>()
             .expect("progress indicators resolve inherited theme data")
-            .map_or(theme.progress_indicator_theme, |local| {
-                local.merge(theme.progress_indicator_theme)
-            });
+            .map_or_else(
+                || default_progress_theme.clone(),
+                |local| local.as_ref().clone().merge(default_progress_theme.clone()),
+            );
         let indicator = &self.0;
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();
@@ -537,12 +540,14 @@ impl StatelessWidget for LinearProgressView {
         let theme = ThemeData::of(context)
             .expect("Material progress indicators resolve theme during build");
         let colors = theme.color_scheme;
+        let default_progress_theme = theme.progress_indicator_theme.clone();
         let progress_theme = context
             .depend_on::<ProgressIndicatorThemeData>()
             .expect("progress indicators resolve inherited theme data")
-            .map_or(theme.progress_indicator_theme, |local| {
-                local.merge(theme.progress_indicator_theme)
-            });
+            .map_or_else(
+                || default_progress_theme.clone(),
+                |local| local.as_ref().clone().merge(default_progress_theme.clone()),
+            );
         let indicator = &self.0;
         let value = indicator.value;
         let semantics_label = indicator.semantics_label.clone();

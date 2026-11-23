@@ -112,9 +112,9 @@ impl AppBar {
     }
 
     pub fn theme(mut self, theme: ThemeData) -> Self {
-        self.theme = theme;
         self.background_color = theme.color_scheme.surface;
         self.foreground_color = theme.color_scheme.on_surface;
+        self.theme = theme;
         self
     }
 
@@ -258,7 +258,7 @@ impl Scaffold {
                     IconButton::new(&drawer.binding, Text::new("☰").into_widget(), move || {
                         on_open()
                     })
-                    .theme(app_bar.theme)
+                    .theme(app_bar.theme.clone())
                     .foreground_color(app_bar.foreground_color)
                     .size(egui::vec2(48.0, 48.0))
                     .into_widget()

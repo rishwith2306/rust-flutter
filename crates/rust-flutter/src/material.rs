@@ -3,9 +3,11 @@
 //! This module provides semantic colors and a subtree theme. It is not yet a
 //! Material component catalog or a complete Material 3 color-role inventory.
 use crate::{
+    animation::AnimationController,
     egui::{self, Color32},
     element::{BuildContext, DependencyError, Widget},
     navigation::NavigatorController,
+    notifier::Listenable,
     text::Text,
 };
 use std::{collections::HashMap, rc::Rc};
@@ -235,7 +237,7 @@ impl Default for ColorScheme {
 }
 
 /// Inherited Material theme data and an optional egui global-style adapter.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ThemeData {
     pub color_scheme: ColorScheme,
     pub use_material3: bool,
@@ -243,7 +245,7 @@ pub struct ThemeData {
 }
 
 /// Shared visual defaults for descendant Material progress indicators.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Default)]
 pub struct ProgressIndicatorThemeData {
     pub color: Option<Color32>,
     pub linear_track_color: Option<Color32>,
@@ -256,6 +258,48 @@ pub struct ProgressIndicatorThemeData {
     pub track_gap: Option<f32>,
     pub stop_indicator_color: Option<Color32>,
     pub stop_indicator_radius: Option<f32>,
+    pub controller: Option<AnimationController>,
+}
+
+impl std::fmt::Debug for ProgressIndicatorThemeData {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ProgressIndicatorThemeData")
+            .field("color", &self.color)
+            .field("linear_track_color", &self.linear_track_color)
+            .field("linear_min_height", &self.linear_min_height)
+            .field("circular_track_color", &self.circular_track_color)
+            .field("stroke_width", &self.stroke_width)
+            .field("stroke_align", &self.stroke_align)
+            .field("stroke_cap", &self.stroke_cap)
+            .field("border_radius", &self.border_radius)
+            .field("track_gap", &self.track_gap)
+            .field("stop_indicator_color", &self.stop_indicator_color)
+            .field("stop_indicator_radius", &self.stop_indicator_radius)
+            .field("controller", &self.controller.is_some())
+            .finish()
+    }
+}
+
+impl PartialEq for ProgressIndicatorThemeData {
+    fn eq(&self, other: &Self) -> bool {
+        self.color == other.color
+            && self.linear_track_color == other.linear_track_color
+            && self.linear_min_height == other.linear_min_height
+            && self.circular_track_color == other.circular_track_color
+            && self.stroke_width == other.stroke_width
+            && self.stroke_align == other.stroke_align
+            && self.stroke_cap == other.stroke_cap
+            && self.border_radius == other.border_radius
+            && self.track_gap == other.track_gap
+            && self.stop_indicator_color == other.stop_indicator_color
+            && self.stop_indicator_radius == other.stop_indicator_radius
+            && match (&self.controller, &other.controller) {
+                (Some(left), Some(right)) => left.same_source(right),
+                (None, None) => true,
+                _ => false,
+            }
+    }
 }
 
 /// End shape used when painting a stroked circular progress arc.
@@ -416,6 +460,7 @@ impl ProgressIndicatorThemeData {
             stop_indicator_radius: self
                 .stop_indicator_radius
                 .or(defaults.stop_indicator_radius),
+            controller: self.controller.or(defaults.controller),
         }
     }
 }
@@ -424,17 +469,22 @@ impl ThemeData {
     pub fn of(context: &BuildContext) -> Result<Self, DependencyError> {
         Ok(context
             .depend_on::<Self>()?
-            .map(|theme| *theme)
+            .map(|theme| theme.as_ref().clone())
             .unwrap_or_default())
     }
 
-    pub fn provide(self, child: Widget) -> Widget {
-        Widget::inherited(self, child)
+    pub fn provide(&self, child: Widget) -> Widget {
+        let controller = self.progress_indicator_theme.controller.clone();
+        let child = Widget::inherited(self.clone(), child);
+        match controller {
+            Some(controller) => Widget::inherited_notifier(Some(controller), child),
+            None => child,
+        }
     }
 
     /// Apply the core scheme to egui defaults for apps that use backend
     /// controls. Retained framework controls can also read the inherited theme.
-    pub fn apply(self, context: &egui::Context) {
+    pub fn apply(&self, context: &egui::Context) {
         let scheme = self.color_scheme;
         let mut visuals = match scheme.brightness {
             Brightness::Light => egui::Visuals::light(),

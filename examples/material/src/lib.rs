@@ -29,17 +29,19 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
         let back_dispatcher = back_dispatcher.clone();
         let result = result.clone();
         let sheet_controller = current_sheet_controller.clone();
+        let dialog_theme = theme.clone();
         Rc::new(move || {
             let page_binding = binding.clone();
             let build_result = result.clone();
             let current_sheet_controller = sheet_controller.clone();
+            let page_theme = dialog_theme.clone();
             MaterialDialogHost::new(&binding, move |controller, selected| {
                 if let Ok(Some(value)) = controller.take_result::<bool>() {
                     build_result.set(Some(value));
                 }
                 let page = Widget::stateful(DrawerExample {
                     binding: page_binding.clone(),
-                    theme,
+                    theme: page_theme.clone(),
                     dialog_controller: controller.clone(),
                     sheet_controller: current_sheet_controller
                         .borrow()
@@ -65,7 +67,7 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
                             })
                             .into_widget(),
                         ])
-                        .theme(theme)
+                        .theme(page_theme.clone())
                         .into_widget()
                         .expect("valid example alert dialog")
                 });
@@ -104,9 +106,9 @@ pub fn showcase_with_back_handler() -> (Widget, impl Fn() -> bool + 'static) {
         (page, sheet)
     })
     .back_dispatcher(&back_dispatcher)
-    .theme(theme)
+    .theme(theme.clone())
     .into_widget();
-    let root = MaterialApp::new(host).theme(theme).into_widget();
+    let root = MaterialApp::new(host).theme(theme.clone()).into_widget();
     let on_back = back_dispatcher.handler();
     (root, on_back)
 }
@@ -148,7 +150,7 @@ impl State<DrawerExample> for DrawerExampleState {
                 FlexItem::fixed(Text::new(format!("Current destination: {title}")).into_widget()),
                 FlexItem::fixed(
                     Divider::new()
-                        .theme(widget.theme)
+                        .theme(widget.theme.clone())
                         .into_widget()
                         .expect("valid example Material divider"),
                 ),
@@ -176,7 +178,7 @@ impl State<DrawerExample> for DrawerExampleState {
         body_style.spacing = 12.0;
         let card = Card::new(Widget::padding(Insets::all(20.0), card_content))
             .variant(CardVariant::Filled)
-            .theme(widget.theme)
+            .theme(widget.theme.clone())
             .into_widget()
             .expect("valid example Material card");
         let body = Widget::flex(
@@ -216,24 +218,24 @@ impl State<DrawerExample> for DrawerExampleState {
             )
             .leading(Text::new("ⓘ").into_widget())
             .trailing(Text::new("0.1").into_widget())
-            .theme(widget.theme)
+            .theme(widget.theme.clone())
             .into_widget()
             .expect("valid example list tile"),
         )
         .width(256.0)
-        .theme(widget.theme)
+        .theme(widget.theme.clone())
         .into_widget()
         .expect("valid example navigation drawer");
         let dismiss = handle.clone();
         let drawer = Drawer::new(drawer_contents)
             .width(288.0)
-            .theme(widget.theme)
+            .theme(widget.theme.clone())
             .into_widget()
             .expect("valid example drawer");
 
         let show_dialog = widget.dialog_controller.clone();
         Scaffold::new(Widget::padding(Insets::all(24.0), body))
-            .app_bar_config(AppBar::new(title).theme(widget.theme))
+            .app_bar_config(AppBar::new(title).theme(widget.theme.clone()))
             .floating_action_button(
                 FloatingActionButton::new(
                     &widget.binding,
@@ -242,7 +244,7 @@ impl State<DrawerExample> for DrawerExampleState {
                         let _ = show_dialog.present(0);
                     },
                 )
-                .theme(widget.theme),
+                .theme(widget.theme.clone()),
             )
             .drawer(
                 &widget.binding,
@@ -255,7 +257,7 @@ impl State<DrawerExample> for DrawerExampleState {
                     let _ = dismiss.update(|state| state.drawer_open = false);
                 },
             )
-            .theme(widget.theme)
+            .theme(widget.theme.clone())
             .into_widget()
     }
 }

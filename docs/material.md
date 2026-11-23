@@ -53,13 +53,32 @@ let theme = ThemeData {
 ```
 
 The shared theme currently supports indicator and track colors, linear height,
-circular stroke width, stroke alignment and cap, corner radius, track gap and
-linear stop marker styling.
+circular stroke width, stroke alignment and cap, corner radius, track gap,
+linear stop marker styling, and a shared animation controller. The controller
+can be set in `ThemeData.progress_indicator_theme` for the whole app, or in a
+`ProgressIndicatorTheme` wrapper for one subtree. Descendant indeterminate
+indicators use that controller unless an indicator supplies its own.
 Flutter's [ProgressIndicatorThemeData API](https://api.flutter.dev/flutter/material/ProgressIndicatorThemeData-class.html)
 also provides constraints, circular track padding, refresh colors, animated
-controller configuration and theme interpolation; those properties remain
-unavailable on root `ThemeData`. Use the `ProgressIndicatorTheme` wrapper for a
-subtree controller:
+value colors and theme interpolation; those properties remain unavailable.
+For an app-wide controller, set the theme field alongside the visual defaults:
+
+```rust
+use rust_flutter::{animation::AnimationController, material::{ProgressIndicatorThemeData, ThemeData}};
+
+let controller = AnimationController::new();
+let theme = ThemeData {
+    progress_indicator_theme: ProgressIndicatorThemeData {
+        controller: Some(controller.clone()),
+        ..ProgressIndicatorThemeData::default()
+    },
+    ..ThemeData::default()
+};
+# let _ = (theme, controller);
+```
+
+Use the `ProgressIndicatorTheme` wrapper to scope the same configuration to a
+subtree:
 
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports
