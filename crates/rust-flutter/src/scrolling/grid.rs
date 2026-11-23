@@ -20,6 +20,7 @@ pub struct GridView {
     main_axis_spacing: f32,
     cross_axis_spacing: f32,
     cache_extent: f32,
+    max_realized_items: usize,
     axis: Axis,
     reverse: bool,
     builder: Rc<ItemBuilder>,
@@ -54,6 +55,7 @@ impl GridView {
             main_axis_spacing: 0.0,
             cross_axis_spacing: 0.0,
             cache_extent: 250.0,
+            max_realized_items: 4096,
             axis: Axis::Vertical,
             reverse: false,
             builder: Rc::new(builder),
@@ -84,6 +86,16 @@ impl GridView {
         Ok(self)
     }
 
+    /// Bound the total number of cells realized across visible and cached
+    /// groups. The default is 4096 cells.
+    pub fn max_realized_items(mut self, limit: usize) -> Result<Self, ScrollError> {
+        if limit == 0 {
+            return Err(ScrollError::InvalidRealizedItemLimit);
+        }
+        self.max_realized_items = limit;
+        Ok(self)
+    }
+
     pub fn reverse(mut self, reverse: bool) -> Self {
         self.reverse = reverse;
         self
@@ -101,11 +113,15 @@ impl GridView {
         if !group_extent.is_finite() || group_extent <= 0.0 {
             return Err(ScrollError::InvalidGridConfiguration);
         }
+        if self.item_count > 0 && self.cross_axis_count > self.max_realized_items {
+            return Err(ScrollError::InvalidRealizedItemLimit);
+        }
         let group_count = self.item_count.div_ceil(self.cross_axis_count);
         let cells_per_group = self.cross_axis_count;
         let item_count = self.item_count;
         let main_spacing = self.main_axis_spacing;
         let cross_spacing = self.cross_axis_spacing;
+        let max_realized_groups = (self.max_realized_items / cells_per_group).max(1);
         let axis = self.axis;
         let cross_axis = match axis {
             Axis::Horizontal => Axis::Vertical,
@@ -151,6 +167,7 @@ impl GridView {
             },
         )?
         .cache_extent(self.cache_extent)?
+        .max_realized_items(max_realized_groups)?
         .axis(axis)
         .reverse(self.reverse)
         .into_widget()

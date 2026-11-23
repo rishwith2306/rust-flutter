@@ -120,7 +120,9 @@ and cache range are built. For vertical scrolling, `cross_axis_count` is the
 column count; for horizontal scrolling, it is the row count. `main_axis_spacing`
 adds space after each group, including the final group; `cross_axis_spacing`
 separates cells within a group. The final group is padded with empty cells.
-`.reverse(true)` reverses groups along the scrolling axis. Variable cell
-extents, masonry layouts, slivers, grid-specific keep-alive and complete
+`.reverse(true)` reverses groups along the scrolling axis. `.max_realized_items`
+defaults to 4096 and bounds the total cells in the realized and cached groups;
+if the viewport/cache would exceed the budget, layout returns an error. Variable
+cell extents, masonry layouts, slivers, grid-specific keep-alive and complete
 Flutter `GridView` member compatibility remain unfinished. The caller owns the
 position and gesture binding exactly as for `ListView`.
