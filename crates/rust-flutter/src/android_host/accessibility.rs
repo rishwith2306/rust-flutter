@@ -89,7 +89,7 @@ impl AndroidAccessibility {
             .and_then(|value| value.l())
             .map_err(|error| format!("could not access Android decor view: {error}"))?;
         let adapter = InjectingAdapter::new(
-            &mut *env,
+            &mut env,
             &decor_view,
             TreeActivation(tree.clone()),
             ActionQueue {
