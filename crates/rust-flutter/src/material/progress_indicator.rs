@@ -10,7 +10,7 @@ pub struct CircularProgressIndicator {
     value: Option<f32>,
     color: Option<Color32>,
     background_color: Option<Color32>,
-    stroke_width: f32,
+    stroke_width: Option<f32>,
     size: f32,
 }
 
@@ -20,7 +20,7 @@ impl CircularProgressIndicator {
             value,
             color: None,
             background_color: None,
-            stroke_width: 4.0,
+            stroke_width: None,
             size: 40.0,
         }
     }
@@ -36,7 +36,7 @@ impl CircularProgressIndicator {
     }
 
     pub fn stroke_width(mut self, width: f32) -> Self {
-        self.stroke_width = width;
+        self.stroke_width = Some(width);
         self
     }
 
@@ -46,11 +46,11 @@ impl CircularProgressIndicator {
     }
 
     pub fn into_widget(self) -> Result<Widget, &'static str> {
-        if !self.stroke_width.is_finite()
-            || self.stroke_width <= 0.0
+        if self
+            .stroke_width
+            .is_some_and(|width| !width.is_finite() || width <= 0.0 || width > self.size)
             || !self.size.is_finite()
             || self.size <= 0.0
-            || self.stroke_width > self.size
             || self
                 .value
                 .is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value))
@@ -65,16 +65,27 @@ struct CircularProgressView(CircularProgressIndicator);
 
 impl StatelessWidget for CircularProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
-        let colors = ThemeData::of(context)
-            .expect("Material progress indicators resolve theme during build")
-            .color_scheme;
+        let theme = ThemeData::of(context)
+            .expect("Material progress indicators resolve theme during build");
+        let colors = theme.color_scheme;
+        let progress_theme = theme.progress_indicator_theme;
         let indicator = &self.0;
         let value = indicator.value;
         let size = indicator.size;
-        let stroke_width = indicator.stroke_width;
-        let color = indicator.color.unwrap_or(colors.primary);
+        let stroke_width = indicator
+            .stroke_width
+            .or(progress_theme
+                .stroke_width
+                .filter(|width| width.is_finite() && *width > 0.0))
+            .unwrap_or(4.0)
+            .min(size);
+        let color = indicator
+            .color
+            .or(progress_theme.color)
+            .unwrap_or(colors.primary);
         let background = indicator
             .background_color
+            .or(progress_theme.circular_track_color)
             .unwrap_or(colors.surface_container_highest);
         Widget::measured(
             move |constraints| constraints.constrain(Vec2::splat(size)),
@@ -122,9 +133,9 @@ pub struct LinearProgressIndicator {
     value: Option<f32>,
     color: Option<Color32>,
     background_color: Option<Color32>,
-    min_height: f32,
+    min_height: Option<f32>,
     border_radius: Option<f32>,
-    track_gap: f32,
+    track_gap: Option<f32>,
     stop_indicator_radius: Option<f32>,
     stop_indicator_color: Option<Color32>,
 }
@@ -135,9 +146,9 @@ impl LinearProgressIndicator {
             value,
             color: None,
             background_color: None,
-            min_height: 4.0,
+            min_height: None,
             border_radius: None,
-            track_gap: 0.0,
+            track_gap: None,
             stop_indicator_radius: None,
             stop_indicator_color: None,
         }
@@ -154,7 +165,7 @@ impl LinearProgressIndicator {
     }
 
     pub fn min_height(mut self, height: f32) -> Self {
-        self.min_height = height;
+        self.min_height = Some(height);
         self
     }
 
@@ -166,7 +177,7 @@ impl LinearProgressIndicator {
 
     /// Sets the gap between the active segment and remaining track.
     pub fn track_gap(mut self, gap: f32) -> Self {
-        self.track_gap = gap;
+        self.track_gap = Some(gap);
         self
     }
 
@@ -183,10 +194,12 @@ impl LinearProgressIndicator {
     }
 
     pub fn into_widget(self) -> Result<Widget, &'static str> {
-        if !self.min_height.is_finite()
-            || self.min_height <= 0.0
-            || !self.track_gap.is_finite()
-            || self.track_gap < 0.0
+        if self
+            .min_height
+            .is_some_and(|height| !height.is_finite() || height <= 0.0)
+            || self
+                .track_gap
+                .is_some_and(|gap| !gap.is_finite() || gap < 0.0)
             || self
                 .border_radius
                 .is_some_and(|radius| !radius.is_finite() || radius < 0.0)
@@ -207,19 +220,40 @@ struct LinearProgressView(LinearProgressIndicator);
 
 impl StatelessWidget for LinearProgressView {
     fn build(&self, context: &BuildContext) -> Widget {
-        let colors = ThemeData::of(context)
-            .expect("Material progress indicators resolve theme during build")
-            .color_scheme;
+        let theme = ThemeData::of(context)
+            .expect("Material progress indicators resolve theme during build");
+        let colors = theme.color_scheme;
+        let progress_theme = theme.progress_indicator_theme;
         let indicator = &self.0;
         let value = indicator.value;
-        let height = indicator.min_height;
-        let border_radius = indicator.border_radius;
-        let track_gap = indicator.track_gap;
-        let stop_radius = indicator.stop_indicator_radius;
-        let stop_color = indicator.stop_indicator_color;
-        let color = indicator.color.unwrap_or(colors.primary);
+        let height = indicator
+            .min_height
+            .or(progress_theme
+                .linear_min_height
+                .filter(|height| height.is_finite() && *height > 0.0))
+            .unwrap_or(4.0);
+        let border_radius = indicator.border_radius.or(progress_theme
+            .border_radius
+            .filter(|radius| radius.is_finite() && *radius >= 0.0));
+        let track_gap = indicator
+            .track_gap
+            .or(progress_theme
+                .track_gap
+                .filter(|gap| gap.is_finite() && *gap >= 0.0))
+            .unwrap_or(0.0);
+        let stop_radius = indicator.stop_indicator_radius.or(progress_theme
+            .stop_indicator_radius
+            .filter(|radius| radius.is_finite() && *radius >= 0.0));
+        let stop_color = indicator
+            .stop_indicator_color
+            .or(progress_theme.stop_indicator_color);
+        let color = indicator
+            .color
+            .or(progress_theme.color)
+            .unwrap_or(colors.primary);
         let background = indicator
             .background_color
+            .or(progress_theme.linear_track_color)
             .unwrap_or(colors.surface_container_highest);
         Widget::measured(
             move |constraints| {

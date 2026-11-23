@@ -233,10 +233,25 @@ impl Default for ColorScheme {
 }
 
 /// Inherited Material theme data and an optional egui global-style adapter.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ThemeData {
     pub color_scheme: ColorScheme,
     pub use_material3: bool,
+    pub progress_indicator_theme: ProgressIndicatorThemeData,
+}
+
+/// Shared visual defaults for descendant Material progress indicators.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ProgressIndicatorThemeData {
+    pub color: Option<Color32>,
+    pub linear_track_color: Option<Color32>,
+    pub linear_min_height: Option<f32>,
+    pub circular_track_color: Option<Color32>,
+    pub stroke_width: Option<f32>,
+    pub border_radius: Option<f32>,
+    pub track_gap: Option<f32>,
+    pub stop_indicator_color: Option<Color32>,
+    pub stop_indicator_radius: Option<f32>,
 }
 
 /// A Material root widget that provides an inherited theme to its home subtree.
@@ -366,6 +381,7 @@ impl Default for ThemeData {
         Self {
             color_scheme: ColorScheme::default(),
             use_material3: true,
+            progress_indicator_theme: ProgressIndicatorThemeData::default(),
         }
     }
 }

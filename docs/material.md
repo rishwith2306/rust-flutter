@@ -32,6 +32,31 @@ connects a retained `NavigatorController` to the root page builder, and
 `with_named_routes` adds a checked string route table. System theme selection
 and localization configuration remain incomplete; see [retained navigation](navigation.md).
 
+Progress indicator defaults can be configured once in the inherited theme.
+Indicator-specific setters take precedence over these shared values:
+
+```rust
+use rust_flutter::{egui::Color32, material::{ProgressIndicatorThemeData, ThemeData}};
+
+let theme = ThemeData {
+    progress_indicator_theme: ProgressIndicatorThemeData {
+        color: Some(Color32::from_rgb(0x22, 0x66, 0xAA)),
+        linear_min_height: Some(6.0),
+        stroke_width: Some(5.0),
+        ..ProgressIndicatorThemeData::default()
+    },
+    ..ThemeData::default()
+};
+# let _ = theme;
+```
+
+The shared theme currently supports indicator and track colors, linear height,
+circular stroke width, corner radius, track gap and linear stop marker styling.
+Flutter's [ProgressIndicatorThemeData API](https://api.flutter.dev/flutter/material/ProgressIndicatorThemeData-class.html)
+also provides constraints, circular track padding, stroke alignment and caps,
+refresh colors, animated controller synchronization and theme interpolation;
+those properties remain unavailable.
+
 `FilledButton`, `OutlinedButton`, and `TextButton` use the nearest scheme and
 the framework gesture binding. `Checkbox` is owner-controlled and supports
 optional tristate cycling:
