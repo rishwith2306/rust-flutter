@@ -58,17 +58,28 @@ let theme = ThemeData {
 ```
 
 `SnackBar` builds a themed feedback surface and `Scaffold::snack_bar` places it
-over the bottom of the body:
+over the bottom of the body. `ScaffoldMessengerHost` manages timed display and
+exposes a controller to the page builder:
 
 ```rust,ignore
-let page = Scaffold::new(body)
-    .snack_bar(SnackBar::new("Changes saved").theme(theme.clone()))
-    .into_widget();
+let host = ScaffoldMessengerHost::new(move |messenger, current| {
+    // page_body stores `messenger` in a button callback and calls
+    // `show_snack_bar` when the user performs an action.
+    let body = page_body(messenger.clone());
+    let scaffold = Scaffold::new(body);
+    match current {
+        Some(snack_bar) => scaffold.snack_bar(snack_bar).into_widget(),
+        None => scaffold.into_widget(),
+    }
+})
+.duration(std::time::Duration::from_secs(5))
+.into_widget();
 ```
 
-The application controls when the snackbar is included or removed. Automatic
-timeouts, queued messages, action callbacks, FAB avoidance, and the full
-`ScaffoldMessenger` API are not implemented yet.
+Calling `show_snack_bar` replaces the current message and starts its duration;
+the action callback can hide the current message through the controller. Message
+queueing, transition animation, FAB avoidance, and full `ScaffoldMessenger`
+member compatibility remain unfinished.
 
 The shared theme currently supports indicator and track colors, linear height,
 circular stroke width, stroke alignment and cap, corner radius, track gap,

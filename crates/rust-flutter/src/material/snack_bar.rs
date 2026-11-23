@@ -6,14 +6,42 @@ use crate::{
     layout::{Axis, CrossAxisAlignment, Insets},
     text::{DefaultTextStyle, Text, TextStyle},
 };
+use std::rc::Rc;
 
 /// A Material feedback surface suitable for placement over a `Scaffold` body.
-/// Display duration and queue management remain application-owned.
+/// `ScaffoldMessengerHost` can manage its display duration.
 pub struct SnackBar {
     message: String,
-    action: Option<Widget>,
+    action: Option<SnackBarAction>,
     background: Color32,
     foreground: Color32,
+}
+
+#[derive(Clone)]
+/// An optional action displayed alongside a [`SnackBar`] message.
+pub struct SnackBarAction {
+    label: String,
+    on_pressed: Rc<dyn Fn()>,
+}
+
+impl SnackBarAction {
+    pub fn new(label: impl Into<String>, on_pressed: impl Fn() + 'static) -> Self {
+        Self {
+            label: label.into(),
+            on_pressed: Rc::new(on_pressed),
+        }
+    }
+}
+
+impl Clone for SnackBar {
+    fn clone(&self) -> Self {
+        Self {
+            message: self.message.clone(),
+            action: self.action.clone(),
+            background: self.background,
+            foreground: self.foreground,
+        }
+    }
 }
 
 impl SnackBar {
@@ -27,7 +55,7 @@ impl SnackBar {
         }
     }
 
-    pub fn action(mut self, action: Widget) -> Self {
+    pub fn action(mut self, action: SnackBarAction) -> Self {
         self.action = Some(action);
         self
     }
@@ -38,8 +66,8 @@ impl SnackBar {
         self
     }
 
-    pub fn into_widget(self) -> Widget {
-        let message = self.message;
+    pub fn into_widget(&self) -> Widget {
+        let message = self.message.clone();
         let mut row = vec![FlexItem::expanded(
             DefaultTextStyle {
                 style: TextStyle {
@@ -52,8 +80,21 @@ impl SnackBar {
             .provide(Text::new(message.clone()).into_widget()),
             1,
         )];
-        if let Some(action) = self.action {
-            row.push(FlexItem::fixed(action));
+        if let Some(action) = self.action.clone() {
+            let label = action.label;
+            let color = self.foreground;
+            let on_pressed = action.on_pressed;
+            row.push(FlexItem::fixed(Widget::leaf(
+                egui::vec2(72.0, 40.0),
+                move |ui| {
+                    let button = egui::Button::new(egui::RichText::new(&label).color(color))
+                        .fill(Color32::TRANSPARENT)
+                        .stroke(Stroke::NONE);
+                    if ui.add(button).clicked() {
+                        on_pressed();
+                    }
+                },
+            )));
         }
         let mut style = FlexStyle::new(Axis::Horizontal);
         style.spacing = 16.0;

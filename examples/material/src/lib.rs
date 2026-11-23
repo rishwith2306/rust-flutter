@@ -6,7 +6,7 @@ use rust_flutter::{
         AlertDialog, AppBar, Card, CardVariant, Divider, Drawer, FloatingActionButton, ListTile,
         MaterialApp, MaterialDialogController, MaterialDialogHost, ModalBottomSheetController,
         ModalBottomSheetHost, NavigationDrawer, NavigationDrawerDestination, Scaffold, SnackBar,
-        TextButton, ThemeData,
+        SnackBarAction, TextButton, ThemeData,
     },
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -259,13 +259,9 @@ impl State<DrawerExample> for DrawerExampleState {
             let dismiss_snack_bar = handle.clone();
             scaffold = scaffold.snack_bar(
                 SnackBar::new("Saved successfully")
-                    .action(
-                        TextButton::new(&widget.binding, "Dismiss", move || {
-                            let _ =
-                                dismiss_snack_bar.update(|state| state.snack_bar_visible = false);
-                        })
-                        .into_widget(),
-                    )
+                    .action(SnackBarAction::new("Dismiss", move || {
+                        let _ = dismiss_snack_bar.update(|state| state.snack_bar_visible = false);
+                    }))
                     .theme(widget.theme.clone()),
             );
         }

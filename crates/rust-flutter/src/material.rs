@@ -23,6 +23,7 @@ mod divider;
 mod floating_action_button;
 mod icon_button;
 mod list_tile;
+mod messenger;
 mod navigation_bar;
 mod navigation_drawer;
 mod progress_indicator;
@@ -41,6 +42,7 @@ pub use divider::{Divider, VerticalDivider};
 pub use floating_action_button::FloatingActionButton;
 pub use icon_button::{IconButton, IconButtonVariant};
 pub use list_tile::ListTile;
+pub use messenger::{ScaffoldMessengerController, ScaffoldMessengerHost};
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
 pub use progress_indicator::{
@@ -50,7 +52,7 @@ pub use radio::Radio;
 pub use scaffold::{AppBar, Drawer, Scaffold};
 pub use slider::Slider;
 pub(crate) use slider::SliderColors;
-pub use snack_bar::SnackBar;
+pub use snack_bar::{SnackBar, SnackBarAction};
 pub use switch::Switch;
 pub use text_field::TextField;
 
