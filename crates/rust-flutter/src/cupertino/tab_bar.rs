@@ -3,7 +3,7 @@ use crate::{
     decoration::{BoxDecoration, DecoratedBox},
     egui::{self, Align2, Color32, FontId, Stroke, Vec2},
     element::{BuildContext, FlexItem, FlexStyle, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
     layout::{Axis, BoxConstraints, CrossAxisAlignment},
 };
 use std::rc::Rc;
@@ -135,6 +135,9 @@ impl StatelessWidget for CupertinoTabBarView {
                 callback(index)
             })
             .size(Vec2::new(72.0, bar_height - 1.0))
+            .accessibility_role(GestureSemanticRole::Tab)
+            .accessibility_label(item.label.clone())
+            .accessibility_selected(selected)
             .fill(Color32::TRANSPARENT)
             .stroke(Stroke::NONE)
             .corner_radius(egui::CornerRadius::ZERO)

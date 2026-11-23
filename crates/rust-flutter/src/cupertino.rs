@@ -12,8 +12,8 @@ use crate::{
     },
     forms::{TextEditingController, TextFormField},
     gestures::{
-        GestureBinding, GestureButton, GestureDetector, GestureTargetConfig, TapCallbacks,
-        TapConfig,
+        GestureBinding, GestureButton, GestureDetector, GestureSemanticRole, GestureTargetConfig,
+        TapCallbacks, TapConfig,
     },
     layout::{
         Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
@@ -1447,6 +1447,8 @@ impl StatelessWidget for CupertinoButtonWidget {
         )
         .size(self.0.size)
         .enabled(self.0.enabled)
+        .accessibility_role(GestureSemanticRole::Button)
+        .accessibility_label(self.0.label.clone())
         .corner_radius(egui::CornerRadius::same(22));
         if let Some(fill) = fill {
             button = button.fill(fill);
