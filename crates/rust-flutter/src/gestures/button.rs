@@ -11,6 +11,15 @@ use std::{
 };
 type ButtonPaint = Rc<dyn Fn(&egui::Painter, egui::Rect)>;
 
+/// Common semantic roles for arena-backed controls on hosts with AccessKit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GestureSemanticRole {
+    Button,
+    Switch,
+    CheckBox,
+    RadioButton,
+}
+
 /// An opt-in egui-painted button whose pointer action participates in the shared
 /// gesture arena. Ordinary egui buttons remain independent. Keyboard Enter/Space
 /// activation uses focus and does not compete with pointer gestures.
@@ -24,7 +33,7 @@ pub struct GestureButton {
     corner_radius: Option<egui::CornerRadius>,
     paint_content: Option<ButtonPaint>,
     enabled: bool,
-    accessibility_role: Option<egui::accesskit::Role>,
+    accessibility_role: Option<GestureSemanticRole>,
     accessibility_toggled: Option<bool>,
     activate: Rc<dyn Fn()>,
 }
@@ -75,7 +84,7 @@ impl GestureButton {
         self
     }
     /// Overrides the AccessKit role for controls painted inside this button.
-    pub fn accessibility_role(mut self, role: egui::accesskit::Role) -> Self {
+    pub fn accessibility_role(mut self, role: GestureSemanticRole) -> Self {
         self.accessibility_role = Some(role);
         self
     }
@@ -357,7 +366,12 @@ impl RenderBox for GestureButtonRenderBox {
         if !crate::layout::ui_is_offstage(ui) {
             ui.ctx().accesskit_node_builder(response.id, |node| {
                 if let Some(role) = self.config.accessibility_role {
-                    node.set_role(role);
+                    node.set_role(match role {
+                        GestureSemanticRole::Button => egui::accesskit::Role::Button,
+                        GestureSemanticRole::Switch => egui::accesskit::Role::Switch,
+                        GestureSemanticRole::CheckBox => egui::accesskit::Role::CheckBox,
+                        GestureSemanticRole::RadioButton => egui::accesskit::Role::RadioButton,
+                    });
                 }
                 if let Some(toggled) = self.config.accessibility_toggled {
                     node.set_toggled(toggled.into());

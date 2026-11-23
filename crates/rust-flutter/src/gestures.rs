@@ -2,7 +2,7 @@
 mod arena;
 mod binding;
 mod button;
-pub use button::{GestureButton, GestureButtonRenderBox};
+pub use button::{GestureButton, GestureButtonRenderBox, GestureSemanticRole};
 mod detector;
 pub use binding::{
     BindingError, DispatchFailure, DispatchReport, GestureBinding, GestureFrame, GestureTarget,

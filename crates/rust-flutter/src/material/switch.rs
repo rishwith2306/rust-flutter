@@ -4,7 +4,7 @@ use crate::{
     animation::{Curve, TweenAnimationBuilder},
     egui::{self, Color32, Stroke, Vec2},
     element::{BuildContext, StatelessWidget, Widget},
-    gestures::{GestureBinding, GestureButton},
+    gestures::{GestureBinding, GestureButton, GestureSemanticRole},
 };
 use std::{rc::Rc, time::Duration};
 
@@ -98,7 +98,7 @@ impl StatelessWidget for SwitchView {
                     .fill(Color32::TRANSPARENT)
                     .stroke(Stroke::NONE)
                     .corner_radius(egui::CornerRadius::ZERO)
-                    .accessibility_role(egui::accesskit::Role::Switch)
+                    .accessibility_role(GestureSemanticRole::Switch)
                     .accessibility_toggled(value)
                     .paint_content(paint)
                     .into_widget()

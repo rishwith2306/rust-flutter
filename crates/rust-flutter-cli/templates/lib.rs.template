@@ -47,8 +47,8 @@ pub fn app() -> Widget {
         binding,
         welcome: ASSETS.load_string("assets/welcome.txt").expect("bundled welcome text").to_owned(),
     }))
-    .app_bar(AppBar::new("{{name}}").theme(theme).into_widget())
-    .theme(theme)
+    .app_bar(AppBar::new("{{name}}").theme(theme.clone()).into_widget())
+    .theme(theme.clone())
     .into_widget();
     MaterialApp::new(home).theme(theme).into_widget()
 }
