@@ -250,9 +250,11 @@ for an action sheet. Transition animation, route results, and restoration
 remain unfinished.
 
 This is not full Cupertino parity. `CupertinoApp` provides theme data and can
-render a `NavigatorController` route view; a named route table, localization,
-system appearance following, modal transition animation, and pickers remain
-unfinished. Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
+render a `NavigatorController` route view; a named route table, Fluent catalog
+and explicit text direction are supported. Platform locale discovery, automatic
+direction selection, system appearance following, modal transition animation,
+and pickers remain unfinished. See [localization](localization.md) and
+[text direction](directionality.md). Compare the official Flutter [CupertinoApp](https://api.flutter.dev/flutter/cupertino/CupertinoApp-class.html)
 and [CupertinoButton](https://api.flutter.dev/flutter/cupertino/CupertinoButton-class.html)
 APIs for the broader Flutter surface. Flutter's [modal popup API](https://api.flutter.dev/flutter/cupertino/showCupertinoModalPopup.html)
 also supports route results, root navigator selection, configurable barrier

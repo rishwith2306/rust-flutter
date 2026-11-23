@@ -7,8 +7,8 @@ use crate::{
     display::ViewEdges,
     egui::{self, Color32, Stroke, Vec2},
     element::{
-        BuildContext, DependencyError, FlexItem, FlexStyle, RenderBox, RenderContext,
-        RenderObjectWidget, SafeAreaOptions, Semantics, StatelessWidget, Widget,
+        BuildContext, DependencyError, Directionality, FlexItem, FlexStyle, RenderBox,
+        RenderContext, RenderObjectWidget, SafeAreaOptions, Semantics, StatelessWidget, Widget,
     },
     forms::{TextEditingController, TextFormField},
     gestures::{
@@ -17,8 +17,9 @@ use crate::{
     },
     layout::{
         Axis, Baselines, BoxChildren, BoxConstraints, BoxGeometry, BoxQueries, CrossAxisAlignment,
-        HitTestBehavior, Insets, IntrinsicDimension, LayoutError, TextBaseline,
+        HitTestBehavior, Insets, IntrinsicDimension, LayoutError, TextBaseline, TextDirection,
     },
+    localization::Localizations,
     navigation::NavigatorController,
     text::{DefaultTextStyle, Text, TextStyle},
 };
@@ -141,6 +142,8 @@ impl std::error::Error for CupertinoRouteConfigurationError {}
 pub struct CupertinoApp {
     home: Widget,
     theme: CupertinoThemeData,
+    localizations: Option<Localizations>,
+    text_direction: TextDirection,
 }
 
 impl CupertinoApp {
@@ -148,6 +151,8 @@ impl CupertinoApp {
         Self {
             home,
             theme: CupertinoThemeData::default(),
+            localizations: None,
+            text_direction: TextDirection::default(),
         }
     }
 
@@ -209,8 +214,25 @@ impl CupertinoApp {
         self
     }
 
+    /// Provide a Fluent catalog to descendants through `Localizations::of`.
+    /// Locale selection and platform locale discovery remain application-owned.
+    pub fn localizations(mut self, localizations: Localizations) -> Self {
+        self.localizations = Some(localizations);
+        self
+    }
+
+    /// Set the inherited direction used by direction-aware descendants.
+    pub fn text_direction(mut self, direction: TextDirection) -> Self {
+        self.text_direction = direction;
+        self
+    }
+
     pub fn into_widget(self) -> Widget {
-        self.theme.provide(self.home)
+        let child = match self.localizations {
+            Some(catalog) => catalog.provide(self.home),
+            None => self.home,
+        };
+        Directionality::provide(self.text_direction, self.theme.provide(child))
     }
 }
 
