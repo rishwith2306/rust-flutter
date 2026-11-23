@@ -110,7 +110,30 @@ large decoding workloads off the UI thread before advertising smooth large-image
 loading. This is an embedded-bundle and static-image foundation. SVG, animated
 images, image streams, automatic package-asset discovery, network/disk caches,
 transformer plugins, native AssetManager/NSBundle lookup, deferred downloads and
-font declaration tooling remain incomplete. Files embedded in the Rust library
+font manifest declaration tooling remain incomplete. Bundled TTF/OTF faces can
+be registered directly into egui with `assets::register_font`:
+
+```rust,ignore
+use rust_flutter::{assets::register_font, egui, text::FontWeight};
+
+fn configure(&mut self, ctx: &egui::Context) {
+    register_font(ctx, &ASSETS, "assets/fonts/inter-regular.ttf", "Inter", None)
+        .expect("regular font asset exists");
+    register_font(
+        ctx,
+        &ASSETS,
+        "assets/fonts/inter-medium.ttf",
+        "Inter",
+        Some(FontWeight::W500),
+    )
+    .expect("medium font asset exists");
+}
+```
+
+`None` installs the base named family; a weight installs the family variant
+selected by `FontWeight`. Call this during `Application::configure`; egui makes
+the face available on its next pass. Font files still need to be listed in the
+asset manifest. Files embedded in the Rust library
 are not automatically registered as Android AssetManager files. The manifest is
 original Rust tooling, not a parser for Flutter's pubspec or binary asset manifest.
 

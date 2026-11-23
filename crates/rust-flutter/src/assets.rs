@@ -3,6 +3,34 @@ use egui::{ColorImage, Context, TextureHandle, TextureOptions, Vec2};
 pub use rust_flutter_assets::*;
 use std::{collections::VecDeque, fmt, io::Cursor};
 
+/// Register a bundled TTF/OTF face in the egui family used by retained text.
+/// Pass `None` for the base family or a weight to register a weighted variant.
+/// Call during application configuration; the font becomes available next pass.
+pub fn register_font<B: AssetBundle>(
+    context: &Context,
+    bundle: &B,
+    key: &str,
+    family_name: &str,
+    weight: Option<crate::text::FontWeight>,
+) -> Result<(), AssetError> {
+    let data = bundle.load(key)?.to_vec();
+    let base_family = egui::FontFamily::Name(family_name.into());
+    let target_family = weight.map_or_else(
+        || base_family.clone(),
+        |weight| weight.family_variant(&base_family),
+    );
+    let weight_key = weight.map_or_else(|| "base".to_owned(), |w| (w as u16).to_string());
+    context.add_font(egui::epaint::text::FontInsert {
+        name: format!("rust_flutter::{family_name}::{weight_key}::{key}"),
+        data: egui::FontData::from_owned(data),
+        families: vec![egui::epaint::text::InsertFontFamily {
+            family: target_family,
+            priority: egui::epaint::text::FontPriority::Highest,
+        }],
+    });
+    Ok(())
+}
+
 #[derive(Debug)]
 pub enum ImageAssetError {
     Asset(AssetError),

@@ -57,10 +57,10 @@ Word spacing adds the requested number of logical points after each whitespace
 sequence; non-finite values are rejected during paragraph measurement.
 
 `FontWeight` represents weights 100 through 900 in steps of 100. To render an
-actual weight face, register its font data in egui under the family returned by
-`FontWeight::family_variant(&base_family)`. Paragraph layout selects that family
-when present and falls back to `base_family` otherwise. For example, after
-adding a medium font file as `inter-medium` in `definitions.font_data`:
+actual weight face, register it with `assets::register_font` using the same base
+family and weight. Paragraph layout selects that family when present and falls
+back to the base family otherwise. For manual egui font setup, after adding a
+medium font file as `inter-medium` in `definitions.font_data`:
 
 ```rust
 let inter = egui::FontFamily::Name("Inter".into());
