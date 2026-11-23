@@ -353,6 +353,29 @@ not implemented yet. See Flutter's [Divider](https://api.flutter.dev/flutter/mat
 and [VerticalDivider](https://api.flutter.dev/flutter/material/VerticalDivider-class.html)
 APIs for their full sizing and styling options.
 
+`LinearProgressIndicator` fills the finite horizontal space allowed by its
+parent. Supply `Some(value)` for progress from zero to one, or `None` for the
+indeterminate sweep. The value and minimum height are validated; the theme
+provides the default indicator and track colors.
+
+```rust
+use rust_flutter::material::{LinearProgressIndicator, MaterialApp, ThemeData};
+
+let progress = LinearProgressIndicator::new(Some(0.65))
+    .min_height(6.0)
+    .into_widget()?;
+let loading = LinearProgressIndicator::new(None).into_widget()?;
+let app = MaterialApp::new(progress).theme(ThemeData::default()).into_widget();
+# let _ = (loading, app);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+This is a compact linear rendering: its indeterminate mode sweeps one segment
+across the track. Flutter also provides the circular indicator, controller
+synchronization, semantics labels and values, year-specific visual variants,
+track gaps and stop markers; these remain unfinished. See the official
+[LinearProgressIndicator API](https://api.flutter.dev/flutter/material/LinearProgressIndicator-class.html).
+
 `AlertDialog` builds a Material panel. `MaterialDialogHost` retains the page,
 shows a selected dialog above it, and dismisses that dialog when the user taps
 the scrim. Its builder receives a controller on every build, so a page action
