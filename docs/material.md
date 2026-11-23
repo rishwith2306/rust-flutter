@@ -404,6 +404,32 @@ let page = ThemeData::default()
 # let _ = page;
 ```
 
+`NavigationRail` provides the same controlled destination model for a desktop
+side rail. It supports compact and extended widths; the owner updates the
+selected index after a destination callback. Icons are app-supplied glyphs.
+
+```rust
+use rust_flutter::{
+    gestures::GestureBinding,
+    material::{NavigationDestination, NavigationRail, ThemeData},
+};
+
+let binding = GestureBinding::new();
+let rail = NavigationRail::new(
+    &binding,
+    vec![
+        NavigationDestination::new("⌂", "Home"),
+        NavigationDestination::new("⚙", "Settings"),
+    ],
+    0,
+    |selected_index| { let _ = selected_index; },
+)
+.extended(true)
+.into_widget();
+let themed_rail = ThemeData::default().provide(rail);
+# let _ = themed_rail;
+```
+
 `TextField` provides themed single-line, multiline, read-only and obscured text
 entry. It reads text and surface colors from the nearest `ThemeData` unless
 the decoration supplies explicit colors, and retains editing state through

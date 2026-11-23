@@ -43,6 +43,7 @@ mod list_tile;
 mod messenger;
 mod navigation_bar;
 mod navigation_drawer;
+mod navigation_rail;
 mod progress_indicator;
 mod radio;
 mod scaffold;
@@ -62,6 +63,7 @@ pub use list_tile::ListTile;
 pub use messenger::{ScaffoldMessengerController, ScaffoldMessengerHost};
 pub use navigation_bar::{NavigationBar, NavigationDestination};
 pub use navigation_drawer::{NavigationDrawer, NavigationDrawerDestination};
+pub use navigation_rail::NavigationRail;
 pub use progress_indicator::{
     CircularProgressIndicator, LinearProgressIndicator, ProgressIndicatorTheme,
 };
